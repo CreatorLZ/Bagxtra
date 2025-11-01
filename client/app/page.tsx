@@ -69,7 +69,7 @@ const BagXtraApp = (): React.JSX.Element => {
             <img
               src='/planes.png'
               alt='Planes background'
-              className='absolute inset-0 w-full h-full object-fit opacity-20'
+              className='absolute inset-0 w-full h-full object-cover opacity-20'
             />
           </div>
 

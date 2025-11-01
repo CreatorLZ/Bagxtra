@@ -4,7 +4,7 @@
   "description": "BagXtra Express server with TypeScript",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon --exec ts-node src/server.ts",
+    "dev": "nodemon --exec tsx src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint src/**/*.ts",
@@ -19,7 +19,7 @@
   ],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@clerk/clerk-sdk-node": "^4.13.23",
     "@types/cors": "^2.8.19",
@@ -30,11 +30,14 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
+    "joi": "^18.0.1",
     "mongoose": "^8.19.2",
     "nodemon": "^3.1.10",
     "stripe": "^19.2.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "uploadthing": "^7.7.4"
+    "uploadthing": "^7.7.4",
+    "zod": "^4.1.12"
   }
 }

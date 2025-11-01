@@ -4,6 +4,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import http from 'http';
 // import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node'; // Temporarily disabled due to type conflicts
 
 // Load environment variables
@@ -34,6 +35,9 @@ const env = {
 // Initialize Express app
 const app = express();
 const PORT = env.PORT;
+
+// Module-scoped server variable
+let server: http.Server | undefined;
 
 // Security middleware
 app.use(
@@ -67,6 +71,7 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: req => req.path === '/health' && req.method === 'GET',
 });
 
 app.use(limiter);
@@ -75,14 +80,25 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Security logging middleware
+import { logApiAccess } from './middleware/securityLogger.js';
+app.use(logApiAccess);
+
 // Health check endpoint
 app.get('/health', (_req: express.Request, res: express.Response) => {
-  res.status(200).json({
-    status: 'OK',
+  const dbStatus =
+    mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  const isHealthy = mongoose.connection.readyState === 1;
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'OK' : 'Unhealthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    database: dbStatus,
   });
 });
+// Import auth routes
+import authRoutes from './routes/auth.js';
 
 // API routes
 app.get('/api', (_req: express.Request, res: express.Response) => {
@@ -90,17 +106,12 @@ app.get('/api', (_req: express.Request, res: express.Response) => {
     message: 'BagXtra API Server',
     version: '1.0.0',
     status: 'running',
+    auth: 'Clerk authentication enabled',
   });
 });
 
-// Protected routes example (Clerk middleware temporarily disabled due to type conflicts)
-app.get('/api/protected', (_req: express.Request, res: express.Response) => {
-  res.json({
-    message:
-      'This is a protected route (Clerk middleware temporarily disabled)',
-    note: 'Clerk authentication will be implemented after resolving type conflicts',
-  });
-});
+// Auth routes
+app.use('/api/auth', authRoutes);
 
 // MongoDB connection
 const connectDB = async (): Promise<void> => {
@@ -110,7 +121,8 @@ const connectDB = async (): Promise<void> => {
     console.log('✅ Connected to MongoDB');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
-    process.exit(1);
+    // Don't exit for demo purposes, just log
+    console.log('⚠️  Continuing without MongoDB for demo');
   }
 };
 
@@ -134,7 +146,7 @@ app.use(
 );
 
 // 404 handler
-app.use('*', (_req: express.Request, res: express.Response) => {
+app.use((req: express.Request, res: express.Response) => {
   res.status(404).json({
     error: 'Not Found',
     message: 'The requested resource was not found',
@@ -146,7 +158,7 @@ const startServer = async (): Promise<void> => {
   try {
     await connectDB();
 
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log(`🚀 BagXtra server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(
@@ -162,12 +174,38 @@ const startServer = async (): Promise<void> => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
+  if (server) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server!.close(err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      console.log('✅ Server closed successfully');
+    } catch (error) {
+      console.error('❌ Error closing server:', error);
+    }
+  }
   await mongoose.connection.close();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('🛑 SIGINT received, shutting down gracefully');
+  if (server) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server!.close(err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      console.log('✅ Server closed successfully');
+    } catch (error) {
+      console.error('❌ Error closing server:', error);
+    }
+  }
   await mongoose.connection.close();
   process.exit(0);
 });
