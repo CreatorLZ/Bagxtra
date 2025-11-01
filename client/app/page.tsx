@@ -156,7 +156,7 @@ const BagXtraApp = (): React.JSX.Element => {
   );
 
   const RoleSelection = () => (
-    <div className='min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4'>
+    <div className='min-h-screen bg-linear-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4'>
       <div className='text-center'>
         <h1 className='text-4xl font-bold text-gray-900 mb-8'>
           Choose Your Role
@@ -175,7 +175,7 @@ const BagXtraApp = (): React.JSX.Element => {
   );
 
   const LandingPage = (): React.JSX.Element => (
-    <div className='min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4'>
+    <div className='min-h-screen bg-linear-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4'>
       <Card className='w-full max-w-md'>
         <CardHeader className='text-center'>
           <CardTitle className='text-3xl font-bold text-purple-900'>

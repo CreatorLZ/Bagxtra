@@ -17,8 +17,13 @@ export interface IUser extends Document {
   updatedAt: Date;
 }
 
+// Model interface with static methods
+export interface IUserModel extends mongoose.Model<IUser> {
+  findByClerkId(clerkId: string): Promise<IUser | null>;
+}
+
 // User schema with validation
-const userSchema = new Schema<IUser>(
+const userSchema = new Schema<IUser, IUserModel>(
   {
     clerkId: {
       type: String,
@@ -93,19 +98,19 @@ userSchema.pre('save', function (next) {
 });
 
 // Static method to find user by Clerk ID
-userSchema.statics.findByClerkId = function (clerkId: string) {
+userSchema.statics['findByClerkId'] = function (clerkId: string) {
   return this.findOne({ clerkId });
 };
 
 // Instance method to check role
-userSchema.methods.hasRole = function (role: UserRole): boolean {
+userSchema.methods['hasRole'] = function (role: UserRole): boolean {
   return (this as IUser).role === role;
 };
 
 // Instance method to check if user has admin privileges
-userSchema.methods.isAdmin = function (): boolean {
+userSchema.methods['isAdmin'] = function (): boolean {
   return (this as IUser).role === 'admin';
 };
 
 // Export the model
-export const User = mongoose.model<IUser>('User', userSchema);
+export const User = mongoose.model<IUser, IUserModel>('User', userSchema);

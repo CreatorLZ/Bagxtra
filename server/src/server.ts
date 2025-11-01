@@ -14,6 +14,7 @@ dotenv.config();
 const requiredEnvVars = [
   'MONGODB_URI',
   'CLERK_SECRET_KEY',
+  'CLERK_WEBHOOK_SECRET',
   'STRIPE_SECRET_KEY',
   'UPLOADTHING_SECRET',
 ];
@@ -79,6 +80,9 @@ app.use(limiter);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Raw body middleware for webhook signature verification
+app.use('/api/auth/register', express.raw({ type: 'application/json' }));
 
 // Security logging middleware
 import { logApiAccess } from './middleware/securityLogger.js';

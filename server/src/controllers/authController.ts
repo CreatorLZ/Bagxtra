@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { User } from '../models/User.js';
 import { z } from 'zod';
+import crypto from 'crypto';
 
 // Validation schemas
 const updateUserSchema = z.object({
@@ -34,7 +35,61 @@ export const registerUser = async (
   res: Response
 ): Promise<void> => {
   try {
-    const validatedData = registerUserSchema.parse(req.body);
+    // Verify webhook signature
+    const signature = req.headers['clerk-signature'] as string;
+    const webhookSecret = process.env['CLERK_WEBHOOK_SECRET'];
+
+    if (!signature || !webhookSecret) {
+      console.error(
+        '👤 Webhook signature verification failed: Missing signature or secret'
+      );
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid webhook signature',
+      });
+      return;
+    }
+
+    // Get raw body for signature verification
+    const rawBody = req.body as Buffer;
+
+    // Compute expected signature
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('hex');
+
+    // Compare signatures
+    if (
+      !crypto.timingSafeEqual(
+        Buffer.from(signature, 'hex'),
+        Buffer.from(expectedSignature, 'hex')
+      )
+    ) {
+      console.error(
+        '👤 Webhook signature verification failed: Signature mismatch'
+      );
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid webhook signature',
+      });
+      return;
+    }
+
+    // Parse JSON body after signature verification
+    let payload;
+    try {
+      payload = JSON.parse(rawBody.toString());
+    } catch (error) {
+      console.error('👤 Webhook payload parsing failed:', error);
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'Invalid JSON payload',
+      });
+      return;
+    }
+
+    const validatedData = registerUserSchema.parse(payload);
 
     // Check if user already exists
     const existingUser = await User.findByClerkId(validatedData.clerkId);
@@ -210,12 +265,60 @@ export const getAllUsers = async (
   res: Response
 ): Promise<void> => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    // Check authentication
+    if (!req.user) {
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+      return;
+    }
+
+    // Check admin role
+    if (req.user.role !== 'admin') {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'Admin access required',
+      });
+      return;
+    }
+
+    // Validate and parse pagination
+    const pageStr = req.query['page'] as string;
+    const limitStr = req.query['limit'] as string;
+    let page = 1;
+    let limit = 10;
+
+    if (pageStr) {
+      const p = parseInt(pageStr, 10);
+      if (isNaN(p) || p < 1) {
+        res.status(400).json({
+          error: 'Bad Request',
+          message: 'Invalid page parameter',
+        });
+        return;
+      }
+      page = p;
+    }
+
+    if (limitStr) {
+      const l = parseInt(limitStr, 10);
+      if (isNaN(l) || l < 1 || l > 100) {
+        res.status(400).json({
+          error: 'Bad Request',
+          message: 'Invalid limit parameter',
+        });
+        return;
+      }
+      limit = l;
+    }
+
     const skip = (page - 1) * limit;
 
     const users = await User.find()
-      .select('-__v')
+      .select(
+        'fullName email role phone country profileImage createdAt updatedAt _id'
+      )
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

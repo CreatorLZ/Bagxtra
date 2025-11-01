@@ -1,5 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import validator from 'validator';
+
+declare global {
+  namespace Express {
+    interface Request {
+      validatedQuery?: z.infer<z.ZodSchema>;
+    }
+  }
+}
 
 /**
  * Middleware to validate request body against a Zod schema
@@ -14,7 +23,7 @@ export const validateBody = (schema: z.ZodSchema) => {
         res.status(400).json({
           error: 'Validation Error',
           message: 'Invalid request data',
-          details: error.issues.map((err: any) => ({
+          details: error.issues.map((err: z.ZodIssue) => ({
             field: err.path.join('.'),
             message: err.message,
           })),
@@ -26,6 +35,7 @@ export const validateBody = (schema: z.ZodSchema) => {
         error: 'Internal Server Error',
         message: 'Validation failed',
       });
+      return;
     }
   };
 };
@@ -33,17 +43,17 @@ export const validateBody = (schema: z.ZodSchema) => {
 /**
  * Middleware to validate request query parameters against a Zod schema
  */
-export const validateQuery = (schema: z.ZodSchema) => {
+export const validateQuery = <T extends z.ZodSchema>(schema: T) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
-      req.query = schema.parse(req.query);
+      req.validatedQuery = schema.parse(req.query);
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({
           error: 'Validation Error',
           message: 'Invalid query parameters',
-          details: error.issues.map((err: any) => ({
+          details: error.issues.map((err: z.ZodIssue) => ({
             field: err.path.join('.'),
             message: err.message,
           })),
@@ -55,6 +65,7 @@ export const validateQuery = (schema: z.ZodSchema) => {
         error: 'Internal Server Error',
         message: 'Query validation failed',
       });
+      return;
     }
   };
 };
@@ -72,7 +83,7 @@ export const validateParams = (schema: z.ZodSchema) => {
         res.status(400).json({
           error: 'Validation Error',
           message: 'Invalid URL parameters',
-          details: error.issues.map((err: any) => ({
+          details: error.issues.map((err: z.ZodIssue) => ({
             field: err.path.join('.'),
             message: err.message,
           })),
@@ -84,6 +95,7 @@ export const validateParams = (schema: z.ZodSchema) => {
         error: 'Internal Server Error',
         message: 'Params validation failed',
       });
+      return;
     }
   };
 };
@@ -92,14 +104,9 @@ export const validateParams = (schema: z.ZodSchema) => {
  * Sanitize string inputs to prevent XSS and other injection attacks
  */
 export const sanitizeString = (str: string): string => {
-  if (typeof str !== 'string') return str;
+  if (typeof str !== 'string') return '';
 
-  return str
-    .trim()
-    .replace(/[<>]/g, '') // Remove potential HTML tags
-    .replace(/javascript:/gi, '') // Remove javascript: protocol
-    .replace(/on\w+\s*=/gi, '') // Remove event handlers
-    .slice(0, 1000); // Limit length
+  return validator.escape(str.trim()).slice(0, 1000);
 };
 
 /**
@@ -152,13 +159,41 @@ export const commonSchemas = {
   pagination: z.object({
     page: z
       .string()
-      .transform(val => parseInt(val))
-      .refine(val => val > 0, 'Page must be positive')
+      .transform(val => parseInt(val, 10))
+      .superRefine((val, ctx) => {
+        if (Number.isNaN(val)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Page must be a valid number',
+          });
+          return;
+        }
+        if (val <= 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Page must be positive',
+          });
+        }
+      })
       .optional(),
     limit: z
       .string()
-      .transform(val => parseInt(val))
-      .refine(val => val > 0 && val <= 100, 'Limit must be between 1 and 100')
+      .transform(val => parseInt(val, 10))
+      .superRefine((val, ctx) => {
+        if (Number.isNaN(val)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Limit must be a valid number',
+          });
+          return;
+        }
+        if (val <= 0 || val > 100) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Limit must be between 1 and 100',
+          });
+        }
+      })
       .optional(),
   }),
 

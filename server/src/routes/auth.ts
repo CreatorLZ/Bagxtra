@@ -28,22 +28,7 @@ const router = Router();
  * @desc Register a new user from Clerk webhook
  * @access Public (called by Clerk webhooks)
  */
-router.post(
-  '/register',
-  sanitizeBody,
-  validateBody(
-    z.object({
-      clerkId: z.string().min(1), // Clerk ID is a string, not email
-      fullName: commonSchemas.fullName,
-      email: commonSchemas.email,
-      role: commonSchemas.role.default('shopper'),
-      phone: commonSchemas.phone,
-      country: commonSchemas.country,
-      profileImage: z.string().url().optional(),
-    })
-  ),
-  registerUser
-);
+router.post('/register', registerUser);
 
 /**
  * @route GET /api/auth/me
@@ -77,7 +62,18 @@ router.put(
  * @desc Handle password reset (Clerk-managed)
  * @access Public
  */
-router.post('/reset-password', resetPassword);
+router.post(
+  '/reset-password',
+  sanitizeBody,
+  validateBody(
+    z.object({
+      email: commonSchemas.email,
+      token: z.string().min(1),
+      newPassword: commonSchemas.password,
+    })
+  ),
+  resetPassword
+);
 
 /**
  * @route GET /api/auth/users

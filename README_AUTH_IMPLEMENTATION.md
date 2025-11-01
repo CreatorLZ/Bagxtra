@@ -169,48 +169,31 @@ function Dashboard() {
 ### Protected Routes
 
 ```tsx
-import {
-  ProtectedRoute,
-  AdminRoute,
-  VendorRoute,
-} from '@/lib/auth/ProtectedRoute';
+// Example Next.js protected route pattern (lib/auth/ProtectedRoute.tsx)
+import { redirect } from 'next/navigation';
+import { useUser } from '@/hooks/useUser';
 
-function App() {
+export async function ProtectedRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user, isLoading } = useUser();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!user) redirect('/auth/login');
+
+  return <>{children}</>;
+}
+
+// Usage in app/dashboard/page.tsx
+import { ProtectedRoute } from '@/lib/auth/ProtectedRoute';
+
+export default function DashboardPage() {
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path='/auth/*' element={<AuthPages />} />
-
-      {/* Protected routes */}
-      <Route
-        path='/dashboard'
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Admin only */}
-      <Route
-        path='/admin'
-        element={
-          <AdminRoute>
-            <AdminPanel />
-          </AdminRoute>
-        }
-      />
-
-      {/* Vendor or Admin */}
-      <Route
-        path='/vendor'
-        element={
-          <VendorRoute>
-            <VendorPanel />
-          </VendorRoute>
-        }
-      />
-    </Routes>
+    <ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
   );
 }
 ```

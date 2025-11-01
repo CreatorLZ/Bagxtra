@@ -59,7 +59,7 @@ export const authenticateToken = async (
     })) as ClerkJWTPayload;
 
     if (!payload.sub) {
-      console.error('🔐 Auth middleware: Invalid token payload');
+      logAuthEvent(SecurityEventType.INVALID_TOKEN_PAYLOAD)(req, res, () => {});
       res.status(401).json({
         error: 'Unauthorized',
         message: 'Invalid authentication token',
@@ -171,16 +171,41 @@ export const optionalAuth = async (
       ? authHeader.substring(7)
       : null;
 
-    if (token) {
-      await authenticateToken(req, res, next);
-    } else {
+    if (!token) {
       next();
+      return;
     }
+
+    try {
+      const payload = (await verifyToken(token, {
+        secretKey: process.env.CLERK_SECRET_KEY,
+      })) as ClerkJWTPayload;
+
+      if (payload.sub) {
+        const user = await User.findByClerkId(payload.sub);
+        if (user) {
+          req.user = {
+            id: user._id.toString(),
+            clerkId: user.clerkId,
+            fullName: user.fullName,
+            email: user.email,
+            role: user.role,
+            phone: user.phone,
+            country: user.country,
+            profileImage: user.profileImage,
+          };
+          console.log(`🔐 Optional auth: User authenticated - ${user.email}`);
+        }
+      }
+    } catch (error) {
+      console.warn(
+        '🔐 Optional auth: Token verification failed, proceeding without auth'
+      );
+    }
+
+    next();
   } catch (error) {
-    // For optional auth, we don't fail on errors
-    console.warn(
-      '🔐 Optional auth: Token verification failed, proceeding without auth'
-    );
+    console.warn('🔐 Optional auth: Unexpected error, proceeding without auth');
     next();
   }
 };

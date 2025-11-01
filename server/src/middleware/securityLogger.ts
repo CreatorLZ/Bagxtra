@@ -11,6 +11,7 @@ export enum SecurityEventType {
   SUSPICIOUS_ACTIVITY = 'suspicious_activity',
   TOKEN_EXPIRED = 'token_expired',
   INVALID_TOKEN = 'invalid_token',
+  INVALID_TOKEN_PAYLOAD = 'invalid_token_payload',
   USER_REGISTERED = 'user_registered',
   USER_UPDATED = 'user_updated',
   ROLE_CHANGED = 'role_changed',
@@ -120,6 +121,7 @@ export class SecurityLogger {
       case SecurityEventType.UNAUTHORIZED_ACCESS:
       case SecurityEventType.FORBIDDEN_ACCESS:
       case SecurityEventType.INVALID_TOKEN:
+      case SecurityEventType.INVALID_TOKEN_PAYLOAD:
       case SecurityEventType.SUSPICIOUS_ACTIVITY:
         console.warn('🔐 SECURITY EVENT:', logData);
         break;
