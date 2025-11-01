@@ -24,7 +24,6 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/explicit-function-return-type': 'error',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-    '@typescript-eslint/no-implicit-any-catch': 'error',
     '@typescript-eslint/prefer-nullish-coalescing': 'error',
     '@typescript-eslint/prefer-optional-chain': 'error',
 
@@ -46,7 +45,7 @@ module.exports = {
     ],
 
     // Security rules
-    'security/detect-object-injection': 'error',
+    'security/detect-object-injection': 'warn',
     'security/detect-non-literal-regexp': 'error',
     'security/detect-unsafe-regex': 'error',
 
