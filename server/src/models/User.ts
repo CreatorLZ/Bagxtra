@@ -1,7 +1,19 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-// User roles enum
+// User roles enum - Single source of truth for all user roles in the system
 export type UserRole = 'shopper' | 'traveler' | 'vendor' | 'admin';
+
+/**
+ * Runtime constant for UserRole validation
+ * Ensures compile-time and runtime type safety are aligned
+ * Use this constant instead of hardcoded arrays to maintain consistency
+ */
+export const VALID_USER_ROLES: readonly UserRole[] = [
+  'shopper',
+  'traveler',
+  'vendor',
+  'admin',
+] as const;
 
 // User interface for TypeScript
 export interface IUser extends Document {
@@ -72,7 +84,6 @@ const userSchema = new Schema<IUser, IUserModel>(
 );
 
 // Indexes for performance
-userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ createdAt: -1 });
 

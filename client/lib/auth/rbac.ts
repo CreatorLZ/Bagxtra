@@ -1,4 +1,4 @@
-import { UserRole } from './types';
+import { UserRole, VALID_USER_ROLES } from '../../types/auth';
 
 /**
  * Role-Based Access Control (RBAC) utilities
@@ -138,9 +138,10 @@ export const canAccessTraveler = (role: UserRole): boolean => {
 
 /**
  * Check if user can access shopper features
+ * Uses centralized VALID_USER_ROLES for consistency and maintainability
  */
 export const canAccessShopper = (role: UserRole): boolean => {
-  return ['shopper', 'traveler', 'vendor', 'admin'].includes(role);
+  return VALID_USER_ROLES.includes(role);
 };
 
 /**

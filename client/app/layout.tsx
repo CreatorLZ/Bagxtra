@@ -30,7 +30,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang='en'>
         <body className={`${manrope.variable} antialiased`}>
-          <header className='flex justify-between items-center p-4 bg-white border-b'>
+          {/* <header className='flex justify-between items-center p-4 bg-white border-b'>
             <h1 className='text-xl font-bold'>BagXtra</h1>
             <SignedOut>
               <div className='flex gap-2'>
@@ -41,7 +41,7 @@ export default function RootLayout({
             <SignedIn>
               <UserButton />
             </SignedIn>
-          </header>
+          </header> */}
           {children}
         </body>
       </html>

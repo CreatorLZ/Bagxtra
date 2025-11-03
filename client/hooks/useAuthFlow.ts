@@ -6,6 +6,7 @@ import {
   AuthFlowAction,
   STORAGE_KEYS,
   ANIMATION_DURATIONS,
+  VALID_USER_ROLES,
 } from '@/types/auth';
 
 /**
@@ -28,9 +29,10 @@ export const useAuthFlow = () => {
     }
 
     const rawRole = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
-    const validRoles: UserRole[] = ['shopper', 'traveler', 'vendor'];
+    // Use centralized VALID_USER_ROLES constant for runtime validation
+    // This ensures consistency with the UserRole type definition
     const savedRole =
-      rawRole && validRoles.includes(rawRole as UserRole)
+      rawRole && VALID_USER_ROLES.includes(rawRole as UserRole)
         ? (rawRole as UserRole)
         : null;
     const savedStartTime = localStorage.getItem(STORAGE_KEYS.FLOW_START_TIME);
@@ -138,7 +140,7 @@ export const useAuthFlow = () => {
         }, ANIMATION_DURATIONS.SCREEN_TRANSITION);
       }, 100); // Small delay to ensure transition state is set
     },
-    [dispatch]
+    [dispatch, state.currentScreen]
   );
 
   /**

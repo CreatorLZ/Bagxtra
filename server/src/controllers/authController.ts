@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { User } from '../models/User.js';
+import { User, VALID_USER_ROLES } from '../models/User.js';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -402,7 +402,9 @@ export const updateUserRole = async (
       return;
     }
 
-    if (!['shopper', 'traveler', 'vendor', 'admin'].includes(role)) {
+    // Use centralized VALID_USER_ROLES constant for consistent validation
+    // This ensures runtime validation matches the UserRole type definition
+    if (!VALID_USER_ROLES.includes(role)) {
       res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid role',

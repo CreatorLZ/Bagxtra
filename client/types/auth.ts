@@ -5,8 +5,21 @@
 
 /**
  * User roles available in the application
+ * This is the single source of truth for all user roles in the system
  */
-export type UserRole = 'shopper' | 'traveler' | 'vendor';
+export type UserRole = 'shopper' | 'traveler' | 'vendor' | 'admin';
+
+/**
+ * Runtime constant for UserRole validation
+ * Ensures compile-time and runtime type safety are aligned
+ * Use this constant instead of hardcoded arrays to maintain consistency
+ */
+export const VALID_USER_ROLES: readonly UserRole[] = [
+  'shopper',
+  'traveler',
+  'vendor',
+  'admin',
+] as const;
 
 /**
  * Screens in the authentication flow

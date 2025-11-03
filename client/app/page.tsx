@@ -162,10 +162,10 @@ const BagXtraApp = (): React.JSX.Element => {
                 <h2 className='text-purple-900 text-2xl font-bold mb-2'>
                   BagXtra
                 </h2>
-                <ProgressIndicator
+                {/* <ProgressIndicator
                   currentStep={currentStepIndex}
                   totalSteps={totalSteps}
-                />
+                /> */}
               </div>
 
               <h1
@@ -184,7 +184,7 @@ const BagXtraApp = (): React.JSX.Element => {
               <div className='flex gap-4'>
                 <button
                   onClick={() => goToNextScreen()}
-                  className='bg-purple-900 hover:bg-purple-800 text-white font-normal px-12 py-4 rounded-xl transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 text-base'
+                  className='bg-purple-900 hover:bg-purple-800 cursor-pointer text-white font-normal px-12 py-4 rounded-xl transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 text-base'
                   aria-label='Continue to role selection'
                 >
                   Continue

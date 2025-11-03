@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import validator from 'validator';
+import { VALID_USER_ROLES } from '../models/User.js';
 
 declare global {
   namespace Express {
@@ -76,7 +77,7 @@ export const validateQuery = <T extends z.ZodSchema>(schema: T) => {
 export const validateParams = (schema: z.ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
-      req.params = schema.parse(req.params);
+      req.params = schema.parse(req.params) as any;
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -153,7 +154,9 @@ export const commonSchemas = {
     .optional(),
   country: z.string().max(100).trim().optional(),
   fullName: z.string().min(1).max(100).trim(),
-  role: z.enum(['shopper', 'traveler', 'vendor', 'admin']),
+  // Use centralized VALID_USER_ROLES constant for Zod enum validation
+  // This ensures schema validation matches the UserRole type definition
+  role: z.enum(VALID_USER_ROLES),
 
   // Pagination
   pagination: z.object({
