@@ -26,11 +26,13 @@ export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
-    const savedRole = localStorage.getItem(
-      STORAGE_KEYS.SELECTED_ROLE
-    ) as UserRole | null;
-    if (savedRole) {
-      setSelectedRole(savedRole);
+    const savedRoleRaw = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
+    const allowedRoles: UserRole[] = ['shopper', 'traveler', 'vendor'];
+    if (savedRoleRaw && allowedRoles.includes(savedRoleRaw as UserRole)) {
+      setSelectedRole(savedRoleRaw as UserRole);
+    } else if (savedRoleRaw) {
+      // Invalid role, remove from localStorage
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_ROLE);
     }
   }, []);
 

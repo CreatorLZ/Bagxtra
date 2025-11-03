@@ -33,11 +33,15 @@ export default function RegisterPage() {
   const [preSelectedRole, setPreSelectedRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
-    const savedRole = localStorage.getItem(
-      STORAGE_KEYS.SELECTED_ROLE
-    ) as UserRole | null;
-    if (savedRole) {
-      setPreSelectedRole(savedRole);
+    const savedRoleString = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
+    if (savedRoleString) {
+      const validRoles: UserRole[] = ['shopper', 'traveler', 'vendor'];
+      if (validRoles.includes(savedRoleString as UserRole)) {
+        setPreSelectedRole(savedRoleString as UserRole);
+      } else {
+        // Clear invalid stored role
+        localStorage.removeItem(STORAGE_KEYS.SELECTED_ROLE);
+      }
     }
   }, []);
 

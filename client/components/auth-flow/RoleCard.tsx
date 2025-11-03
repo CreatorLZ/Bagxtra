@@ -44,7 +44,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
     <Card
       className={cn(
         // Base styles
-        'relative cursor-pointer transition-all duration-300 ease-out',
+        'relative cursor-pointer transition-all duration-300 ease-out group',
         'border-2 hover:shadow-lg focus-within:ring-2 focus-within:ring-purple-500 focus-within:ring-offset-2',
 
         // Selection state styles

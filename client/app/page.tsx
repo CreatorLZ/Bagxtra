@@ -105,7 +105,7 @@ const BagXtraApp = (): React.JSX.Element => {
             <h2 className='text-white text-xl font-semibold'>BagXtra</h2>
             <button
               className='text-white text-sm font-medium hover:text-purple-200 transition-colors'
-              onClick={goToNextScreen}
+              onClick={() => goToNextScreen()}
               aria-label='Skip to role selection'
             >
               Skip
@@ -143,7 +143,7 @@ const BagXtraApp = (): React.JSX.Element => {
                 BagXtra, travelers help you bring it home.
               </p>
               <button
-                onClick={goToNextScreen}
+                onClick={() => goToNextScreen()}
                 className='w-full max-w-sm bg-purple-900 hover:bg-purple-800 text-white font-semibold py-4 rounded-xl transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2'
                 aria-label='Continue to role selection'
               >
@@ -183,7 +183,7 @@ const BagXtraApp = (): React.JSX.Element => {
 
               <div className='flex gap-4'>
                 <button
-                  onClick={goToNextScreen}
+                  onClick={() => goToNextScreen()}
                   className='bg-purple-900 hover:bg-purple-800 text-white font-normal px-12 py-4 rounded-xl transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 text-base'
                   aria-label='Continue to role selection'
                 >

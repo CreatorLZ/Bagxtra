@@ -238,7 +238,7 @@ export const updateUserProfile = async (
  * Handle password reset (placeholder - Clerk handles this)
  */
 export const resetPassword = async (
-  req: Request,
+  _req: Request,
   res: Response
 ): Promise<void> => {
   try {
@@ -371,6 +371,36 @@ export const updateUserRole = async (
 
     const { userId } = req.params;
     const { role } = req.body;
+
+    // TODO: Allow superadmin to bypass this guard when implemented
+    // Prevent admin from changing their own role
+    if (req.user.id.toString() === userId) {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'Admins cannot modify their own role',
+      });
+      return;
+    }
+
+    // Fetch target user to check their current role
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'User not found',
+      });
+      return;
+    }
+
+    // Prevent regular admins from modifying other admins
+    // TODO: Allow superadmin to bypass this guard when implemented
+    if (targetUser.role === 'admin') {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'Regular admins cannot modify other admin roles',
+      });
+      return;
+    }
 
     if (!['shopper', 'traveler', 'vendor', 'admin'].includes(role)) {
       res.status(400).json({

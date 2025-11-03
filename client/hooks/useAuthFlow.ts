@@ -27,16 +27,21 @@ export const useAuthFlow = () => {
       };
     }
 
-    const savedRole = localStorage.getItem(
-      STORAGE_KEYS.SELECTED_ROLE
-    ) as UserRole | null;
+    const rawRole = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
+    const validRoles: UserRole[] = ['shopper', 'traveler', 'vendor'];
+    const savedRole =
+      rawRole && validRoles.includes(rawRole as UserRole)
+        ? (rawRole as UserRole)
+        : null;
     const savedStartTime = localStorage.getItem(STORAGE_KEYS.FLOW_START_TIME);
+
+    const parsed = savedStartTime ? Number.parseInt(savedStartTime, 10) : NaN;
 
     return {
       currentScreen: 'splash',
       selectedRole: savedRole,
       isTransitioning: false,
-      flowStartTime: savedStartTime ? parseInt(savedStartTime, 10) : Date.now(),
+      flowStartTime: Number.isNaN(parsed) ? Date.now() : parsed,
     };
   });
 
@@ -74,8 +79,12 @@ export const useAuthFlow = () => {
       setState(prevState => {
         const newState = flowReducer(prevState, action);
 
-        // Persist role selection to localStorage
-        if (action.type === 'SET_ROLE') {
+        // Persist role selection to localStorage (client-side only)
+        if (
+          action.type === 'SET_ROLE' &&
+          typeof window !== 'undefined' &&
+          typeof window.localStorage !== 'undefined'
+        ) {
           if (action.payload) {
             localStorage.setItem(STORAGE_KEYS.SELECTED_ROLE, action.payload);
           } else {
@@ -83,8 +92,12 @@ export const useAuthFlow = () => {
           }
         }
 
-        // Persist flow start time
-        if (action.type === 'RESET_FLOW') {
+        // Persist flow start time (client-side only)
+        if (
+          action.type === 'RESET_FLOW' &&
+          typeof window !== 'undefined' &&
+          typeof window.localStorage !== 'undefined'
+        ) {
           localStorage.setItem(
             STORAGE_KEYS.FLOW_START_TIME,
             newState.flowStartTime.toString()
@@ -100,38 +113,43 @@ export const useAuthFlow = () => {
   /**
    * Navigate to the next screen in the flow
    */
-  const goToNextScreen = useCallback(() => {
-    dispatch({ type: 'SET_TRANSITIONING', payload: true });
-
-    setTimeout(() => {
-      switch (state.currentScreen) {
-        case 'splash':
-          dispatch({ type: 'SET_SCREEN', payload: 'onboarding' });
-          break;
-        case 'onboarding':
-          dispatch({ type: 'SET_SCREEN', payload: 'role-selection' });
-          break;
-        case 'role-selection':
-          dispatch({ type: 'SET_SCREEN', payload: 'auth' });
-          break;
-        default:
-          break;
-      }
+  const goToNextScreen = useCallback(
+    (screen?: AuthFlowScreen) => {
+      const current = screen || state.currentScreen;
+      dispatch({ type: 'SET_TRANSITIONING', payload: true });
 
       setTimeout(() => {
-        dispatch({ type: 'SET_TRANSITIONING', payload: false });
-      }, ANIMATION_DURATIONS.SCREEN_TRANSITION);
-    }, 100); // Small delay to ensure transition state is set
-  }, [state.currentScreen, dispatch]);
+        switch (current) {
+          case 'splash':
+            dispatch({ type: 'SET_SCREEN', payload: 'onboarding' });
+            break;
+          case 'onboarding':
+            dispatch({ type: 'SET_SCREEN', payload: 'role-selection' });
+            break;
+          case 'role-selection':
+            dispatch({ type: 'SET_SCREEN', payload: 'auth' });
+            break;
+          default:
+            break;
+        }
+
+        setTimeout(() => {
+          dispatch({ type: 'SET_TRANSITIONING', payload: false });
+        }, ANIMATION_DURATIONS.SCREEN_TRANSITION);
+      }, 100); // Small delay to ensure transition state is set
+    },
+    [dispatch]
+  );
 
   /**
    * Navigate to the previous screen in the flow
    */
   const goToPreviousScreen = useCallback(() => {
+    const current = state.currentScreen;
     dispatch({ type: 'SET_TRANSITIONING', payload: true });
 
     setTimeout(() => {
-      switch (state.currentScreen) {
+      switch (current) {
         case 'onboarding':
           dispatch({ type: 'SET_SCREEN', payload: 'splash' });
           break;
@@ -162,9 +180,11 @@ export const useAuthFlow = () => {
    * Reset the entire flow
    */
   const resetFlow = useCallback(() => {
-    // Clear localStorage
-    localStorage.removeItem(STORAGE_KEYS.SELECTED_ROLE);
-    localStorage.removeItem(STORAGE_KEYS.FLOW_START_TIME);
+    // Clear localStorage (browser-only)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_ROLE);
+      localStorage.removeItem(STORAGE_KEYS.FLOW_START_TIME);
+    }
 
     dispatch({ type: 'RESET_FLOW' });
   }, [dispatch]);
