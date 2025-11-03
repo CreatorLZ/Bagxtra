@@ -85,9 +85,10 @@ export class SecurityLogger {
    */
   private getClientIP(req: Request): string {
     // Check for forwarded IP
-    const forwarded = req.get('x-forwarded-for');
-    if (forwarded) {
-      return forwarded.split(',')[0].trim();
+    const forwardedHeader = req.get('x-forwarded-for');
+    if (forwardedHeader && forwardedHeader.trim() !== '') {
+      const firstIP = forwardedHeader.split(',')[0];
+      return firstIP ? firstIP.trim() : 'Unknown';
     }
 
     // Check for real IP
