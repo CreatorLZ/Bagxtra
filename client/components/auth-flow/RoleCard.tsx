@@ -45,12 +45,12 @@ export const RoleCard: React.FC<RoleCardProps> = ({
       className={cn(
         // Base styles
         'relative cursor-pointer transition-all duration-300 ease-out group',
-        'border-2 hover:shadow-lg focus-within:ring-2 focus-within:ring-purple-500 focus-within:ring-offset-2',
+        'border-2 hover:shadow-lg focus-within:ring-2 focus-within:ring-purple-800 focus-within:ring-offset-2',
 
         // Selection state styles
         isSelected
-          ? 'border-purple-600 bg-purple-50 shadow-md'
-          : 'border-gray-200 bg-white hover:border-purple-300',
+          ? 'border-purple-900 bg-purple-50 shadow-md'
+          : 'border-gray-200 bg-white hover:border-purple-800',
 
         // Disabled state styles
         disabled && 'opacity-50 cursor-not-allowed hover:shadow-none'
@@ -69,7 +69,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
           className={cn(
             'mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full transition-colors duration-300',
             isSelected
-              ? 'bg-purple-600 text-white'
+              ? 'bg-purple-900 text-white'
               : 'bg-gray-100 text-gray-600 group-hover:bg-purple-100'
           )}
         >
@@ -90,7 +90,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
         <p
           className={cn(
             'text-sm leading-relaxed transition-colors duration-300',
-            isSelected ? 'text-purple-700' : 'text-gray-600'
+            isSelected ? 'text-purple-800' : 'text-gray-600'
           )}
         >
           {role.description}
@@ -99,7 +99,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
         {/* Selection indicator */}
         {isSelected && (
           <div className='absolute top-3 right-3'>
-            <div className='h-6 w-6 rounded-full bg-purple-600 flex items-center justify-center'>
+            <div className='h-6 w-6 rounded-full bg-purple-900 flex items-center justify-center'>
               <svg
                 className='h-4 w-4 text-white'
                 fill='none'

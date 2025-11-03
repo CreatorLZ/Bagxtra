@@ -41,7 +41,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
               isCompleted
                 ? 'bg-purple-900'
                 : isActive
-                ? 'bg-purple-600'
+                ? 'bg-purple-900'
                 : 'bg-purple-200'
             )}
             aria-hidden='true'
