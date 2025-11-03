@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSignUp } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
@@ -23,10 +23,23 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Mail, Lock, User, Phone, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import { UserRole, STORAGE_KEYS } from '@/types/auth';
 
 export default function RegisterPage() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const router = useRouter();
+
+  // Get pre-selected role from localStorage
+  const [preSelectedRole, setPreSelectedRole] = useState<UserRole | null>(null);
+
+  useEffect(() => {
+    const savedRole = localStorage.getItem(
+      STORAGE_KEYS.SELECTED_ROLE
+    ) as UserRole | null;
+    if (savedRole) {
+      setPreSelectedRole(savedRole);
+    }
+  }, []);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -36,8 +49,15 @@ export default function RegisterPage() {
     confirmPassword: '',
     phone: '',
     country: '',
-    role: 'shopper' as 'shopper' | 'traveler' | 'vendor',
+    role: 'shopper' as UserRole,
   });
+
+  // Update role when preSelectedRole is loaded
+  useEffect(() => {
+    if (preSelectedRole) {
+      setFormData(prev => ({ ...prev, role: preSelectedRole }));
+    }
+  }, [preSelectedRole]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -242,7 +262,10 @@ export default function RegisterPage() {
               <Label htmlFor='role'>I am a</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: any) => handleInputChange('role', value)}
+                onValueChange={(value: UserRole) =>
+                  handleInputChange('role', value)
+                }
+                disabled={!!preSelectedRole} // Disable if role was pre-selected from flow
               >
                 <SelectTrigger>
                   <SelectValue placeholder='Select your role' />
@@ -259,6 +282,11 @@ export default function RegisterPage() {
                   </SelectItem>
                 </SelectContent>
               </Select>
+              {preSelectedRole && (
+                <p className='text-xs text-gray-500 mt-1'>
+                  Role pre-selected from onboarding flow
+                </p>
+              )}
             </div>
 
             <div className='space-y-2'>

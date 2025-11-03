@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -8,39 +8,74 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { useAuthFlow } from '@/hooks/useAuthFlow';
+import { ProgressIndicator } from '@/components/auth-flow/ProgressIndicator';
+import { RoleCard } from '@/components/auth-flow/RoleCard';
+import { ShoppingBag, Plane, Store } from 'lucide-react';
+import { RoleOption, UserRole } from '@/types/auth';
 
+/**
+ * BagXtraApp Component
+ * Main application component handling the authentication flow
+ *
+ * Flow: Splash (2s) → Onboarding → Role Selection → Auth Pages
+ */
 const BagXtraApp = (): React.JSX.Element => {
-  const [currentScreen, setCurrentScreen] = useState<string>('landing');
-  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  const {
+    currentScreen,
+    selectedRole,
+    isTransitioning,
+    goToNextScreen,
+    goToPreviousScreen,
+    setSelectedRole,
+    canGoNext,
+    canGoBack,
+    currentStepIndex,
+    totalSteps,
+  } = useAuthFlow();
 
-  useEffect((): (() => void) | undefined => {
-    // Auto-transition from splash to onboarding after 2.5 seconds
-    if (currentScreen === 'splash') {
-      const timer = setTimeout(() => {
-        setIsTransitioning(true);
-        // Start onboarding fade in immediately
-        setCurrentScreen('onboarding');
-        // Keep splash fading out for a bit longer
-        setTimeout(() => {
-          setIsTransitioning(false);
-        }, 800); // Extended fade out duration
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [currentScreen]);
+  /**
+   * Role options configuration
+   */
+  const roleOptions: RoleOption[] = [
+    {
+      id: 'shopper',
+      title: 'Shopper',
+      description: 'I need items delivered',
+      icon: ShoppingBag,
+    },
+    {
+      id: 'traveler',
+      title: 'Traveler',
+      description: 'I can carry items',
+      icon: Plane,
+    },
+    {
+      id: 'vendor',
+      title: 'Vendor',
+      description: 'I provide services',
+      icon: Store,
+    },
+  ];
 
+  /**
+   * SplashScreen Component
+   * Displays BagXtra branding for 2 seconds before transitioning to onboarding
+   */
   const SplashScreen = () => (
     <div
-      className={`min-h-screen bg-purple-900 flex items-center justify-center p-4 transition-opacity duration-800 ${
-        isTransitioning ? 'opacity-0' : 'opacity-100'
+      className={`min-h-screen bg-purple-900 flex items-center justify-center p-4 transition-all duration-800 ease-out ${
+        isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
       }`}
+      role='presentation'
+      aria-label='BagXtra splash screen'
     >
       <div className='w-full max-w-sm lg:max-w-6xl'>
         <div className='text-center flex flex-col gap-3 lg:gap-2'>
           <h1 className='text-white text-5xl lg:text-8xl font-bold tracking-wider lg:mb-4'>
             BagXtra
           </h1>
-          <p className='text-purple-200 text-xs md:text-base '>
+          <p className='text-purple-200 text-xs md:text-base'>
             Connect. Shop. Receive — the new way to buy globally.
           </p>
         </div>
@@ -48,11 +83,19 @@ const BagXtraApp = (): React.JSX.Element => {
     </div>
   );
 
+  /**
+   * OnboardingScreen Component
+   * Displays BagXtra introduction with call-to-action to continue to role selection
+   */
   const OnboardingScreen = () => (
     <div
-      className={`min-h-screen bg-white flex items-center justify-center p-0 lg:p-0 transition-opacity duration-500 ${
-        currentScreen === 'onboarding' ? 'opacity-100' : 'opacity-0'
+      className={`min-h-screen bg-white flex items-center justify-center p-0 lg:p-0 transition-all duration-500 ease-out ${
+        currentScreen === 'onboarding'
+          ? 'opacity-100 translate-y-0'
+          : 'opacity-0 translate-y-4'
       }`}
+      role='main'
+      aria-labelledby='onboarding-title'
     >
       <div className='w-full max-w-none mx-auto'>
         {/* Mobile Layout */}
@@ -60,7 +103,13 @@ const BagXtraApp = (): React.JSX.Element => {
           {/* Header with Skip */}
           <div className='flex justify-between items-center p-6 absolute top-0 left-0 right-0 z-10'>
             <h2 className='text-white text-xl font-semibold'>BagXtra</h2>
-            <button className='text-white text-sm font-medium'>Skip</button>
+            <button
+              className='text-white text-sm font-medium hover:text-purple-200 transition-colors'
+              onClick={goToNextScreen}
+              aria-label='Skip to role selection'
+            >
+              Skip
+            </button>
           </div>
 
           {/* Top Hero Section */}
@@ -74,16 +123,18 @@ const BagXtraApp = (): React.JSX.Element => {
           </div>
 
           {/* Bottom Content Section */}
-
-          <div className='h-1/2 bg-white flex flex-col justify-center items-center px-6 '>
-            {/* Continue Button part */}
+          <div className='h-1/2 bg-white flex flex-col justify-center items-center px-6'>
             <div className='flex flex-col gap-5'>
               {/* Progress Indicator */}
-              <div className=' flex items-center justify-center gap-2'>
-                <div className='w-8 h-2 bg-purple-900 rounded-full'></div>
-                <div className='w-2 h-2 bg-purple-200 rounded-full'></div>
-              </div>
-              <h1 className='text-gray-700 text-center text-2xl font-bold mb-3 leading-tight'>
+              <ProgressIndicator
+                currentStep={currentStepIndex}
+                totalSteps={totalSteps}
+                className='mb-2'
+              />
+              <h1
+                id='onboarding-title'
+                className='text-gray-700 text-center text-2xl font-bold mb-3 leading-tight'
+              >
                 Connect. Shop. Receive — the new way to buy globally.
               </h1>
 
@@ -92,8 +143,9 @@ const BagXtraApp = (): React.JSX.Element => {
                 BagXtra, travelers help you bring it home.
               </p>
               <button
-                onClick={() => setCurrentScreen('role-selection')}
-                className='w-full max-w-sm bg-purple-900 hover:bg-purple-800 text-white font-semibold py-4 rounded-xl transition-colors'
+                onClick={goToNextScreen}
+                className='w-full max-w-sm bg-purple-900 hover:bg-purple-800 text-white font-semibold py-4 rounded-xl transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2'
+                aria-label='Continue to role selection'
               >
                 Continue
               </button>
@@ -110,13 +162,16 @@ const BagXtraApp = (): React.JSX.Element => {
                 <h2 className='text-purple-900 text-2xl font-bold mb-2'>
                   BagXtra
                 </h2>
-                <div className='flex gap-3 items-center'>
-                  <div className='w-12 h-2 bg-purple-900 rounded-full'></div>
-                  <div className='w-3 h-3 bg-purple-200 rounded-full'></div>
-                </div>
+                <ProgressIndicator
+                  currentStep={currentStepIndex}
+                  totalSteps={totalSteps}
+                />
               </div>
 
-              <h1 className='text-gray-700 text-5xl font-bold mb-6 leading-tight'>
+              <h1
+                id='onboarding-title'
+                className='text-gray-700 text-5xl font-bold mb-6 leading-tight'
+              >
                 Connect. Shop. Receive — the new way to buy globally.
               </h1>
 
@@ -128,22 +183,18 @@ const BagXtraApp = (): React.JSX.Element => {
 
               <div className='flex gap-4'>
                 <button
-                  onClick={() => setCurrentScreen('role-selection')}
-                  className='bg-purple-900 text-white font-normal px-12 py-4 rounded-xl transition-colors text-base'
+                  onClick={goToNextScreen}
+                  className='bg-purple-900 hover:bg-purple-800 text-white font-normal px-12 py-4 rounded-xl transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 text-base'
+                  aria-label='Continue to role selection'
                 >
                   Continue
                 </button>
-
-                {/* <button className="border-2 border-gray-300 hover:border-purple-700 text-gray-700 hover:text-purple-700 font-semibold px-12 py-4 rounded-xl transition-colors text-lg">
-                  Learn More
-                </button> */}
               </div>
             </div>
           </div>
 
-          {/* Left Side - Hero Image */}
+          {/* Right Side - Hero Image */}
           <div className='w-1/2 relative bg-purple-900 overflow-hidden'>
-            {/* Background Image */}
             <img
               src='/planes.png'
               alt='Planes background'
@@ -155,67 +206,124 @@ const BagXtraApp = (): React.JSX.Element => {
     </div>
   );
 
-  const RoleSelection = () => (
-    <div className='min-h-screen bg-linear-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4'>
-      <div className='text-center'>
-        <h1 className='text-4xl font-bold text-gray-900 mb-8'>
-          Choose Your Role
-        </h1>
-        <p className='text-gray-600 mb-8'>
-          This is the role selection screen - to be implemented next
-        </p>
-        <button
-          onClick={() => setCurrentScreen('onboarding')}
-          className='text-purple-700 hover:underline'
-        >
-          ← Back to Onboarding
-        </button>
-      </div>
-    </div>
-  );
+  /**
+   * RoleSelectionScreen Component
+   * Allows users to select their role (shopper, traveler, or vendor) before authentication
+   */
+  const RoleSelectionScreen = () => {
+    const handleRoleSelect = (roleId: UserRole) => {
+      setSelectedRole(roleId);
+    };
 
-  const LandingPage = (): React.JSX.Element => (
-    <div className='min-h-screen bg-linear-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4'>
-      <Card className='w-full max-w-md'>
-        <CardHeader className='text-center'>
-          <CardTitle className='text-3xl font-bold text-purple-900'>
-            BagXtra
-          </CardTitle>
-          <CardDescription className='text-lg'>
-            Connect. Shop. Receive — the new way to buy globally.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-4'>
-          <p className='text-gray-600 text-center'>
-            Welcome to BagXtra! A peer-to-peer logistics platform connecting
-            shoppers, travelers, and vendors worldwide.
-          </p>
-          <div className='flex flex-col gap-2'>
-            <Button
-              onClick={() => setCurrentScreen('onboarding')}
-              className='w-full'
+    const handleContinue = () => {
+      if (selectedRole) {
+        goToNextScreen();
+      }
+    };
+
+    return (
+      <div
+        className={`min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4 transition-all duration-500 ease-out ${
+          currentScreen === 'role-selection'
+            ? 'opacity-100 translate-y-0'
+            : 'opacity-0 translate-y-4'
+        }`}
+        role='main'
+        aria-labelledby='role-selection-title'
+      >
+        <div className='w-full max-w-4xl mx-auto text-center'>
+          {/* Header */}
+          <div className='mb-8'>
+            <h1
+              id='role-selection-title'
+              className='text-3xl lg:text-4xl font-bold text-gray-900 mb-4'
             >
-              Get Started
-            </Button>
-            <Button
-              variant='outline'
-              onClick={() => setCurrentScreen('splash')}
-              className='w-full'
-            >
-              View Splash Screen
-            </Button>
+              Choose Your Role
+            </h1>
+            <p className='text-gray-600 text-lg mb-6'>
+              Select how you'd like to use BagXtra
+            </p>
+            <ProgressIndicator
+              currentStep={currentStepIndex}
+              totalSteps={totalSteps}
+            />
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+
+          {/* Role Cards Grid */}
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-6 mb-8'>
+            {roleOptions.map(role => (
+              <RoleCard
+                key={role.id}
+                role={role}
+                isSelected={selectedRole === role.id}
+                onSelect={handleRoleSelect}
+              />
+            ))}
+          </div>
+
+          {/* Navigation Buttons */}
+          <div className='flex flex-col sm:flex-row gap-4 justify-center items-center'>
+            {canGoBack && (
+              <button
+                onClick={goToPreviousScreen}
+                className='text-purple-700 hover:text-purple-800 font-medium transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 px-4 py-2 rounded-lg'
+                aria-label='Go back to onboarding'
+              >
+                ← Back
+              </button>
+            )}
+            <button
+              onClick={handleContinue}
+              disabled={!canGoNext}
+              className='bg-purple-900 hover:bg-purple-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-8 py-4 rounded-xl transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2'
+              aria-label={
+                selectedRole
+                  ? 'Continue to sign in'
+                  : 'Please select a role to continue'
+              }
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * AuthRedirect Component
+   * Handles redirection to appropriate auth page based on selected role
+   */
+  const AuthRedirect = () => {
+    React.useEffect(() => {
+      // Redirect to login page - the role selection is already saved in localStorage
+      // and will be picked up by the login/register pages
+      window.location.href = '/auth/login';
+    }, []);
+
+    return (
+      <div className='min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4'>
+        <Card className='w-full max-w-md'>
+          <CardHeader className='text-center'>
+            <CardTitle className='text-2xl font-bold text-purple-900'>
+              Redirecting...
+            </CardTitle>
+            <CardDescription>Taking you to the sign in page</CardDescription>
+          </CardHeader>
+          <CardContent className='text-center'>
+            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900 mx-auto'></div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <>
-      {currentScreen === 'landing' && <LandingPage />}
       {currentScreen === 'splash' && <SplashScreen />}
       {currentScreen === 'onboarding' && <OnboardingScreen />}
-      {currentScreen === 'role-selection' && <RoleSelection />}
+      {currentScreen === 'role-selection' && <RoleSelectionScreen />}
+      {currentScreen === 'auth' && <AuthRedirect />}
     </>
   );
 };

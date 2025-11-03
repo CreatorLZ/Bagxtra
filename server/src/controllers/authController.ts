@@ -126,7 +126,7 @@ export const registerUser = async (
       res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid input data',
-        details: error.errors,
+        details: error.issues,
       });
       return;
     }
@@ -221,7 +221,7 @@ export const updateUserProfile = async (
       res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid input data',
-        details: error.errors,
+        details: error.issues,
       });
       return;
     }
@@ -351,6 +351,24 @@ export const updateUserRole = async (
   res: Response
 ): Promise<void> => {
   try {
+    // Check authentication
+    if (!req.user) {
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+      return;
+    }
+
+    // Check admin role
+    if (req.user.role !== 'admin') {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'Admin access required',
+      });
+      return;
+    }
+
     const { userId } = req.params;
     const { role } = req.body;
 

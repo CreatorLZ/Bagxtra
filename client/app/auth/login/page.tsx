@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSignIn } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
@@ -16,10 +16,23 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, Lock } from 'lucide-react';
 import Link from 'next/link';
+import { UserRole, STORAGE_KEYS } from '@/types/auth';
 
 export default function LoginPage() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const router = useRouter();
+
+  // Check if user came from the auth flow
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+
+  useEffect(() => {
+    const savedRole = localStorage.getItem(
+      STORAGE_KEYS.SELECTED_ROLE
+    ) as UserRole | null;
+    if (savedRole) {
+      setSelectedRole(savedRole);
+    }
+  }, []);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,6 +78,13 @@ export default function LoginPage() {
           <CardDescription className='text-center'>
             Enter your credentials to access your account
           </CardDescription>
+          {selectedRole && (
+            <div className='text-center mt-2'>
+              <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 capitalize'>
+                {selectedRole}
+              </span>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className='space-y-4'>
