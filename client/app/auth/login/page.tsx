@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Lock } from 'lucide-react';
+import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { UserRole, STORAGE_KEYS } from '@/types/auth';
 
@@ -39,14 +39,23 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+
+  // Field-specific errors to match signup pattern
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    general?: string;
+  }>({});
+
+  // Password visibility toggle
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded) return;
 
     setIsLoading(true);
-    setError('');
+    setErrors({}); // Clear previous errors
 
     try {
       const result = await signIn.create({
@@ -62,9 +71,32 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(
-        err.errors?.[0]?.message || 'Failed to sign in. Please try again.'
-      );
+
+      // Map Clerk errors to field-specific errors
+      const newErrors: { email?: string; password?: string; general?: string } =
+        {};
+      let generalError = 'Failed to sign in. Please try again.';
+
+      if (err.errors) {
+        err.errors.forEach((error: any) => {
+          const fieldName = error.meta?.paramName;
+
+          if (fieldName === 'identifier' || fieldName === 'email_address') {
+            newErrors.email = error.message;
+          } else if (fieldName === 'password') {
+            newErrors.password = error.message;
+          } else {
+            generalError = error.message;
+          }
+        });
+      }
+
+      setErrors(newErrors);
+
+      // If no specific field errors were found, show the general error
+      if (Object.keys(newErrors).length === 0) {
+        setErrors({ general: generalError });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -90,9 +122,9 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className='space-y-4'>
-            {error && (
+            {errors.general && (
               <Alert variant='destructive'>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{errors.general}</AlertDescription>
               </Alert>
             )}
 
@@ -111,6 +143,9 @@ export default function LoginPage() {
                   disabled={isLoading}
                 />
               </div>
+              {errors.email && (
+                <p className='text-xs text-destructive mt-1'>{errors.email}</p>
+              )}
             </div>
 
             <div className='space-y-2'>
@@ -119,15 +154,32 @@ export default function LoginPage() {
                 <Lock className='absolute left-3 top-3 h-4 w-4 text-gray-400' />
                 <Input
                   id='password'
-                  type='password'
+                  type={showPassword ? 'text' : 'password'}
                   placeholder='Enter your password'
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className='pl-10'
+                  className='pl-10 pr-10'
                   required
                   disabled={isLoading}
                 />
+                <button
+                  type='button'
+                  onClick={() => setShowPassword(!showPassword)}
+                  className='absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 focus:outline-none'
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className='h-4 w-4' />
+                  ) : (
+                    <Eye className='h-4 w-4' />
+                  )}
+                </button>
               </div>
+              {errors.password && (
+                <p className='text-xs text-destructive mt-1'>
+                  {errors.password}
+                </p>
+              )}
             </div>
 
             <Button
