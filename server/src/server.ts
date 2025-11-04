@@ -82,7 +82,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Raw body middleware for webhook signature verification
-app.use('/api/auth/register', express.raw({ type: 'application/json' }));
+app.use('/api/webhooks', express.raw({ type: 'application/json' }));
 
 // Security logging middleware
 import { logApiAccess } from './middleware/securityLogger.js';
@@ -101,8 +101,9 @@ app.get('/health', (_req: express.Request, res: express.Response) => {
     database: dbStatus,
   });
 });
-// Import auth routes
+// Import routes
 import authRoutes from './routes/auth.js';
+import { registerUser } from './controllers/authController.js';
 
 // API routes
 app.get('/api', (_req: express.Request, res: express.Response) => {
@@ -116,6 +117,13 @@ app.get('/api', (_req: express.Request, res: express.Response) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+
+// Webhook routes (separate route to match Clerk docs)
+app.post(
+  '/api/webhooks',
+  express.raw({ type: 'application/json' }),
+  registerUser
+);
 
 // MongoDB connection
 const connectDB = async (): Promise<void> => {

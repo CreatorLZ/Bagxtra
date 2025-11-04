@@ -168,6 +168,8 @@ export default function RegisterPage() {
       });
 
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
+      // Redirect to dashboard after successful registration setup
       setPendingVerification(true);
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -223,7 +225,7 @@ export default function RegisterPage() {
 
       if (completeSignUp.status === 'complete') {
         await setActive({ session: completeSignUp.createdSessionId });
-        router.push('/dashboard');
+        router.push('/dashboard'); // Redirect to dashboard after verification
       } else {
         // This case is unlikely with email_code but good to have
         console.log('Verification result:', completeSignUp);

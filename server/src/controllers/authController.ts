@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { User, VALID_USER_ROLES } from '../models/User.js';
 import { z } from 'zod';
-import crypto from 'crypto';
+import { verifyWebhook } from '@clerk/express/webhooks';
 
 // Validation schemas
 const updateUserSchema = z.object({
@@ -35,61 +35,38 @@ export const registerUser = async (
   res: Response
 ): Promise<void> => {
   try {
-    // Verify webhook signature
-    const signature = req.headers['clerk-signature'] as string;
-    const webhookSecret = process.env['CLERK_WEBHOOK_SECRET'];
+    console.log('🔍 Webhook received - starting verification...');
 
-    if (!signature || !webhookSecret) {
-      console.error(
-        '👤 Webhook signature verification failed: Missing signature or secret'
-      );
-      res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Invalid webhook signature',
-      });
+    // Use Clerk's verifyWebhook function for proper signature verification
+    const evt = await verifyWebhook(req);
+
+    console.log('✅ Webhook signature verified successfully');
+    console.log(`🔍 Received webhook event: ${evt.type}`);
+    console.log('🔍 Webhook data:', JSON.stringify(evt.data, null, 2));
+
+    // Check event type
+    if (evt.type !== 'user.created') {
+      console.log(`Ignoring webhook event: ${evt.type}`);
+      res.status(200).json({ message: 'Event ignored' });
       return;
     }
 
-    // Get raw body for signature verification
-    const rawBody = req.body as Buffer;
+    // Extract and map data from Clerk's nested payload
+    const clerkData = evt.data;
+    const userData = {
+      clerkId: clerkData.id,
+      fullName:
+        `${clerkData.first_name || ''} ${clerkData.last_name || ''}`.trim() ||
+        'Unknown User', // Fallback if names are missing
+      email: clerkData.email_addresses?.[0]?.email_address || '',
+      role: 'shopper', // Default or derive based on your logic
+      phone: clerkData.phone_numbers?.[0]?.phone_number || undefined,
+      country: undefined, // Clerk doesn't provide this by default; set based on your needs
+      profileImage: clerkData.image_url || undefined,
+    };
 
-    // Compute expected signature
-    const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(rawBody)
-      .digest('hex');
-
-    // Compare signatures
-    if (
-      !crypto.timingSafeEqual(
-        Buffer.from(signature, 'hex'),
-        Buffer.from(expectedSignature, 'hex')
-      )
-    ) {
-      console.error(
-        '👤 Webhook signature verification failed: Signature mismatch'
-      );
-      res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Invalid webhook signature',
-      });
-      return;
-    }
-
-    // Parse JSON body after signature verification
-    let payload;
-    try {
-      payload = JSON.parse(rawBody.toString());
-    } catch (error) {
-      console.error('👤 Webhook payload parsing failed:', error);
-      res.status(400).json({
-        error: 'Bad Request',
-        message: 'Invalid JSON payload',
-      });
-      return;
-    }
-
-    const validatedData = registerUserSchema.parse(payload);
+    // Validate the mapped data
+    const validatedData = registerUserSchema.parse(userData);
 
     // Check if user already exists
     const existingUser = await User.findByClerkId(validatedData.clerkId);
