@@ -563,6 +563,12 @@ export default function RegisterPage() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className='absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 focus:outline-none'
                   disabled={isLoading}
+                  aria-label={
+                    showConfirmPassword
+                      ? 'Hide confirm password'
+                      : 'Show confirm password'
+                  }
+                  aria-pressed={showConfirmPassword}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className='h-4 w-4' />

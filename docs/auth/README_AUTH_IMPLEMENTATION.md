@@ -131,6 +131,18 @@ curl -X PUT http://localhost:5000/api/auth/update \
   }'
 ```
 
+### Password Reset
+
+```bash
+curl -X POST http://localhost:5000/api/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "token": "reset_token_here",
+    "newPassword": "newSecurePassword123"
+  }'
+```
+
 ### Admin: List Users
 
 ```bash
@@ -176,18 +188,25 @@ function Dashboard() {
 
 ```tsx
 // Example Next.js protected route pattern (lib/auth/ProtectedRoute.tsx)
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useUser } from '@/hooks/useUser';
 
-export async function ProtectedRoute({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { user, isLoading } = useUser();
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const { user, isLoading, isAuthenticated } = useUser();
 
   if (isLoading) return <div>Loading...</div>;
-  if (!user) redirect('/auth/login');
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/auth/login');
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) return null;
 
   return <>{children}</>;
 }
@@ -286,14 +305,27 @@ client/
 - [x] Client-side password validation (8+ chars, strength indicator)
 - [x] Password visibility toggles on login/register forms
 - [x] Field-specific error handling for auth forms
-- [ ] JWT token verification
-- [ ] Role-based route protection
-- [ ] Profile updates
-- [ ] Admin user management
-- [ ] Security event logging
-- [ ] Input validation and sanitization
-- [ ] Error handling for invalid tokens
-- [ ] Client-side authentication state management
+- [ ] JWT token verification (Implemented but untested - [AUTH-001](https://github.com/bagxtra/auth/issues/AUTH-001))
+- [ ] Role-based route protection (Implemented but untested - [AUTH-002](https://github.com/bagxtra/auth/issues/AUTH-002))
+- [ ] Profile updates (Implemented but untested - [AUTH-003](https://github.com/bagxtra/auth/issues/AUTH-003))
+- [ ] Admin user management (Implemented but untested - [AUTH-004](https://github.com/bagxtra/auth/issues/AUTH-004))
+- [ ] Security event logging (Implemented but untested - [AUTH-005](https://github.com/bagxtra/auth/issues/AUTH-005))
+- [ ] Input validation and sanitization (Implemented but untested - [AUTH-006](https://github.com/bagxtra/auth/issues/AUTH-006))
+- [ ] Error handling for invalid tokens (Implemented but untested - [AUTH-007](https://github.com/bagxtra/auth/issues/AUTH-007))
+- [ ] Client-side authentication state management (Implemented but untested - [AUTH-008](https://github.com/bagxtra/auth/issues/AUTH-008))
+
+## Testing Issues and Timeline
+
+| Issue ID                                                    | Description                                         | Owner              | Target Completion | Blocker |
+| ----------------------------------------------------------- | --------------------------------------------------- | ------------------ | ----------------- | ------- |
+| [AUTH-001](https://github.com/bagxtra/auth/issues/AUTH-001) | JWT token verification testing                      | Alice (Backend)    | 2025-11-15        | Yes     |
+| [AUTH-002](https://github.com/bagxtra/auth/issues/AUTH-002) | Role-based route protection testing                 | Bob (Frontend)     | 2025-11-18        | Yes     |
+| [AUTH-003](https://github.com/bagxtra/auth/issues/AUTH-003) | Profile updates testing                             | Alice (Backend)    | 2025-11-20        | No      |
+| [AUTH-004](https://github.com/bagxtra/auth/issues/AUTH-004) | Admin user management testing                       | Charlie (Security) | 2025-11-22        | No      |
+| [AUTH-005](https://github.com/bagxtra/auth/issues/AUTH-005) | Security event logging testing                      | Charlie (Security) | 2025-11-25        | No      |
+| [AUTH-006](https://github.com/bagxtra/auth/issues/AUTH-006) | Input validation and sanitization testing           | Alice (Backend)    | 2025-11-18        | Yes     |
+| [AUTH-007](https://github.com/bagxtra/auth/issues/AUTH-007) | Error handling for invalid tokens testing           | Bob (Frontend)     | 2025-11-15        | Yes     |
+| [AUTH-008](https://github.com/bagxtra/auth/issues/AUTH-008) | Client-side authentication state management testing | Bob (Frontend)     | 2025-11-20        | No      |
 
 ## Troubleshooting
 
@@ -329,12 +361,19 @@ DEBUG=clerk:*
 
 ## Next Steps
 
-1. Configure Clerk webhooks for automatic user registration
-2. Implement password reset flow in Clerk dashboard
-3. Add rate limiting for authentication endpoints
-4. Set up monitoring for security events
-5. Implement user session management
-6. Add multi-factor authentication support
+### Critical pre-release items
+
+- Add rate limiting for authentication endpoints
+- Set up monitoring for security events
+- Add multi-factor authentication support
+
+_Implement and test endpoint-level rate limiting (e.g., per-IP and per-account throttling) before production._
+
+### Recommended post-launch items
+
+- Configure Clerk webhooks for automatic user registration
+- Implement password reset flow in Clerk dashboard
+- Implement user session management
 
 ## Support
 
