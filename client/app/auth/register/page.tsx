@@ -321,7 +321,7 @@ export default function RegisterPage() {
             <p className='text-base text-purple-100'>
               <span className='font-semibold text-white'>Connect</span>.{' '}
               <span className='font-semibold text-white'>Shop</span>.{' '}
-              <span className='font-semibold text-white'>Recieve</span>. the new
+              <span className='font-semibold text-white'>Receive</span>. the new
               way to buy globally.
             </p>
           </div>
@@ -734,7 +734,7 @@ export default function RegisterPage() {
           <p className='text-base text-purple-100'>
             <span className='font-semibold text-white'>Connect</span>.{' '}
             <span className='font-semibold text-white'>Shop</span>.{' '}
-            <span className='font-semibold text-white'>Recieve</span>. the new
+            <span className='font-semibold text-white'>Receive</span>. the new
             way to buy globally.
           </p>
         </div>
