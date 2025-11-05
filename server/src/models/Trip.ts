@@ -1,0 +1,79 @@
+import mongoose, { Document, Schema } from 'mongoose';
+
+export type TripStatus = 'open' | 'closed' | 'completed';
+
+export interface ITrip extends Document {
+  _id: mongoose.Types.ObjectId;
+  travelerId: mongoose.Types.ObjectId;
+  fromCountry: string;
+  toCountry: string;
+  departureDate: Date;
+  arrivalDate: Date;
+  availableCarryOnKg: number;
+  availableCheckedKg: number;
+  status: TripStatus;
+  createdAt: Date;
+  canCarryFragile: boolean;
+  canHandleSpecialDelivery: boolean;
+}
+
+const tripSchema = new Schema<ITrip>(
+  {
+    travelerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    fromCountry: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    toCountry: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    departureDate: {
+      type: Date,
+      required: true,
+    },
+    arrivalDate: {
+      type: Date,
+      required: true,
+    },
+    availableCarryOnKg: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    availableCheckedKg: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    status: {
+      type: String,
+      enum: ['open', 'closed', 'completed'],
+      default: 'open',
+      required: true,
+    },
+    canCarryFragile: {
+      type: Boolean,
+      required: true,
+    },
+    canHandleSpecialDelivery: {
+      type: Boolean,
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Indexes for performance
+tripSchema.index({ toCountry: 1 });
+tripSchema.index({ departureDate: 1 });
+
+export const Trip = mongoose.model<ITrip>('Trip', tripSchema);

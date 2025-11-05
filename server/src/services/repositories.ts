@@ -1,0 +1,69 @@
+import { IBagItem } from '../models/BagItem';
+import { IShopperRequest } from '../models/ShopperRequest';
+import { ITrip } from '../models/Trip';
+import { IMatch } from '../models/Match';
+import { IProof } from '../models/Proof';
+import { IUser } from '../models/User';
+import mongoose from 'mongoose';
+
+export interface IBagItemRepository {
+  create(bagItem: Partial<IBagItem>): Promise<IBagItem>;
+  findById(id: mongoose.Types.ObjectId): Promise<IBagItem | null>;
+  update(
+    id: mongoose.Types.ObjectId,
+    updates: Partial<IBagItem>
+  ): Promise<IBagItem | null>;
+  delete(id: mongoose.Types.ObjectId): Promise<boolean>;
+  findByShopperRequest(requestId: mongoose.Types.ObjectId): Promise<IBagItem[]>;
+}
+
+export interface IShopperRequestRepository {
+  create(request: Partial<IShopperRequest>): Promise<IShopperRequest>;
+  findById(id: mongoose.Types.ObjectId): Promise<IShopperRequest | null>;
+  update(
+    id: mongoose.Types.ObjectId,
+    updates: Partial<IShopperRequest>
+  ): Promise<IShopperRequest | null>;
+  findByShopper(shopperId: mongoose.Types.ObjectId): Promise<IShopperRequest[]>;
+  findOpenRequests(): Promise<IShopperRequest[]>;
+}
+
+export interface ITripRepository {
+  create(trip: Partial<ITrip>): Promise<ITrip>;
+  findById(id: mongoose.Types.ObjectId): Promise<ITrip | null>;
+  update(
+    id: mongoose.Types.ObjectId,
+    updates: Partial<ITrip>
+  ): Promise<ITrip | null>;
+  findByTraveler(travelerId: mongoose.Types.ObjectId): Promise<ITrip[]>;
+  findOpenTrips(): Promise<ITrip[]>;
+  findByRoute(fromCountry: string, toCountry: string): Promise<ITrip[]>;
+}
+
+export interface IMatchRepository {
+  create(match: Partial<IMatch>): Promise<IMatch>;
+  findById(id: mongoose.Types.ObjectId): Promise<IMatch | null>;
+  update(
+    id: mongoose.Types.ObjectId,
+    updates: Partial<IMatch>
+  ): Promise<IMatch | null>;
+  findByRequest(requestId: mongoose.Types.ObjectId): Promise<IMatch[]>;
+  findByTrip(tripId: mongoose.Types.ObjectId): Promise<IMatch[]>;
+  findPendingMatches(): Promise<IMatch[]>;
+}
+
+export interface IProofRepository {
+  create(proof: Partial<IProof>): Promise<IProof>;
+  findById(id: mongoose.Types.ObjectId): Promise<IProof | null>;
+  findByUploader(uploaderId: mongoose.Types.ObjectId): Promise<IProof[]>;
+  findByPurpose(purpose: string): Promise<IProof[]>;
+}
+
+export interface IUserRepository {
+  findById(id: mongoose.Types.ObjectId): Promise<IUser | null>;
+  findByClerkId(clerkId: string): Promise<IUser | null>;
+  update(
+    id: mongoose.Types.ObjectId,
+    updates: Partial<IUser>
+  ): Promise<IUser | null>;
+}
