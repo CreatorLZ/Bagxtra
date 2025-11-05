@@ -30,11 +30,11 @@ import {
   MapPin,
   Eye,
   EyeOff,
+  Package,
 } from 'lucide-react';
 import Link from 'next/link';
 import { UserRole, STORAGE_KEYS } from '@/types/auth';
 
-// Define types for field-specific errors and password strength
 type FieldErrors = {
   [key: string]: string | undefined;
   firstName?: string;
@@ -48,7 +48,6 @@ type FieldErrors = {
 
 type PasswordStrength = 'weak' | 'medium' | 'strong';
 
-// Password validation utility
 const validatePassword = (
   password: string
 ): { isValid: boolean; message?: string; strength: PasswordStrength } => {
@@ -69,7 +68,6 @@ export default function RegisterPage() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const router = useRouter();
 
-  // Get pre-selected role from localStorage
   const [preSelectedRole, setPreSelectedRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
@@ -95,7 +93,6 @@ export default function RegisterPage() {
     role: 'shopper' as UserRole,
   });
 
-  // Update role when preSelectedRole is loaded
   useEffect(() => {
     if (preSelectedRole) {
       setFormData(prev => ({ ...prev, role: preSelectedRole }));
@@ -106,26 +103,21 @@ export default function RegisterPage() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
 
-  // Use state for field-specific errors
   const [errors, setErrors] = useState<FieldErrors>({});
 
-  // Track password strength for real-time feedback
   const [passwordStrength, setPasswordStrength] =
     useState<PasswordStrength>('weak');
 
-  // Password visibility toggles
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 
-    // Clear the error for this field when the user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
 
-    // Update password strength in real-time for better UX
     if (field === 'password') {
       const validation = validatePassword(value);
       setPasswordStrength(validation.strength);
@@ -136,17 +128,14 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!isLoaded) return;
 
-    // Clear previous errors
     setErrors({});
 
-    // Validate password strength and requirements
     const passwordValidation = validatePassword(formData.password);
     if (!passwordValidation.isValid) {
       setErrors({ password: passwordValidation.message });
       return;
     }
 
-    // Check that passwords match
     if (formData.password !== formData.confirmPassword) {
       setErrors({ confirmPassword: 'Passwords do not match.' });
       return;
@@ -169,18 +158,15 @@ export default function RegisterPage() {
 
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
 
-      // Redirect to dashboard after successful registration setup
       setPendingVerification(true);
     } catch (err: any) {
       console.error('Registration error:', err);
 
-      // --- New Error Handling Logic ---
       const newErrors: FieldErrors = {};
       let generalError = 'Failed to create account. Please try again.';
 
       if (err.errors) {
         err.errors.forEach((error: any) => {
-          // 'meta.paramName' maps to your form fields
           const fieldName = error.meta?.paramName;
 
           if (fieldName === 'email_address') {
@@ -192,7 +178,6 @@ export default function RegisterPage() {
           } else if (fieldName === 'last_name') {
             newErrors.lastName = error.message;
           } else {
-            // Use the first unmapped error as the general error
             generalError = error.message;
           }
         });
@@ -200,23 +185,20 @@ export default function RegisterPage() {
 
       setErrors(newErrors);
 
-      // If no specific field errors were found, show the general error
       if (Object.keys(newErrors).length === 0) {
         setErrors({ general: generalError });
       }
-      // --- End of New Logic ---
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ✨ CHANGED: Updated handleVerify to set field-specific errors
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded) return;
 
     setIsLoading(true);
-    setErrors({}); // Clear previous errors
+    setErrors({});
 
     try {
       const completeSignUp = await signUp.attemptEmailAddressVerification({
@@ -225,19 +207,16 @@ export default function RegisterPage() {
 
       if (completeSignUp.status === 'complete') {
         await setActive({ session: completeSignUp.createdSessionId });
-        router.push('/dashboard'); // Redirect to dashboard after verification
+        router.push('/dashboard');
       } else {
-        // This case is unlikely with email_code but good to have
         console.log('Verification result:', completeSignUp);
         setErrors({ general: 'Verification is not yet complete.' });
       }
     } catch (err: any) {
       console.error('Verification error:', err);
-      // Clerk usually provides a specific error for the code
       const message =
         err.errors?.[0]?.message || 'Failed to verify email. Please try again.';
 
-      // Check if the error is about the code
       if (err.errors?.[0]?.meta?.paramName === 'code') {
         setErrors({ code: message });
       } else {
@@ -250,22 +229,31 @@ export default function RegisterPage() {
 
   if (pendingVerification) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8'>
-        <Card className='w-full max-w-md'>
-          <CardHeader className='space-y-1'>
-            <CardTitle className='text-2xl font-bold text-center'>
-              Verify Your Email
-            </CardTitle>
-            <CardDescription className='text-center'>
-              We've sent a verification code to {formData.email}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleVerify} className='space-y-4'>
-              {/* ✨ CHANGED: Show general error or code error if it exists */}
+      <div className='h-screen flex' style={{ overflow: 'hidden' }}>
+        {/* Left Side - Verification Form */}
+        <div className='flex-1 flex justify-center bg-white p-8 py-8 overflow-y-auto'>
+          <div className='w-full max-w-md'>
+            {/* Logo */}
+            <div className='mb-8'>
+              {/* <div className='w-12 h-12 bg-purple-900 rounded-full flex items-center justify-center mb-4'>
+                <Package className='w-6 h-6 text-white' />
+              </div> */}
+              <h2 className='text-xl font-bold text-gray-900 '>BAGXTRA</h2>
+            </div>
+
+            {/* Header */}
+            <div className='mb-8'>
+              <h1 className='text-xl font-semibold text-gray-900 mb-2'>
+                Verify Your Email
+              </h1>
+              <p className='text-gray-500 text-sm'>
+                We've sent a verification code to {formData.email}
+              </p>
+            </div>
+
+            <form onSubmit={handleVerify} className='space-y-6'>
               {(errors.general || errors.code) && (
                 <Alert variant='destructive'>
-                  {/* Show code error preferably, fall back to general */}
                   <AlertDescription>
                     {errors.code || errors.general}
                   </AlertDescription>
@@ -273,30 +261,35 @@ export default function RegisterPage() {
               )}
 
               <div className='space-y-2'>
-                <Label htmlFor='code'>Verification Code</Label>
+                <Label
+                  htmlFor='code'
+                  className='text-sm font-medium text-gray-700'
+                >
+                  Verification Code
+                </Label>
                 <Input
                   id='code'
                   type='text'
                   placeholder='Enter verification code'
                   value={code}
                   onChange={e => setCode(e.target.value)}
+                  className='h-10 border-gray-300'
                   required
                   disabled={isLoading}
                 />
-                {/* ✨ ADDED: Inline error for verification code */}
                 {errors.code && (
-                  <p className='text-xs text-destructive mt-1'>{errors.code}</p>
+                  <p className='text-xs text-red-500 mt-1'>{errors.code}</p>
                 )}
               </div>
 
               <Button
                 type='submit'
-                className='w-full'
+                className='w-full h-10 bg-purple-900 hover:bg-purple-800 text-white font-medium'
                 disabled={isLoading || !isLoaded}
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    <Loader2 className='mr-2 h-5 w-5 animate-spin' />
                     Verifying...
                   </>
                 ) : (
@@ -304,26 +297,94 @@ export default function RegisterPage() {
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+
+            <div className='mt-12 text-center text-xs text-gray-400'>
+              © 2025 BagXtra
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side - Branded Content (MODIFIED) */}
+        <div className='hidden  lg:flex flex-1 bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex-col justify-between px-12 py-8 text-white relative overflow-y-hidden'>
+          {/* Decorative elements (kept from your original code) */}
+          <div className='absolute inset-0 bg-[url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")]'></div>
+
+          {/* Top Section (Logo, App Name, Tagline) */}
+          <div className='relative z-10'>
+            <div className='flex items-center space-x-3 mb-4'>
+              {/* <div className='w-10 h-10 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/20'>
+                <Package className='w-5 h-5 text-white' />
+              </div> */}
+              {/* Text from screenshot */}
+              <span className='text-2xl font-bold'>BAGXTRA</span>
+            </div>
+            <p className='text-base text-purple-100'>
+              <span className='font-semibold text-white'>Connect</span>.{' '}
+              <span className='font-semibold text-white'>Shop</span>.{' '}
+              <span className='font-semibold text-white'>Recieve</span>. the new
+              way to buy globally.
+            </p>
+          </div>
+
+          {/* Bottom Section (Get Access, Questions) */}
+          <div className='relative z-10 flex justify-between items-end space-x-8'>
+            {/* Get Access Block */}
+            <div className='max-w-[250px]'>
+              <h3 className='text-base font-semibold text-white mb-1'>
+                Get Access
+              </h3>
+              <div className='text-center'>
+                <p className='text-sm text-white/60'>
+                  Don't have an account?{' '}
+                  <Link
+                    href='/auth/register'
+                    className=' hover:text-white font-medium'
+                  >
+                    Register
+                  </Link>
+                </p>
+              </div>
+            </div>
+
+            {/* Questions? Block */}
+            <div className='max-w-[250px]'>
+              <h3 className='text-base font-semibold text-white mb-0'>
+                Questions?
+              </h3>
+              <p className='text-sm text-white/60'>
+                Reach us at info@bagxtra.co or call +12 35 9800 454
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className='min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8'>
-      <Card className='w-full max-w-md'>
-        <CardHeader className='space-y-1'>
-          <CardTitle className='text-2xl font-bold text-center'>
-            Create Account
-          </CardTitle>
-          <CardDescription className='text-center'>
-            Join BagXtra and start connecting with travelers and shoppers
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className='space-y-4'>
-            {/* ✨ CHANGED: Only show the general error here */}
+    <div className='h-screen flex' style={{ overflow: 'hidden' }}>
+      {/* Left Side - Registration Form */}
+      <div className='flex-1 flex justify-center bg-white p-8 py-8 overflow-y-auto'>
+        <div className='w-full max-w-md'>
+          {/* Logo */}
+          <div className='mb-8'>
+            {/* <div className='w-12 h-12 bg-purple-900 rounded-full flex items-center justify-center mb-4'>
+              <Package className='w-6 h-6 text-white' />
+            </div> */}
+            <h2 className='text-xl font-bold text-gray-900 '>BAGXTRA</h2>
+          </div>
+
+          {/* Header */}
+          <div className='mb-8'>
+            <h1 className='text-3xl font-semibold text-gray-900 mb-2'>
+              Create Account
+            </h1>
+            <p className='text-gray-500 text-sm'>
+              Join BagXtra and start connecting with travelers and shoppers
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className='space-y-5'>
             {errors.general && (
               <Alert variant='destructive'>
                 <AlertDescription>{errors.general}</AlertDescription>
@@ -332,9 +393,14 @@ export default function RegisterPage() {
 
             <div className='grid grid-cols-2 gap-4'>
               <div className='space-y-2'>
-                <Label htmlFor='firstName'>First Name</Label>
+                <Label
+                  htmlFor='firstName'
+                  className='text-sm font-medium text-gray-700'
+                >
+                  First Name
+                </Label>
                 <div className='relative'>
-                  <User className='absolute left-3 top-3 h-4 w-4 text-gray-400' />
+                  <User className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
                   <Input
                     id='firstName'
                     type='text'
@@ -343,62 +409,73 @@ export default function RegisterPage() {
                     onChange={e =>
                       handleInputChange('firstName', e.target.value)
                     }
-                    className='pl-10'
+                    className='pl-10 h-11 border-gray-300'
                     required
                     disabled={isLoading}
                   />
                 </div>
-                {/* ✨ ADDED: Inline error for first name */}
                 {errors.firstName && (
-                  <p className='text-xs text-destructive mt-1'>
+                  <p className='text-xs text-red-500 mt-1'>
                     {errors.firstName}
                   </p>
                 )}
               </div>
 
               <div className='space-y-2'>
-                <Label htmlFor='lastName'>Last Name</Label>
+                <Label
+                  htmlFor='lastName'
+                  className='text-sm font-medium text-gray-700'
+                >
+                  Last Name
+                </Label>
                 <Input
                   id='lastName'
                   type='text'
                   placeholder='Last name'
                   value={formData.lastName}
                   onChange={e => handleInputChange('lastName', e.target.value)}
+                  className='h-11 border-gray-300'
                   required
                   disabled={isLoading}
                 />
-                {/* ✨ ADDED: Inline error for last name */}
                 {errors.lastName && (
-                  <p className='text-xs text-destructive mt-1'>
-                    {errors.lastName}
-                  </p>
+                  <p className='text-xs text-red-500 mt-1'>{errors.lastName}</p>
                 )}
               </div>
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='email'>Email</Label>
+              <Label
+                htmlFor='email'
+                className='text-sm font-medium text-gray-700'
+              >
+                Email
+              </Label>
               <div className='relative'>
-                <Mail className='absolute left-3 top-3 h-4 w-4 text-gray-400' />
+                <Mail className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
                 <Input
                   id='email'
                   type='email'
-                  placeholder='Enter your email'
+                  placeholder='name@example.com'
                   value={formData.email}
                   onChange={e => handleInputChange('email', e.target.value)}
-                  className='pl-10'
+                  className='pl-10 h-11 border-gray-300'
                   required
                   disabled={isLoading}
                 />
               </div>
-              {/* ✨ ADDED: Inline error for email */}
               {errors.email && (
-                <p className='text-xs text-destructive mt-1'>{errors.email}</p>
+                <p className='text-xs text-red-500 mt-1'>{errors.email}</p>
               )}
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='role'>I am a</Label>
+              <Label
+                htmlFor='role'
+                className='text-sm font-medium text-gray-700'
+              >
+                I am a
+              </Label>
               <Select
                 value={formData.role}
                 onValueChange={(value: UserRole) =>
@@ -406,7 +483,7 @@ export default function RegisterPage() {
                 }
                 disabled={!!preSelectedRole}
               >
-                <SelectTrigger>
+                <SelectTrigger className='h-11 border-gray-300'>
                   <SelectValue placeholder='Select your role' />
                 </SelectTrigger>
                 <SelectContent>
@@ -428,67 +505,83 @@ export default function RegisterPage() {
               )}
             </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='phone'>Phone (Optional)</Label>
-              <div className='relative'>
-                <Phone className='absolute left-3 top-3 h-4 w-4 text-gray-400' />
-                <Input
-                  id='phone'
-                  type='tel'
-                  placeholder='+1 (555) 123-4567'
-                  value={formData.phone}
-                  onChange={e => handleInputChange('phone', e.target.value)}
-                  className='pl-10'
-                  disabled={isLoading}
-                />
+            <div className='grid grid-cols-2 gap-4'>
+              <div className='space-y-2'>
+                <Label
+                  htmlFor='phone'
+                  className='text-sm font-medium text-gray-700'
+                >
+                  Phone (Optional)
+                </Label>
+                <div className='relative'>
+                  <Phone className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
+                  <Input
+                    id='phone'
+                    type='tel'
+                    placeholder='+1 (555) 000-0000'
+                    value={formData.phone}
+                    onChange={e => handleInputChange('phone', e.target.value)}
+                    className='pl-10 h-11 border-gray-300'
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              <div className='space-y-2'>
+                <Label
+                  htmlFor='country'
+                  className='text-sm font-medium text-gray-700'
+                >
+                  Country (Optional)
+                </Label>
+                <div className='relative'>
+                  <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
+                  <Input
+                    id='country'
+                    type='text'
+                    placeholder='Your country'
+                    value={formData.country}
+                    onChange={e => handleInputChange('country', e.target.value)}
+                    className='pl-10 h-11 border-gray-300'
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='country'>Country (Optional)</Label>
+              <Label
+                htmlFor='password'
+                className='text-sm font-medium text-gray-700'
+              >
+                Password
+              </Label>
               <div className='relative'>
-                <MapPin className='absolute left-3 top-3 h-4 w-4 text-gray-400' />
-                <Input
-                  id='country'
-                  type='text'
-                  placeholder='Your country'
-                  value={formData.country}
-                  onChange={e => handleInputChange('country', e.target.value)}
-                  className='pl-10'
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='password'>Password</Label>
-              <div className='relative'>
-                <Lock className='absolute left-3 top-3 h-4 w-4 text-gray-400' />
+                <Lock className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
                 <Input
                   id='password'
                   type={showPassword ? 'text' : 'password'}
                   placeholder='Create a password'
                   value={formData.password}
                   onChange={e => handleInputChange('password', e.target.value)}
-                  className='pl-10 pr-10'
+                  className='pl-10 pr-10 h-11 border-gray-300'
                   required
                   disabled={isLoading}
                 />
                 <button
                   type='button'
                   onClick={() => setShowPassword(!showPassword)}
-                  className='absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 focus:outline-none'
+                  className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none'
                   disabled={isLoading}
                 >
                   {showPassword ? (
-                    <EyeOff className='h-4 w-4' />
+                    <EyeOff className='h-5 w-5' />
                   ) : (
-                    <Eye className='h-4 w-4' />
+                    <Eye className='h-5 w-5' />
                   )}
                 </button>
               </div>
 
-              {/* Password strength indicator */}
               {formData.password && (
                 <div className='flex items-center space-x-2 mt-1'>
                   <div className='flex space-x-1'>
@@ -536,18 +629,20 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              {/* Inline error for password */}
               {errors.password && (
-                <p className='text-xs text-destructive mt-1'>
-                  {errors.password}
-                </p>
+                <p className='text-xs text-red-500 mt-1'>{errors.password}</p>
               )}
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='confirmPassword'>Confirm Password</Label>
+              <Label
+                htmlFor='confirmPassword'
+                className='text-sm font-medium text-gray-700'
+              >
+                Confirm Password
+              </Label>
               <div className='relative'>
-                <Lock className='absolute left-3 top-3 h-4 w-4 text-gray-400' />
+                <Lock className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
                 <Input
                   id='confirmPassword'
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -556,14 +651,14 @@ export default function RegisterPage() {
                   onChange={e =>
                     handleInputChange('confirmPassword', e.target.value)
                   }
-                  className='pl-10 pr-10'
+                  className='pl-10 pr-10 h-11 border-gray-300'
                   required
                   disabled={isLoading}
                 />
                 <button
                   type='button'
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className='absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 focus:outline-none'
+                  className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none'
                   disabled={isLoading}
                   aria-label={
                     showConfirmPassword
@@ -573,15 +668,14 @@ export default function RegisterPage() {
                   aria-pressed={showConfirmPassword}
                 >
                   {showConfirmPassword ? (
-                    <EyeOff className='h-4 w-4' />
+                    <EyeOff className='h-5 w-5' />
                   ) : (
-                    <Eye className='h-4 w-4' />
+                    <Eye className='h-5 w-5' />
                   )}
                 </button>
               </div>
-              {/* Inline error for confirm password */}
               {errors.confirmPassword && (
-                <p className='text-xs text-destructive mt-1'>
+                <p className='text-xs text-red-500 mt-1'>
                   {errors.confirmPassword}
                 </p>
               )}
@@ -589,12 +683,12 @@ export default function RegisterPage() {
 
             <Button
               type='submit'
-              className='w-full'
+              className='w-full h-11 bg-purple-900 hover:bg-purple-800 text-white font-medium'
               disabled={isLoading || !isLoaded}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  <Loader2 className='mr-2 h-5 w-5 animate-spin' />
                   Creating Account...
                 </>
               ) : (
@@ -603,22 +697,79 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          {/* Clerk CAPTCHA element for bot protection */}
           <div id='clerk-captcha' className='mt-4'></div>
 
           <div className='mt-6 text-center'>
-            <div className='text-sm text-gray-600'>
+            <p className='text-sm text-gray-600'>
               Already have an account?{' '}
               <Link
                 href='/auth/login'
-                className='text-blue-600 hover:text-blue-500 font-medium'
+                className='text-purple-900 hover:text-purple-700 font-medium'
               >
                 Sign in
               </Link>
+            </p>
+          </div>
+
+          <div className='mt-8 text-center text-xs text-gray-400'>
+            © 2025 BagXtra
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Branded Content (MODIFIED) */}
+      <div className='hidden  lg:flex flex-1 bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex-col justify-between px-12 py-8 text-white relative overflow-y-hidden'>
+        {/* Decorative elements (kept from your original code) */}
+        <div className='absolute inset-0 bg-[url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")]'></div>
+
+        {/* Top Section (Logo, App Name, Tagline) */}
+        <div className='relative z-10'>
+          <div className='flex items-center space-x-3 mb-4'>
+            {/* <div className='w-10 h-10 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/20'>
+              <Package className='w-5 h-5 text-white' />
+            </div> */}
+            {/* Text from screenshot */}
+            <span className='text-2xl font-bold'>BAGXTRA</span>
+          </div>
+          <p className='text-base text-purple-100'>
+            <span className='font-semibold text-white'>Connect</span>.{' '}
+            <span className='font-semibold text-white'>Shop</span>.{' '}
+            <span className='font-semibold text-white'>Recieve</span>. the new
+            way to buy globally.
+          </p>
+        </div>
+
+        {/* Bottom Section (Get Access, Questions) */}
+        <div className='relative z-10 flex justify-between items-end space-x-8'>
+          {/* Get Access Block */}
+          <div className='max-w-[250px]'>
+            <h3 className='text-base font-semibold text-white mb-1'>
+              Get Access
+            </h3>
+            <div className='text-center'>
+              <p className='text-sm text-white/60'>
+                Already have an account?{' '}
+                <Link
+                  href='/auth/login'
+                  className=' hover:text-white font-medium'
+                >
+                  Login
+                </Link>
+              </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Questions? Block */}
+          <div className='max-w-[250px]'>
+            <h3 className='text-base font-semibold text-white mb-0'>
+              Questions?
+            </h3>
+            <p className='text-sm text-white/60'>
+              Reach us at info@bagxtra.co or call +12 35 9800 454
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
