@@ -1,8 +1,10 @@
-import { IMatch } from '../models/Match';
+import { IMatch, MatchStatus } from '../models/Match';
 import { IShopperRequest } from '../models/ShopperRequest';
 import { IMatchRepository, IShopperRequestRepository } from './repositories';
 import mongoose from 'mongoose';
+import { timingSafeEqual } from 'crypto';
 import { z } from 'zod';
+import { ValidationError, BadRequestError } from '../errors';
 
 const generatePinSchema = z.object({
   matchId: z.string(),
@@ -25,6 +27,12 @@ export class DeliveryService {
     travelerId: mongoose.Types.ObjectId
   ): Promise<{ pin: string; expiresAt: Date }> {
     const validatedData = generatePinSchema.parse(matchData);
+    if (!mongoose.isValidObjectId(validatedData.matchId)) {
+      throw new ValidationError(
+        'Invalid matchId: must be a valid ObjectId',
+        'matchId'
+      );
+    }
     const matchId = new mongoose.Types.ObjectId(validatedData.matchId);
 
     // Verify match exists and traveler owns it
@@ -37,7 +45,7 @@ export class DeliveryService {
       throw new Error('Unauthorized to generate PIN for this match');
     }
 
-    if (match.status !== 'approved') {
+    if (match.status !== MatchStatus.Approved) {
       throw new Error('Match must be approved before generating delivery PIN');
     }
 
@@ -48,9 +56,15 @@ export class DeliveryService {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
 
-    // In a real implementation, you would store this PIN in the database
-    // For now, we'll return it - in Phase 4, this would be persisted
-    // You could add a deliveryPin field to the Match model
+    const updateResult = await this.matchRepo.update(matchId, {
+      deliveryPin: pin,
+      deliveryPinExpiresAt: expiresAt,
+      deliveryPinGeneratedAt: new Date(),
+    });
+
+    if (!updateResult) {
+      throw new Error('Failed to persist delivery PIN');
+    }
 
     return { pin, expiresAt };
   }
@@ -60,6 +74,12 @@ export class DeliveryService {
     shopperId: mongoose.Types.ObjectId
   ): Promise<{ verified: boolean; match?: IMatch; error?: string }> {
     const validatedData = verifyPinSchema.parse(verificationData);
+    if (!mongoose.isValidObjectId(validatedData.matchId)) {
+      throw new ValidationError(
+        'Invalid matchId: must be a valid ObjectId',
+        'matchId'
+      );
+    }
     const matchId = new mongoose.Types.ObjectId(validatedData.matchId);
 
     // Verify match exists
@@ -77,25 +97,32 @@ export class DeliveryService {
       };
     }
 
-    // In a real implementation, you would check the stored PIN and expiration
-    // For now, we'll simulate PIN verification
-    const isValidPin = this.verifyPin(validatedData.pin);
+    // Check if PIN has expired
+    const now = new Date();
+    if (match.deliveryPinExpiresAt && match.deliveryPinExpiresAt < now) {
+      return { verified: false, error: 'PIN has expired' };
+    }
+
+    // Check if deliveryPin exists
+    if (!match.deliveryPin) {
+      return { verified: false, error: 'Invalid PIN' };
+    }
+
+    // Use safe equality check for PIN comparison
+    const isValidPin = timingSafeEqual(
+      Buffer.from(match.deliveryPin, 'utf8'),
+      Buffer.from(validatedData.pin, 'utf8')
+    );
 
     if (!isValidPin) {
       return { verified: false, error: 'Invalid PIN' };
     }
 
-    // Check if PIN has expired (placeholder - would check stored expiration)
-    const now = new Date();
-    // Placeholder expiration check
-    const isExpired = false; // Would check against stored expiresAt
-
-    if (isExpired) {
-      return { verified: false, error: 'PIN has expired' };
-    }
-
-    // Mark delivery as completed
-    await this.matchRepo.update(matchId, { status: 'completed' } as any);
+    // Mark delivery as completed and set PIN verification timestamp
+    await this.matchRepo.update(matchId, {
+      status: MatchStatus.Completed,
+      pinVerifiedAt: new Date(),
+    } as any);
 
     return { verified: true, match };
   }
@@ -135,12 +162,20 @@ export class DeliveryService {
       throw new Error('Unauthorized to mark delivery for this match');
     }
 
-    if (match.status !== 'approved') {
+    if (match.status !== MatchStatus.Approved) {
       throw new Error('Match must be approved before marking as delivered');
     }
 
-    // Update match status to completed
-    return await this.matchRepo.update(matchId, { status: 'completed' } as any);
+    // Check if PIN was verified before allowing delivery
+    if (!match.pinVerifiedAt) {
+      throw new Error(
+        'Delivery PIN must be verified before marking as delivered'
+      );
+    }
+
+    // Update match status to completed with proper typing
+    const updatePayload: Partial<IMatch> = { status: MatchStatus.Completed };
+    return await this.matchRepo.update(matchId, updatePayload);
   }
 
   private generateRandomPin(): string {
@@ -152,6 +187,7 @@ export class DeliveryService {
   private verifyPin(providedPin: string): boolean {
     // In a real implementation, you would compare against stored PIN
     // For now, accept any 5-digit PIN for simulation
+    // later addition. implementation for stored pins added already check the codebase for integration
     return /^\d{5}$/.test(providedPin);
   }
 

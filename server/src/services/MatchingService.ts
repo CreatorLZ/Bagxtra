@@ -78,8 +78,9 @@ export class MatchingService {
       totalWeight += item.weightKg * item.quantity;
       totalValue += item.price * item.quantity;
       if (item.isFragile) isFragile = true;
-      // Assuming special delivery is determined by some item property or category
-      // For now, we'll assume no special delivery items
+      if (item.requiresSpecialDelivery || item.specialDeliveryCategory) {
+        hasSpecialDelivery = true;
+      }
     }
 
     return { totalWeight, totalValue, isFragile, hasSpecialDelivery };
@@ -125,12 +126,21 @@ export class MatchingService {
     }
 
     // Arrival window proximity (if maxArrivalWindowHours specified)
+    // Arrival window proximity (if maxArrivalWindowHours specified)
     if (criteria.maxArrivalWindowHours) {
-      // This would require current time comparison, simplified for now
-      score += 20;
-      rationale.push('Within arrival window');
-    }
+      const now = new Date();
+      const arrivalTime = new Date(trip.arrivalDate);
+      const hoursUntilArrival =
+        (arrivalTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
+      if (
+        hoursUntilArrival >= 0 &&
+        hoursUntilArrival <= criteria.maxArrivalWindowHours
+      ) {
+        score += 20;
+        rationale.push('Within arrival window');
+      }
+    }
     // Capacity fit
     if (capacityFit.fitsCarryOn) {
       score += 25;
@@ -140,9 +150,14 @@ export class MatchingService {
       rationale.push('Fits in checked baggage');
     }
 
-    // Traveler rating (placeholder - would need rating system)
-    score += 10;
-    rationale.push('Traveler has good rating');
+    // Traveler rating
+    const traveler = await this.userRepo.findById(trip.travelerId);
+    if (traveler && typeof traveler.rating === 'number') {
+      const maxRating = traveler.maxRating || 5;
+      const normalizedScore = (traveler.rating / maxRating) * 10;
+      score += normalizedScore;
+      rationale.push(`Traveler rating: ${traveler.rating}/${maxRating}`);
+    }
 
     // Fragile capability bonus
     if (bagTotals.isFragile && trip.canCarryFragile) {

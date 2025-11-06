@@ -1,17 +1,27 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 import { IBagItem } from './BagItem';
 
-export type ShopperRequestStatus =
-  | 'draft'
-  | 'open'
-  | 'matched'
-  | 'pending_purchase'
-  | 'purchased'
-  | 'in_transit'
-  | 'delivered'
-  | 'completed'
-  | 'disputed'
-  | 'cancelled';
+export const SHOPPER_REQUEST_STATUSES = [
+  'draft',
+  'open',
+  'matched',
+  'pending_purchase',
+  'purchased',
+  'in_transit',
+  'delivered',
+  'completed',
+  'disputed',
+  'cancelled',
+] as const;
+
+export type ShopperRequestStatus = (typeof SHOPPER_REQUEST_STATUSES)[number];
+
+export type PaymentStatus =
+  | 'pending'
+  | 'processing'
+  | 'paid'
+  | 'failed'
+  | 'refunded';
 
 export interface IPriceSummary {
   totalItemCost: number;
@@ -23,14 +33,19 @@ export interface IPriceSummary {
 export interface IShopperRequest extends Document {
   _id: mongoose.Types.ObjectId;
   shopperId: mongoose.Types.ObjectId;
-  bagItems: IBagItem[];
+  bagItems: (Types.ObjectId | IBagItem)[];
   destinationCountry: string;
   status: ShopperRequestStatus;
   createdAt: Date;
   updatedAt: Date;
   priceSummary: IPriceSummary;
-  paymentStatus: string;
+  paymentStatus: PaymentStatus;
   trackingNumber?: string;
+  transactionId?: string;
+  refundId?: string;
+  refundAmount?: number;
+  refundReason?: string;
+  refundTimestamp?: Date;
 }
 
 const priceSummarySchema = new Schema<IPriceSummary>(
@@ -79,18 +94,7 @@ const shopperRequestSchema = new Schema<IShopperRequest>(
     },
     status: {
       type: String,
-      enum: [
-        'draft',
-        'open',
-        'matched',
-        'pending_purchase',
-        'purchased',
-        'in_transit',
-        'delivered',
-        'completed',
-        'disputed',
-        'cancelled',
-      ],
+      enum: SHOPPER_REQUEST_STATUSES,
       default: 'draft',
       required: true,
     },
@@ -100,12 +104,32 @@ const shopperRequestSchema = new Schema<IShopperRequest>(
     },
     paymentStatus: {
       type: String,
+      enum: ['pending', 'processing', 'paid', 'failed', 'refunded'],
       required: true,
       trim: true,
     },
     trackingNumber: {
       type: String,
       trim: true,
+    },
+    transactionId: {
+      type: String,
+      trim: true,
+    },
+    refundId: {
+      type: String,
+      trim: true,
+    },
+    refundAmount: {
+      type: Number,
+      min: 0,
+    },
+    refundReason: {
+      type: String,
+      trim: true,
+    },
+    refundTimestamp: {
+      type: Date,
     },
   },
   {

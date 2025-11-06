@@ -1,4 +1,4 @@
-import { ITrip } from '../models/Trip';
+import { ITrip, TripUpdateData } from '../models/Trip';
 import { IUser } from '../models/User';
 import { ITripRepository, IUserRepository } from './repositories';
 import mongoose from 'mongoose';
@@ -7,8 +7,14 @@ import { z } from 'zod';
 const createTripSchema = z.object({
   fromCountry: z.string().min(1).max(100),
   toCountry: z.string().min(1).max(100),
-  departureDate: z.date(),
-  arrivalDate: z.date(),
+  departureDate: z.preprocess(
+    val => (typeof val === 'string' ? new Date(val) : val),
+    z.date()
+  ),
+  arrivalDate: z.preprocess(
+    val => (typeof val === 'string' ? new Date(val) : val),
+    z.date()
+  ),
   availableCarryOnKg: z.number().positive(),
   availableCheckedKg: z.number().positive(),
   canCarryFragile: z.boolean(),
@@ -57,7 +63,7 @@ export class TripService {
     travelerId: mongoose.Types.ObjectId,
     updates: z.infer<typeof updateTripSchema>
   ): Promise<ITrip | null> {
-    const validatedUpdates = updateTripSchema.parse(updates);
+    const validatedUpdates = updateTripSchema.parse(updates) as TripUpdateData;
 
     // Verify ownership
     const trip = await this.tripRepo.findById(tripId);
@@ -73,7 +79,17 @@ export class TripService {
       throw new Error('Cannot update completed trip');
     }
 
-    return await this.tripRepo.update(tripId, validatedUpdates as any);
+    // Validate merged dates
+    const resultingDeparture =
+      validatedUpdates.departureDate ?? trip.departureDate;
+    const resultingArrival = validatedUpdates.arrivalDate ?? trip.arrivalDate;
+    if (resultingDeparture && resultingArrival) {
+      if (resultingDeparture >= resultingArrival) {
+        throw new Error('Arrival date must be after departure date');
+      }
+    }
+
+    return await this.tripRepo.update(tripId, validatedUpdates);
   }
 
   async getTrip(tripId: mongoose.Types.ObjectId): Promise<ITrip | null> {
@@ -169,7 +185,12 @@ export class TripService {
     const currentCapacity = isCarryOn
       ? trip.availableCarryOnKg
       : trip.availableCheckedKg;
-    const newCapacity = Math.max(0, currentCapacity - usedWeight);
+
+    if (usedWeight > currentCapacity) {
+      throw new Error('Insufficient capacity');
+    }
+
+    const newCapacity = currentCapacity - usedWeight;
 
     return await this.tripRepo.update(tripId, {
       [updateField]: newCapacity,

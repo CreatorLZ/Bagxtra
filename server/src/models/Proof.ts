@@ -10,6 +10,7 @@ export interface IProof extends Document {
   purpose: ProofPurpose;
   fileType: string;
   size: number;
+  requestId?: mongoose.Types.ObjectId;
 }
 
 const proofSchema = new Schema<IProof>(
@@ -43,6 +44,10 @@ const proofSchema = new Schema<IProof>(
       type: Number,
       required: true,
       min: 0,
+    },
+    requestId: {
+      type: Schema.Types.ObjectId,
+      ref: 'ShopperRequest',
     },
   },
   {

@@ -1,21 +1,26 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type MatchStatus =
-  | 'pending'
-  | 'claimed'
-  | 'approved'
-  | 'rejected'
-  | 'completed';
+export enum MatchStatus {
+  Pending = 'pending',
+  Claimed = 'claimed',
+  Approved = 'approved',
+  Rejected = 'rejected',
+  Completed = 'completed',
+}
 
 export interface IMatch extends Document {
-  _id: mongoose.Types.ObjectId;
   requestId: mongoose.Types.ObjectId;
   tripId: mongoose.Types.ObjectId;
   travelerId: mongoose.Types.ObjectId;
   matchScore: number;
   assignedItems: mongoose.Types.ObjectId[];
   status: MatchStatus;
+  deliveryPin?: string;
+  deliveryPinExpiresAt?: Date;
+  deliveryPinGeneratedAt?: Date;
+  pinVerifiedAt?: Date;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const matchSchema = new Schema<IMatch>(
@@ -47,10 +52,22 @@ const matchSchema = new Schema<IMatch>(
         ref: 'BagItem',
       },
     ],
+    deliveryPin: {
+      type: String,
+    },
+    deliveryPinExpiresAt: {
+      type: Date,
+    },
+    deliveryPinGeneratedAt: {
+      type: Date,
+    },
+    pinVerifiedAt: {
+      type: Date,
+    },
     status: {
       type: String,
-      enum: ['pending', 'claimed', 'approved', 'rejected', 'completed'],
-      default: 'pending',
+      enum: Object.values(MatchStatus),
+      default: MatchStatus.Pending,
       required: true,
     },
   },

@@ -1,6 +1,10 @@
 import { IProof, ProofPurpose } from '../models/Proof';
 import { IMatch } from '../models/Match';
-import { IProofRepository, IMatchRepository } from './repositories';
+import {
+  IProofRepository,
+  IMatchRepository,
+  IShopperRequestRepository,
+} from './repositories';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 
@@ -18,7 +22,6 @@ const allowedFileTypes = [
   'image/gif',
   'image/webp',
   'application/pdf',
-  'text/plain',
 ];
 
 const maxFileSize = 10 * 1024 * 1024; // 10MB
@@ -26,7 +29,8 @@ const maxFileSize = 10 * 1024 * 1024; // 10MB
 export class ProofService {
   constructor(
     private proofRepo: IProofRepository,
-    private matchRepo: IMatchRepository
+    private matchRepo: IMatchRepository,
+    private requestRepo: IShopperRequestRepository
   ) {}
 
   async uploadProof(
@@ -138,11 +142,15 @@ export class ProofService {
       throw new Error('Unauthorized to attach this proof');
     }
 
-    // Additional validation for request attachment
-    // For receipts, typically uploaded by shoppers
-    // For QA photos, typically uploaded by travelers
+    // Verify request exists
+    const request = await this.requestRepo.findById(requestId);
+    if (!request) {
+      throw new Error('Request not found');
+    }
 
-    return true;
+    // Update proof to reference the request
+    const updatedProof = await this.proofRepo.update(proofId, { requestId });
+    return !!updatedProof;
   }
 
   async validateProofForPurpose(

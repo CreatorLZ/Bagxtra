@@ -28,11 +28,21 @@ export class BagService {
     private shopperRequestRepo: IShopperRequestRepository
   ) {}
 
+  private mapToBagItem(
+    data: z.infer<typeof updateBagItemSchema>
+  ): Partial<IBagItem> {
+    return {
+      ...data,
+      photos: data.photos ?? [],
+    } as Partial<IBagItem>;
+  }
+
   async createBagItem(
     bagItemData: z.infer<typeof createBagItemSchema>
   ): Promise<IBagItem> {
     const validatedData = createBagItemSchema.parse(bagItemData);
-    return await this.bagItemRepo.create(validatedData as any);
+    const mappedData = this.mapToBagItem(validatedData);
+    return await this.bagItemRepo.create(mappedData);
   }
 
   async updateBagItem(
@@ -40,7 +50,8 @@ export class BagService {
     updates: z.infer<typeof updateBagItemSchema>
   ): Promise<IBagItem | null> {
     const validatedUpdates = updateBagItemSchema.parse(updates);
-    return await this.bagItemRepo.update(id, validatedUpdates as any);
+    const mappedUpdates = this.mapToBagItem(validatedUpdates);
+    return await this.bagItemRepo.update(id, mappedUpdates);
   }
 
   async deleteBagItem(id: mongoose.Types.ObjectId): Promise<boolean> {
@@ -81,13 +92,21 @@ export class BagService {
     const errors: string[] = [];
     const { totalWeight, totalValue } = await this.calculateBagTotals(bagItems);
 
-    if (maxWeight && totalWeight > maxWeight) {
+    if (
+      maxWeight != null &&
+      Number.isFinite(maxWeight) &&
+      totalWeight > maxWeight
+    ) {
       errors.push(
         `Total weight ${totalWeight}kg exceeds maximum ${maxWeight}kg`
       );
     }
 
-    if (maxValue && totalValue > maxValue) {
+    if (
+      maxValue != null &&
+      Number.isFinite(maxValue) &&
+      totalValue > maxValue
+    ) {
       errors.push(`Total value ${totalValue} exceeds maximum ${maxValue}`);
     }
 

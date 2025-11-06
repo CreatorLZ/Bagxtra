@@ -13,9 +13,13 @@ export interface ITrip extends Document {
   availableCheckedKg: number;
   status: TripStatus;
   createdAt: Date;
+  updatedAt: Date;
   canCarryFragile: boolean;
   canHandleSpecialDelivery: boolean;
 }
+export type TripUpdateData = Partial<
+  Omit<ITrip, '_id' | 'travelerId' | 'createdAt' | 'updatedAt'>
+>;
 
 const tripSchema = new Schema<ITrip>(
   {
@@ -71,6 +75,13 @@ const tripSchema = new Schema<ITrip>(
     timestamps: true,
   }
 );
+
+tripSchema.pre('validate', function (next) {
+  if (this.arrivalDate <= this.departureDate) {
+    return next(new Error('Arrival date must be after departure date'));
+  }
+  next();
+});
 
 // Indexes for performance
 tripSchema.index({ toCountry: 1 });

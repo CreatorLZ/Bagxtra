@@ -15,6 +15,8 @@ export interface IBagItem extends Document {
   quantity: number;
   isFragile: boolean;
   photos: string[];
+  requiresSpecialDelivery: boolean;
+  specialDeliveryCategory?: string;
 }
 
 const bagItemSchema = new Schema<IBagItem>(
@@ -38,6 +40,8 @@ const bagItemSchema = new Schema<IBagItem>(
       type: String,
       required: true,
       trim: true,
+      uppercase: true,
+      match: /^[A-Z]{3}$/,
     },
     weightKg: {
       type: Number,
@@ -76,6 +80,14 @@ const bagItemSchema = new Schema<IBagItem>(
         trim: true,
       },
     ],
+    requiresSpecialDelivery: {
+      type: Boolean,
+      default: false,
+    },
+    specialDeliveryCategory: {
+      type: String,
+      required: false,
+    },
   },
   {
     timestamps: true,

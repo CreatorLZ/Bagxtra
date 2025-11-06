@@ -1,6 +1,6 @@
 import { BagItem, IBagItem } from '../models/BagItem';
 import { ShopperRequest, IShopperRequest } from '../models/ShopperRequest';
-import { Trip, ITrip } from '../models/Trip';
+import { Trip, ITrip, TripUpdateData } from '../models/Trip';
 import { Match, IMatch } from '../models/Match';
 import { Proof, IProof } from '../models/Proof';
 import { User, IUser } from '../models/User';
@@ -28,7 +28,11 @@ export class BagItemRepository implements IBagItemRepository {
     id: mongoose.Types.ObjectId,
     updates: Partial<IBagItem>
   ): Promise<IBagItem | null> {
-    return await BagItem.findByIdAndUpdate(id, updates, { new: true });
+    return await BagItem.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+      context: 'query',
+    });
   }
 
   async delete(id: mongoose.Types.ObjectId): Promise<boolean> {
@@ -42,7 +46,12 @@ export class BagItemRepository implements IBagItemRepository {
     const request = await ShopperRequest.findById(requestId).populate(
       'bagItems'
     );
-    return request ? request.bagItems : [];
+    return request ? (request.bagItems as IBagItem[]) : [];
+  }
+
+  async findByIds(ids: string[]): Promise<IBagItem[]> {
+    const objectIds = ids.map(id => new mongoose.Types.ObjectId(id));
+    return await BagItem.find({ _id: { $in: objectIds } });
   }
 }
 
@@ -60,7 +69,10 @@ export class ShopperRequestRepository implements IShopperRequestRepository {
     id: mongoose.Types.ObjectId,
     updates: Partial<IShopperRequest>
   ): Promise<IShopperRequest | null> {
-    return await ShopperRequest.findByIdAndUpdate(id, updates, { new: true });
+    return await ShopperRequest.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    }).populate('bagItems');
   }
 
   async findByShopper(
@@ -86,9 +98,12 @@ export class TripRepository implements ITripRepository {
 
   async update(
     id: mongoose.Types.ObjectId,
-    updates: Partial<ITrip>
+    updates: TripUpdateData
   ): Promise<ITrip | null> {
-    return await Trip.findByIdAndUpdate(id, updates, { new: true });
+    return await Trip.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    });
   }
 
   async findByTraveler(travelerId: mongoose.Types.ObjectId): Promise<ITrip[]> {
@@ -118,7 +133,10 @@ export class MatchRepository implements IMatchRepository {
     id: mongoose.Types.ObjectId,
     updates: Partial<IMatch>
   ): Promise<IMatch | null> {
-    return await Match.findByIdAndUpdate(id, updates, { new: true });
+    return await Match.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    }).populate('assignedItems');
   }
 
   async findByRequest(requestId: mongoose.Types.ObjectId): Promise<IMatch[]> {
@@ -144,6 +162,13 @@ export class ProofRepository implements IProofRepository {
     return await Proof.findById(id);
   }
 
+  async update(
+    id: mongoose.Types.ObjectId,
+    updates: Partial<IProof>
+  ): Promise<IProof | null> {
+    return await Proof.findByIdAndUpdate(id, updates, { new: true });
+  }
+
   async findByUploader(uploaderId: mongoose.Types.ObjectId): Promise<IProof[]> {
     return await Proof.find({ uploaderId });
   }
@@ -166,6 +191,9 @@ export class UserRepository implements IUserRepository {
     id: mongoose.Types.ObjectId,
     updates: Partial<IUser>
   ): Promise<IUser | null> {
-    return await User.findByIdAndUpdate(id, updates, { new: true });
+    return await User.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    });
   }
 }

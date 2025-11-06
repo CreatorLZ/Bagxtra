@@ -67,8 +67,29 @@ export class PaymentService {
   async processPayment(
     requestId: mongoose.Types.ObjectId,
     paymentMethod: string,
-    amount: number
+    amount: number,
+    idempotencyKey: string
   ): Promise<{ success: boolean; transactionId?: string; error?: string }> {
+    // Input validation
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      return {
+        success: false,
+        error: 'Invalid amount: must be a positive number',
+      };
+    }
+    if (!paymentMethod || paymentMethod.trim() === '') {
+      return { success: false, error: 'Payment method is required' };
+    }
+
+    // Fetch request
+    const request = await this.shopperRequestRepo.findById(requestId);
+    if (!request) {
+      return { success: false, error: 'Request not found' };
+    }
+    if (request.paymentStatus === 'paid') {
+      return { success: false, error: 'Payment already processed' };
+    }
+
     // Placeholder for payment processing
     // In Phase 4, this would integrate with actual payment processor (Stripe, PayPal, etc.)
 
@@ -76,13 +97,13 @@ export class PaymentService {
       // Simulate payment processing
       const transactionId = `txn_${Date.now()}_${Math.random()
         .toString(36)
-        .substr(2, 9)}`;
+        .slice(2, 11)}`;
 
       // Update request payment status
       await this.shopperRequestRepo.update(requestId, {
         paymentStatus: 'paid',
-        // Add transaction reference if needed
-      } as any);
+        transactionId,
+      });
 
       return {
         success: true,
@@ -102,18 +123,63 @@ export class PaymentService {
     amount: number,
     reason: string
   ): Promise<{ success: boolean; refundId?: string; error?: string }> {
+    // Input validation
+    if (!amount || amount <= 0 || isNaN(amount)) {
+      return {
+        success: false,
+        error: 'Invalid amount: must be a positive number',
+      };
+    }
+
+    // Fetch request
+    const request = await this.shopperRequestRepo.findById(requestId);
+    if (!request) {
+      return { success: false, error: 'Request not found' };
+    }
+
+    // Idempotency check
+    if (
+      request.paymentStatus === 'refunded' &&
+      request.refundId &&
+      request.refundAmount === amount
+    ) {
+      return { success: true, refundId: request.refundId };
+    }
+
+    if (request.paymentStatus !== 'paid') {
+      return {
+        success: false,
+        error: 'Cannot refund request that is not paid',
+      };
+    }
+
+    // Calculate total payment amount
+    const totalPayment =
+      request.priceSummary.totalItemCost +
+      request.priceSummary.deliveryFee +
+      request.priceSummary.serviceFee +
+      request.priceSummary.tax;
+
+    if (amount > totalPayment) {
+      return { success: false, error: 'Invalid refund amount' };
+    }
+
     // Placeholder for refund processing
     // In Phase 4, this would integrate with payment processor
 
     try {
       const refundId = `ref_${Date.now()}_${Math.random()
         .toString(36)
-        .substr(2, 9)}`;
+        .slice(2, 9)}`;
 
       // Update request payment status
       await this.shopperRequestRepo.update(requestId, {
         paymentStatus: 'refunded',
-      } as any);
+        refundId,
+        refundAmount: amount,
+        refundReason: reason,
+        refundTimestamp: new Date(),
+      });
 
       return {
         success: true,

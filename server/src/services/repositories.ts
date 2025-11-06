@@ -1,6 +1,6 @@
 import { IBagItem } from '../models/BagItem';
 import { IShopperRequest } from '../models/ShopperRequest';
-import { ITrip } from '../models/Trip';
+import { ITrip, TripUpdateData } from '../models/Trip';
 import { IMatch } from '../models/Match';
 import { IProof } from '../models/Proof';
 import { IUser } from '../models/User';
@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 export interface IBagItemRepository {
   create(bagItem: Partial<IBagItem>): Promise<IBagItem>;
   findById(id: mongoose.Types.ObjectId): Promise<IBagItem | null>;
+  findByIds(ids: string[]): Promise<IBagItem[]>;
   update(
     id: mongoose.Types.ObjectId,
     updates: Partial<IBagItem>
@@ -33,7 +34,7 @@ export interface ITripRepository {
   findById(id: mongoose.Types.ObjectId): Promise<ITrip | null>;
   update(
     id: mongoose.Types.ObjectId,
-    updates: Partial<ITrip>
+    updates: TripUpdateData
   ): Promise<ITrip | null>;
   findByTraveler(travelerId: mongoose.Types.ObjectId): Promise<ITrip[]>;
   findOpenTrips(): Promise<ITrip[]>;
@@ -55,6 +56,10 @@ export interface IMatchRepository {
 export interface IProofRepository {
   create(proof: Partial<IProof>): Promise<IProof>;
   findById(id: mongoose.Types.ObjectId): Promise<IProof | null>;
+  update(
+    id: mongoose.Types.ObjectId,
+    updates: Partial<IProof>
+  ): Promise<IProof | null>;
   findByUploader(uploaderId: mongoose.Types.ObjectId): Promise<IProof[]>;
   findByPurpose(purpose: string): Promise<IProof[]>;
 }

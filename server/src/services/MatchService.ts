@@ -10,6 +10,7 @@ import {
 } from './repositories';
 import mongoose from 'mongoose';
 import { z } from 'zod';
+import { ValidationError } from '../errors';
 
 const claimMatchSchema = z.object({
   matchId: z.string(),
@@ -97,14 +98,32 @@ export class MatchService {
       throw new Error(capacityCheck.reason);
     }
 
+    // Validate assigned items belong to the request
+    const request = await this.shopperRequestRepo.findById(match.requestId);
+    if (!request) {
+      throw new Error('Shopper request not found');
+    }
+    const requestItemIds = request.bagItems.map(item => item._id!.toString());
+    const invalidItems = validatedData.assignedItems.filter(
+      id => !requestItemIds.includes(id)
+    );
+    if (invalidItems.length > 0) {
+      throw new ValidationError(
+        `Assigned items ${invalidItems.join(
+          ', '
+        )} do not belong to this request`
+      );
+    }
+
     // Update match status and assigned items
     const assignedItemIds = validatedData.assignedItems.map(
       id => new mongoose.Types.ObjectId(id)
     );
-    return await this.matchRepo.update(matchId, {
-      status: 'claimed' as MatchStatus,
+    const updatePayload: Partial<IMatch> = {
+      status: MatchStatus.Claimed,
       assignedItems: assignedItemIds,
-    } as any);
+    };
+    return await this.matchRepo.update(matchId, updatePayload);
   }
 
   async approveMatch(
@@ -126,9 +145,10 @@ export class MatchService {
       throw new Error('Match must be claimed before approval');
     }
 
-    return await this.matchRepo.update(matchId, {
-      status: 'approved' as MatchStatus,
-    } as any);
+    const updatePayload: Partial<IMatch> = {
+      status: MatchStatus.Approved,
+    };
+    return await this.matchRepo.update(matchId, updatePayload);
   }
 
   async rejectMatch(
@@ -151,9 +171,10 @@ export class MatchService {
       throw new Error('Unauthorized to reject this match');
     }
 
-    return await this.matchRepo.update(matchId, {
-      status: 'rejected' as MatchStatus,
-    } as any);
+    const updatePayload: Partial<IMatch> = {
+      status: MatchStatus.Rejected,
+    };
+    return await this.matchRepo.update(matchId, updatePayload);
   }
 
   async completeMatch(
@@ -174,9 +195,10 @@ export class MatchService {
       throw new Error('Match must be approved before completion');
     }
 
-    return await this.matchRepo.update(matchId, {
-      status: 'completed' as MatchStatus,
-    } as any);
+    const updatePayload: Partial<IMatch> = {
+      status: MatchStatus.Completed,
+    };
+    return await this.matchRepo.update(matchId, updatePayload);
   }
 
   async getMatchesByRequest(
@@ -203,15 +225,19 @@ export class MatchService {
     }
 
     // Calculate total weight of assigned items
-    let totalWeight = 0;
-    for (const itemId of assignedItemIds) {
-      const item = await this.bagItemRepo.findById(
-        new mongoose.Types.ObjectId(itemId)
-      );
-      if (item) {
-        totalWeight += item.weightKg * item.quantity;
-      }
+    const assignedItemObjectIds = assignedItemIds.map(
+      id => new mongoose.Types.ObjectId(id)
+    );
+    const items = await this.bagItemRepo.findByIds(
+      assignedItemObjectIds.map(id => id.toString())
+    );
+    if (items.length !== assignedItemIds.length) {
+      throw new Error('Some assigned items not found');
     }
+    const totalWeight = items.reduce(
+      (sum, item) => sum + item.weightKg * item.quantity,
+      0
+    );
 
     // Check if fits in available capacity
     const fitsCarryOn = totalWeight <= trip.availableCarryOnKg;

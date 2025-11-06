@@ -25,6 +25,8 @@ export interface IUser extends Document {
   phone?: string;
   country?: string;
   profileImage?: string;
+  rating?: number;
+  maxRating?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,6 +78,16 @@ const userSchema = new Schema<IUser, IUserModel>(
     profileImage: {
       type: String,
       trim: true,
+    },
+    rating: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    maxRating: {
+      type: Number,
+      min: 1,
+      default: 5,
     },
   },
   {
