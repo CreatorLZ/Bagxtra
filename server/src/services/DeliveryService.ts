@@ -184,13 +184,6 @@ export class DeliveryService {
     return pin;
   }
 
-  private verifyPin(providedPin: string): boolean {
-    // In a real implementation, you would compare against stored PIN
-    // For now, accept any 5-digit PIN for simulation
-    // later addition. implementation for stored pins added already check the codebase for integration
-    return /^\d{5}$/.test(providedPin);
-  }
-
   async resendVerificationPin(
     matchId: mongoose.Types.ObjectId,
     travelerId: mongoose.Types.ObjectId
