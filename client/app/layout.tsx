@@ -31,21 +31,7 @@ export default function RootLayout({
     <html lang='en'>
       <body className={`${manrope.variable} antialiased`}>
         <ClerkProvider>
-          <QueryProvider>
-            {/* <header className='flex justify-between items-center p-4 bg-white border-b'>
-              <h1 className='text-xl font-bold'>BagXtra</h1>
-              <SignedOut>
-                <div className='flex gap-2'>
-                  <SignInButton />
-                  <SignUpButton />
-                </div>
-              </SignedOut>
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
-            </header> */}
-            {children}
-          </QueryProvider>
+          <QueryProvider>{children}</QueryProvider>
         </ClerkProvider>
       </body>
     </html>

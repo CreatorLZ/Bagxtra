@@ -1,7 +1,7 @@
 'use client';
 
 import { useShopperDashboardData } from '@/hooks/dashboard/useShopperDashboardData';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { Package, ChevronRight, MapPin, ShoppingBagIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -61,26 +61,60 @@ export default function ShopperDashboardPage() {
             </div>
 
             {/* Traveler Avatars */}
-            <div className='hidden md:flex flex-col space-y-2'>
-              <div className='flex -space-x-2'>
-                {[1, 2].map(i => (
-                  <div
-                    key={i}
-                    className='w-12 h-12 rounded-lg bg-white/20 border-2 border-white flex items-center justify-center text-xs font-semibold'
-                  >
-                    T{i}
-                  </div>
-                ))}
+            {/* Traveler Avatars - Staggered Layout */}
+            <div className='hidden md:block relative w-48 h-64'>
+              {/* Top Right */}
+              <div className='absolute top-0 right-0 w-16 h-16 rounded-2xl overflow-hidden border-3 border-white shadow-lg'>
+                <img
+                  src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop'
+                  alt='Traveler 1'
+                  className='w-full h-full object-cover'
+                />
               </div>
-              <div className='flex -space-x-2'>
-                {[3, 4].map(i => (
-                  <div
-                    key={i}
-                    className='w-12 h-12 rounded-lg bg-white/20 border-2 border-white flex items-center justify-center text-xs font-semibold'
-                  >
-                    T{i}
-                  </div>
-                ))}
+
+              {/* Middle Left */}
+              <div className='absolute top-12 left-0 w-16 h-16 rounded-2xl overflow-hidden border-3 border-white shadow-lg'>
+                <img
+                  src='https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop'
+                  alt='Traveler 2'
+                  className='w-full h-full object-cover'
+                />
+              </div>
+
+              {/* Middle Center */}
+              <div className='absolute top-20 right-8 w-16 h-16 rounded-2xl overflow-hidden border-3 border-white shadow-lg'>
+                <img
+                  src='https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=crop'
+                  alt='Traveler 3'
+                  className='w-full h-full object-cover'
+                />
+              </div>
+
+              {/* Lower Left */}
+              <div className='absolute bottom-18 left-4 w-16 h-16 rounded-2xl overflow-hidden border-3 border-white shadow-lg'>
+                <img
+                  src='https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop'
+                  alt='Traveler 4'
+                  className='w-full h-full object-cover'
+                />
+              </div>
+
+              {/* Bottom Right */}
+              <div className='absolute bottom-8 right-0 w-16 h-16 rounded-2xl overflow-hidden border-3 border-white shadow-lg'>
+                <img
+                  src='https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop'
+                  alt='Traveler 5'
+                  className='w-full h-full object-cover'
+                />
+              </div>
+
+              {/* Bottom Center */}
+              <div className='absolute bottom-0 left-8 w-16 h-16 rounded-2xl overflow-hidden border-3 border-white shadow-lg'>
+                <img
+                  src='https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop'
+                  alt='Traveler 6'
+                  className='w-full h-full object-cover'
+                />
               </div>
             </div>
           </div>

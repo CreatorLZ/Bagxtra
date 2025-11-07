@@ -131,3 +131,24 @@ body {
   height: 2.5rem; /* or 48px */
   width: 2.5rem;
 }
+/* Force Clerk UserProfile to fill container width */
+.cl-rootBox,
+.cl-card,
+.cl-userProfile-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+
+.cl-profilePage,
+.cl-profileSection {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Ensure the main content area expands */
+.cl-profilePage__main {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 !important;
+}

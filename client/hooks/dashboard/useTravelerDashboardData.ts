@@ -1,110 +1,94 @@
-import { useQuery } from '@tanstack/react-query';
-import { TravelerDashboardData } from '@/types/dashboard';
+import { useState, useEffect } from 'react';
 
-const mockTravelerData: TravelerDashboardData = {
-  metrics: [
-    {
-      title: 'Total Trips',
-      value: 47,
-      trend: { direction: 'up', percentage: 15.2 },
-    },
-    {
-      title: 'Earnings',
-      value: '$2,850',
-      trend: { direction: 'up', percentage: 8.7 },
-    },
-    {
-      title: 'Shipments Delivered',
-      value: 156,
-      trend: { direction: 'up', percentage: 12.1 },
-    },
-  ],
-  earnings: {
-    total: 12850,
-    trend: { direction: 'up', percentage: 8.7 },
-    monthly: [
-      { month: 'Jan', amount: 950 },
-      { month: 'Feb', amount: 1100 },
-      { month: 'Mar', amount: 1250 },
-      { month: 'Apr', amount: 1400 },
-      { month: 'May', amount: 1600 },
-      { month: 'Jun', amount: 1800 },
-      { month: 'Jul', amount: 1950 },
-      { month: 'Aug', amount: 2100 },
-      { month: 'Sep', amount: 1850 },
-      { month: 'Oct', amount: 2200 },
-      { month: 'Nov', amount: 2400 },
-      { month: 'Dec', amount: 2550 },
-    ],
-  },
-  tripAnalytics: [
-    { name: 'Mon', value: 12 },
-    { name: 'Tue', value: 15 },
-    { name: 'Wed', value: 8 },
-    { name: 'Thu', value: 18 },
-    { name: 'Fri', value: 22 },
-    { name: 'Sat', value: 25 },
-    { name: 'Sun', value: 20 },
-  ],
-  recentActivities: [
-    {
-      id: '1',
-      description: 'Trip completed from Lagos to Abuja',
-      timestamp: '2 hours ago',
-      type: 'success',
-    },
-    {
-      id: '2',
-      description: 'Shipment delivered to customer in Port Harcourt',
-      timestamp: '4 hours ago',
-      type: 'info',
-    },
-    {
-      id: '3',
-      description: 'New trip request matched',
-      timestamp: '6 hours ago',
-      type: 'info',
-    },
-    {
-      id: '4',
-      description: 'Payment received for completed trip',
-      timestamp: '1 day ago',
-      type: 'success',
-    },
-    {
-      id: '5',
-      description: 'Trip rating received: 5 stars',
-      timestamp: '2 days ago',
-      type: 'success',
-    },
-  ],
-  quickActions: [
-    {
-      label: 'Start New Trip',
-      onClick: () => console.log('Start new trip'),
-    },
-    {
-      label: 'View Available Requests',
-      onClick: () => console.log('View requests'),
-      variant: 'outline',
-    },
-    {
-      label: 'Update Profile',
-      onClick: () => console.log('Update profile'),
-      variant: 'secondary',
-    },
-    {
-      label: 'Contact Support',
-      onClick: () => console.log('Contact support'),
-      variant: 'ghost',
-    },
-  ],
-};
-
-export function useTravelerDashboardData() {
-  return useQuery<TravelerDashboardData>({
-    queryKey: ['traveler-dashboard'],
-    queryFn: () => Promise.resolve(mockTravelerData),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+interface TravelerDashboardData {
+  activeTrips: number;
+  pendingRequests: number;
+  earningsThisMonth: number;
+  totalEarnings: number;
+  upcomingTrips: Array<{
+    id: string;
+    destination: string;
+    departureDate: string;
+    returnDate: string;
+    status: 'upcoming' | 'active' | 'completed';
+  }>;
+  recentRequests: Array<{
+    id: string;
+    shopperName: string;
+    item: string;
+    destination: string;
+    reward: number;
+    status: 'pending' | 'accepted' | 'delivered';
+  }>;
 }
+
+export const useTravelerDashboardData = () => {
+  const [data, setData] = useState<TravelerDashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        // TODO: Replace with actual API call
+        // const response = await fetch('/api/traveler/dashboard');
+        // const data = await response.json();
+
+        // Mock data for now
+        const mockData: TravelerDashboardData = {
+          activeTrips: 2,
+          pendingRequests: 5,
+          earningsThisMonth: 1250.0,
+          totalEarnings: 8750.0,
+          upcomingTrips: [
+            {
+              id: '1',
+              destination: 'London, UK',
+              departureDate: '2024-12-15',
+              returnDate: '2024-12-30',
+              status: 'upcoming',
+            },
+            {
+              id: '2',
+              destination: 'New York, USA',
+              departureDate: '2025-01-10',
+              returnDate: '2025-01-25',
+              status: 'upcoming',
+            },
+          ],
+          recentRequests: [
+            {
+              id: '1',
+              shopperName: 'John Doe',
+              item: 'iPhone 15 Pro',
+              destination: 'London, UK',
+              reward: 150.0,
+              status: 'pending',
+            },
+            {
+              id: '2',
+              shopperName: 'Jane Smith',
+              item: 'MacBook Air',
+              destination: 'New York, USA',
+              reward: 200.0,
+              status: 'accepted',
+            },
+          ],
+        };
+
+        setData(mockData);
+        setError(null);
+      } catch (err) {
+        setError('Failed to load dashboard data');
+        console.error('Error fetching traveler dashboard data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  return { data, isLoading, error };
+};

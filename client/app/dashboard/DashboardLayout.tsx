@@ -23,20 +23,66 @@ import {
   MapPin,
   User,
   ShoppingBag,
+  Plane,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRole } from '@/hooks/useRole';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const navigationItems = [
-  { name: 'Home', href: '/dashboard', icon: HomeIcon },
-  { name: 'Track', href: '/dashboard/shipments', icon: MapPinCheck },
-  { name: 'Orders', href: '/dashboard/matches', icon: Package },
-  { name: 'Profile', href: '/dashboard/wallet', icon: User },
-  // { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
-];
+// Role-specific navigation items
+const getNavigationItems = (role: string | null) => {
+  const baseItems = [
+    { name: 'Home', href: '/dashboard', icon: HomeIcon },
+    { name: 'Profile', href: '/dashboard/profile', icon: User },
+  ];
+
+  switch (role) {
+    case 'traveler':
+      return [
+        { name: 'Home', href: '/dashboard', icon: HomeIcon },
+        { name: 'Orders', href: '/dashboard/orders', icon: Package },
+        { name: 'Trips', href: '/dashboard/trips', icon: Plane },
+        { name: 'Wallet', href: '/dashboard/wallet', icon: Wallet },
+        { name: 'Profile', href: '/dashboard/profile', icon: User },
+      ];
+    case 'shopper':
+      return [
+        { name: 'Home', href: '/dashboard', icon: HomeIcon },
+        { name: 'Track', href: '/dashboard/shipments', icon: MapPinCheck },
+        { name: 'Orders', href: '/dashboard/orders', icon: Package },
+        { name: 'Profile', href: '/dashboard/profile', icon: User },
+      ];
+    case 'vendor':
+      return [
+        { name: 'Home', href: '/dashboard', icon: HomeIcon },
+        { name: 'Services', href: '/dashboard/services', icon: Package },
+        { name: 'Orders', href: '/dashboard/orders', icon: Package },
+        {
+          name: 'Analytics',
+          href: '/dashboard/analytics',
+          icon: LayoutDashboard,
+        },
+        { name: 'Profile', href: '/dashboard/profile', icon: User },
+      ];
+    case 'admin':
+      return [
+        { name: 'Home', href: '/dashboard', icon: HomeIcon },
+        { name: 'Users', href: '/dashboard/users', icon: Users },
+        { name: 'System', href: '/dashboard/system', icon: Settings },
+        {
+          name: 'Analytics',
+          href: '/dashboard/analytics',
+          icon: LayoutDashboard,
+        },
+        { name: 'Profile', href: '/dashboard/profile', icon: User },
+      ];
+    default:
+      return baseItems;
+  }
+};
 
 const generalItems = [
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
@@ -48,8 +94,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const { user } = useUser();
+  const { role } = useRole();
   const [bagCount] = useState(3); // Example count, replace with actual data
   const [notificationCount] = useState(5); // Example count, replace with actual data
+
+  const navigationItems = getNavigationItems(role);
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -66,7 +115,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div
         className={cn(
           'fixed top-0 left-0 h-screen z-50 w-64 shadow-sm border-r border-gray-100 transform transition-all duration-300 ease-in-out lg:translate-x-0',
-          // We removed bg-white and added the gradient classes here:
           'bg-linear-to-t from-gray-50 to-white',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
@@ -96,8 +144,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   (item.name === 'Home' &&
                     pathname.startsWith('/dashboard') &&
                     !pathname.includes('/shipments') &&
-                    !pathname.includes('/matches') &&
-                    !pathname.includes('/wallet') &&
+                    !pathname.includes('/orders') &&
+                    !pathname.includes('/profile') &&
                     !pathname.includes('/settings') &&
                     !pathname.includes('/help'));
                 return (

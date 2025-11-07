@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import DashboardLayout from '@/app/dashboard/DashboardLayout';
 
 import {
   Loader2,

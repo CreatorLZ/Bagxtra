@@ -151,19 +151,42 @@ export const getAccessibleRoutes = (role: UserRole): string[] => {
   const routes: string[] = [];
 
   if (canAccessShopper(role)) {
-    routes.push('/dashboard', '/orders', '/requests');
+    routes.push(
+      '/dashboard',
+      '/dashboard/orders',
+      '/dashboard/shipments',
+      '/dashboard/profile'
+    );
   }
 
   if (canAccessTraveler(role)) {
-    routes.push('/trips', '/offers');
+    routes.push(
+      '/dashboard',
+      '/dashboard/orders',
+      '/dashboard/trips',
+      '/dashboard/wallet',
+      '/dashboard/profile'
+    );
   }
 
   if (canAccessVendor(role)) {
-    routes.push('/services', '/vendor-orders');
+    routes.push(
+      '/dashboard',
+      '/dashboard/services',
+      '/dashboard/orders',
+      '/dashboard/analytics',
+      '/dashboard/profile'
+    );
   }
 
   if (canAccessAdmin(role)) {
-    routes.push('/admin', '/admin/users', '/admin/system');
+    routes.push(
+      '/dashboard',
+      '/dashboard/users',
+      '/dashboard/system',
+      '/dashboard/analytics',
+      '/dashboard/profile'
+    );
   }
 
   return routes;
