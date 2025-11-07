@@ -127,3 +127,7 @@ body {
     @apply bg-background text-foreground;
   }
 }
+.cl-userButtonAvatarBox {
+  height: 2.5rem; /* or 48px */
+  width: 2.5rem;
+}

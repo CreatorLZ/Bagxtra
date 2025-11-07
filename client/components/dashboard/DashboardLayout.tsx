@@ -1,0 +1,281 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { UserButton, useUser } from '@clerk/nextjs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  Wallet,
+  MessageSquare,
+  Settings,
+  Bell,
+  Search,
+  Menu,
+  HelpCircle,
+  LogOut,
+  HomeIcon,
+  MapPinCheck,
+  MapPin,
+  User,
+  ShoppingBag,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+}
+
+const navigationItems = [
+  { name: 'Home', href: '/dashboard', icon: HomeIcon },
+  { name: 'Track', href: '/dashboard/shipments', icon: MapPinCheck },
+  { name: 'Orders', href: '/dashboard/matches', icon: Package },
+  { name: 'Profile', href: '/dashboard/wallet', icon: User },
+  // { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
+];
+
+const generalItems = [
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { name: 'Help', href: '/dashboard/help', icon: HelpCircle },
+  { name: 'Logout', href: '/logout', icon: LogOut },
+];
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  const { user } = useUser();
+  const [bagCount] = useState(3); // Example count, replace with actual data
+  const [notificationCount] = useState(5); // Example count, replace with actual data
+
+  return (
+    <div className='min-h-screen bg-gray-50'>
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className='fixed inset-0 z-40 bg-black/20 lg:hidden'
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      {/* Sidebar */}
+      <div
+        className={cn(
+          'fixed top-0 left-0 h-screen z-50 w-64 shadow-sm border-r border-gray-100 transform transition-all duration-300 ease-in-out lg:translate-x-0',
+          // We removed bg-white and added the gradient classes here:
+          'bg-linear-to-t from-gray-50 to-white',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className='flex flex-col h-full '>
+          {/* Logo/Brand */}
+          <div className='flex items-center px-6 h-16 border-b border-gray-100'>
+            <div className='flex items-center space-x-2'>
+              {/* <div className='w-8 h-8 bg-purple-900 rounded-lg flex items-center justify-center'>
+                <span className='text-white text-lg font-bold'>B</span>
+              </div> */}
+              <h1 className='text-xl font-bold text-purple-900'>BagXtra</h1>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className='flex-1 px-0 py-6 overflow-y-auto'>
+            <div className='space-y-1'>
+              <div className='px-3 mb-2 ml-3'>
+                <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider'>
+                  MENU
+                </p>
+              </div>
+              {navigationItems.map(item => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.name === 'Home' &&
+                    pathname.startsWith('/dashboard') &&
+                    !pathname.includes('/shipments') &&
+                    !pathname.includes('/matches') &&
+                    !pathname.includes('/wallet') &&
+                    !pathname.includes('/settings') &&
+                    !pathname.includes('/help'));
+                return (
+                  <div key={item.name} className='relative'>
+                    {isActive && (
+                      <div className='absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-purple-900 rounded-r-full' />
+                    )}
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        'flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 group',
+                        isActive
+                          ? ' text-purple-900 font-semibold'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      )}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon
+                        className={cn(
+                          'mr-3 ml-3 h-5 w-5',
+                          isActive
+                            ? 'text-purple-900'
+                            : 'text-gray-400 group-hover:text-gray-600'
+                        )}
+                      />
+                      {item.name}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* General Section */}
+            <div className='mt-8 space-y-1'>
+              <div className='px-3 mb-2 ml-3'>
+                <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider'>
+                  GENERAL
+                </p>
+              </div>
+              {generalItems.map(item => {
+                const isActive = pathname === item.href;
+                return (
+                  <div key={item.name} className='relative'>
+                    {isActive && (
+                      <div className='absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-purple-900 rounded-r-full' />
+                    )}
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        'flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 group',
+                        isActive
+                          ? 'bg-purple-900 text-white shadow-sm'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      )}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon
+                        className={cn(
+                          'mr-3 ml-3 h-5 w-5',
+                          isActive
+                            ? 'text-purple-900'
+                            : 'text-gray-400 group-hover:text-gray-600'
+                        )}
+                      />
+                      {item.name}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </nav>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className='h-screen lg:ml-64 flex flex-col bg-white'>
+        {/* Top navbar */}
+        <div className='sticky top-0 z-40 bg-white border-b border-gray-100'>
+          <div className='flex items-center justify-between bg-gray-50 m-2 rounded-lg h-16 px-4 sm:px-6 lg:px-8'>
+            {/* Mobile menu button */}
+            <Button
+              variant='ghost'
+              size='sm'
+              className='lg:hidden hover:bg-gray-100'
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className='h-5 w-5' />
+            </Button>
+
+            {/* Greeting and Location */}
+            <div className='flex-1 max-w-md mx-4'>
+              <div className='flex flex-col'>
+                <div className='text-sm font-medium text-gray-900'>
+                  Hello, {user?.firstName || 'User'}
+                </div>
+                <div className='flex items-center text-xs text-purple-900 mt-1'>
+                  <MapPin className='h-4 w-4 mr-1' />
+                  Lagos, Nigeria
+                </div>
+              </div>
+            </div>
+
+            {/* Right side */}
+            <div className='flex items-center space-x-3'>
+              {/* Bag */}
+
+              <Button
+                variant='ghost'
+                size='sm'
+                className='relative rounded-full bg-white shadow-md hover:bg-gray-100'
+              >
+                <ShoppingBag className='h-6 w-6 text-gray-600' />
+                {bagCount > 0 && (
+                  <span className='absolute -top-1 -right-1 bg-purple-900 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center'>
+                    {bagCount > 9 ? '9+' : bagCount}
+                  </span>
+                )}
+              </Button>
+              {/* Notifications */}
+              <Button
+                variant='ghost'
+                size='sm'
+                className='relative bg-white rounded-full shadow-md hover:bg-gray-100 mr-7'
+              >
+                <Bell className='h-6 w-6 text-gray-600' />
+                {notificationCount > 0 && (
+                  <span className='absolute -top-1 -right-1 bg-purple-900 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center'>
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
+              </Button>
+
+              {/* User info and button */}
+              <div className='flex items-center space-x-3'>
+                <div className='flex items-center'>
+                  <UserButton
+                    afterSignOutUrl='/'
+                    appearance={{
+                      baseTheme: undefined,
+                      variables: {
+                        borderRadius: '8px',
+                      },
+                      elements: {
+                        userButtonAvatarBox: 'h-12 w-12',
+                        userButtonTrigger: 'h-12 w-12',
+                        userButtonPopoverFooter: {
+                          display: 'none',
+                        },
+                      },
+                    }}
+                  />
+                </div>
+                <div className='hidden md:flex flex-col '>
+                  <span className='text-sm font-medium text-gray-900'>
+                    {user?.fullName ||
+                      user?.firstName + ' ' + user?.lastName ||
+                      'User'}
+                  </span>
+                  <span className='text-xs text-gray-500'>
+                    {user?.primaryEmailAddress?.emailAddress ||
+                      user?.emailAddresses?.[0]?.emailAddress ||
+                      ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Page content */}
+        <main className='flex-1 overflow-y-auto bg-gray-50 m-2 rounded-lg'>
+          <div className='py-8'>
+            <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+              {children}
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

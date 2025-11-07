@@ -10,10 +10,23 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import DashboardLayout from '@/components/dashboard/DashboardLayout';
 
-import { Loader2, User, Mail, MapPin, Phone, LogOut } from 'lucide-react';
+import {
+  Loader2,
+  User,
+  Mail,
+  MapPin,
+  Phone,
+  LogOut,
+  ShoppingBag,
+  Plane,
+  Store,
+  Shield,
+} from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { redirect } from 'next/navigation';
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useUser();
@@ -51,38 +64,50 @@ export default function DashboardPage() {
     signOut();
   };
 
-  return (
-    <div className='min-h-screen bg-gray-50 py-8 px-4'>
-      <div className='max-w-4xl mx-auto space-y-6'>
-        {/* Header with User Widget */}
-        <div className='flex items-center justify-between'>
-          <div>
-            <h1 className='text-3xl font-bold text-gray-900'>Dashboard</h1>
-            <p className='text-gray-600'>Welcome to BagXtra</p>
-          </div>
+  // Redirect to role-specific dashboard
+  if (user?.role) {
+    switch (user.role) {
+      case 'traveler':
+        redirect('/dashboard/traveler');
+        break;
+      case 'shopper':
+        redirect('/dashboard/shopper');
+        break;
+      case 'vendor':
+        redirect('/dashboard/vendor');
+        break;
+      case 'admin':
+        redirect('/dashboard/admin');
+        break;
+      default:
+        // Render default dashboard for unknown roles
+        break;
+    }
+  }
 
-          {/* User Widget */}
-          <div className='flex items-center space-x-4'>
-            <div className='text-right'>
-              <p className='text-sm font-medium text-gray-900'>
-                {user?.fullName}
-              </p>
-              <p className='text-xs text-gray-500'>{user?.email}</p>
-            </div>
-            <div className='flex items-center space-x-2'>
-              <UserButton afterSignOutUrl='/' />
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={handleSignOut}
-                className='flex items-center space-x-2'
-              >
-                <LogOut className='h-4 w-4' />
-                <span>Sign Out</span>
-              </Button>
-            </div>
-          </div>
+  return (
+    <DashboardLayout>
+      <div className='space-y-6'>
+        {/* Header */}
+        <div>
+          <h1 className='text-3xl font-bold text-gray-900'>Dashboard</h1>
+          <p className='text-gray-600'>Welcome back, {user?.fullName}</p>
         </div>
+
+        {/* Default dashboard for unknown roles */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome to BagXtra</CardTitle>
+            <CardDescription>
+              Your role-specific dashboard will be displayed here
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className='text-gray-600'>
+              Please contact support if you believe this is an error.
+            </p>
+          </CardContent>
+        </Card>
 
         {/* User Profile Card */}
         <Card>
@@ -183,6 +208,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
