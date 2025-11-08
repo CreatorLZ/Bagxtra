@@ -37,6 +37,9 @@ const env = {
 const app = express();
 const PORT = env.PORT;
 
+// Trust proxy for rate limiting (important for production and development)
+app.set('trust proxy', 1);
+
 // Module-scoped server variable
 let server: http.Server | undefined;
 
@@ -103,6 +106,7 @@ app.get('/health', (_req: express.Request, res: express.Response) => {
 });
 // Import routes
 import authRoutes from './routes/auth.js';
+import adminRoutes from './routes/admin.js';
 import { registerUser } from './controllers/authController.js';
 
 // API routes
@@ -118,6 +122,9 @@ app.get('/api', (_req: express.Request, res: express.Response) => {
 // Auth routes
 app.use('/api/auth', authRoutes);
 
+// Admin routes
+app.use('/api/admin', adminRoutes);
+
 // Webhook routes (separate route to match Clerk docs)
 app.post(
   '/api/webhooks',
@@ -125,16 +132,56 @@ app.post(
   registerUser
 );
 
-// MongoDB connection
-const connectDB = async (): Promise<void> => {
-  try {
-    const mongoUri = env.MONGODB_URI;
-    await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB');
-  } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
-    // Don't exit for demo purposes, just log
-    console.log('⚠️  Continuing without MongoDB for demo');
+// MongoDB connection with retry logic
+const connectDB = async (retries = 3): Promise<void> => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const mongoUri = env.MONGODB_URI;
+      console.log(
+        `🔄 Attempting MongoDB connection (attempt ${attempt}/${retries})...`
+      );
+
+      await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+        socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+        bufferCommands: false, // Disable mongoose buffering
+      });
+
+      console.log('✅ Connected to MongoDB successfully');
+
+      // Handle connection events
+      mongoose.connection.on('error', err => {
+        console.error('❌ MongoDB connection error:', err);
+      });
+
+      mongoose.connection.on('disconnected', () => {
+        console.log('⚠️  MongoDB disconnected');
+      });
+
+      mongoose.connection.on('reconnected', () => {
+        console.log('✅ MongoDB reconnected');
+      });
+
+      return;
+    } catch (error) {
+      console.error(`❌ MongoDB connection attempt ${attempt} failed:`, error);
+
+      if (attempt === retries) {
+        console.error('❌ All MongoDB connection attempts failed');
+        console.log(
+          '⚠️  Server will continue but database operations will fail'
+        );
+        console.log(
+          '💡 Make sure MongoDB is running and connection string is correct'
+        );
+        return;
+      }
+
+      // Wait before retrying
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+      console.log(`⏳ Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
 };
 
@@ -147,12 +194,62 @@ app.use(
     _next: express.NextFunction
   ) => {
     console.error('Error:', err.stack);
+
+    // Handle custom error types
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: err.message,
+        code: 'VALIDATION_ERROR',
+        field: (err as any).field,
+      });
+    }
+
+    if (err.name === 'BadRequestError') {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: err.message,
+        code: 'BAD_REQUEST',
+      });
+    }
+
+    if (err.name === 'NotFoundError') {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: err.message,
+        code: 'NOT_FOUND',
+      });
+    }
+
+    if (err.name === 'UnauthorizedError' || err.name === 'AuthRequiredError') {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: err.message,
+        code: (err as any).code || 'UNAUTHORIZED',
+      });
+    }
+
+    if (
+      err.name === 'ForbiddenError' ||
+      err.name === 'InsufficientPermissionsError' ||
+      err.name === 'InvalidRoleError'
+    ) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: err.message,
+        code: (err as any).code || 'FORBIDDEN',
+        details: (err as any).details,
+      });
+    }
+
+    // Default error response
     res.status(500).json({
       error: 'Internal Server Error',
       message:
         process.env['NODE_ENV'] === 'development'
           ? err.message
           : 'Something went wrong',
+      code: 'INTERNAL_ERROR',
     });
   }
 );

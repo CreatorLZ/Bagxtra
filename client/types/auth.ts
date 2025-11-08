@@ -109,3 +109,36 @@ export type AuthFlowAction =
   | { type: 'SET_ROLE'; payload: UserRole | null }
   | { type: 'SET_TRANSITIONING'; payload: boolean }
   | { type: 'RESET_FLOW' };
+
+/**
+ * Role Management API Types
+ */
+
+/**
+ * Request payload for updating user role
+ */
+export interface UpdateUserRoleRequest {
+  role: UserRole;
+}
+
+/**
+ * Response from updating user role
+ */
+export interface UpdateUserRoleResponse {
+  message: string;
+  user: {
+    id: string;
+    email: string;
+    role: UserRole;
+  };
+}
+
+/**
+ * Error response structure
+ */
+export interface ApiError {
+  error: string;
+  message: string;
+  code?: string;
+  details?: any[];
+}

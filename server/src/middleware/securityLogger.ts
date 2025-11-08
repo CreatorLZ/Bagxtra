@@ -191,11 +191,90 @@ export const logAuthEvent = (type: SecurityEventType) => {
       details: {
         statusCode: res.statusCode,
         responseTime: Date.now() - (req as any)._startTime || 0,
+        userAgent: req.get('User-Agent'),
+        referer: req.get('Referer'),
       },
     });
 
     next();
   };
+};
+
+/**
+ * Middleware to log unauthorized access attempts with enhanced details
+ */
+export const logUnauthorizedAccess = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const logger = SecurityLogger.getInstance();
+
+  // Extract user info from request
+  const user = (req as any).user;
+  const userId = user?.id;
+  const clerkId = user?.clerkId;
+  const email = user?.email;
+
+  logger.log({
+    type: SecurityEventType.UNAUTHORIZED_ACCESS,
+    userId,
+    clerkId,
+    email,
+    req,
+    details: {
+      attemptedEndpoint: req.path,
+      method: req.method,
+      userAgent: req.get('User-Agent'),
+      referer: req.get('Referer'),
+      queryParams: req.query,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
+      headers: {
+        authorization: req.headers.authorization ? 'present' : 'missing',
+        'x-forwarded-for': req.headers['x-forwarded-for'],
+        'x-real-ip': req.headers['x-real-ip'],
+      },
+    },
+  });
+
+  next();
+};
+
+/**
+ * Middleware to log forbidden access attempts with enhanced details
+ */
+export const logForbiddenAccess = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const logger = SecurityLogger.getInstance();
+
+  // Extract user info from request
+  const user = (req as any).user;
+  const userId = user?.id;
+  const clerkId = user?.clerkId;
+  const email = user?.email;
+
+  logger.log({
+    type: SecurityEventType.FORBIDDEN_ACCESS,
+    userId,
+    clerkId,
+    email,
+    req,
+    details: {
+      attemptedEndpoint: req.path,
+      method: req.method,
+      userRole: user?.role,
+      userAgent: req.get('User-Agent'),
+      referer: req.get('Referer'),
+      queryParams: req.query,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
+      timestamp: new Date().toISOString(),
+    },
+  });
+
+  next();
 };
 
 /**

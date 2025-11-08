@@ -33,7 +33,7 @@ import {
   Package,
 } from 'lucide-react';
 import Link from 'next/link';
-import { UserRole, STORAGE_KEYS } from '@/types/auth';
+import { UserRole, STORAGE_KEYS, VALID_USER_ROLES } from '@/types/auth';
 
 type FieldErrors = {
   [key: string]: string | undefined;
@@ -68,36 +68,39 @@ export default function RegisterPage() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const router = useRouter();
 
-  const [preSelectedRole, setPreSelectedRole] = useState<UserRole | null>(null);
-
-  useEffect(() => {
-    const savedRoleString = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
-    if (savedRoleString) {
-      const validRoles: UserRole[] = ['shopper', 'traveler', 'vendor'];
-      if (validRoles.includes(savedRoleString as UserRole)) {
-        setPreSelectedRole(savedRoleString as UserRole);
-      } else {
-        localStorage.removeItem(STORAGE_KEYS.SELECTED_ROLE);
+  // Initialize pre-selected role from localStorage
+  const [preSelectedRole, setPreSelectedRole] = useState<UserRole | null>(
+    () => {
+      const savedRoleString = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
+      if (
+        savedRoleString &&
+        VALID_USER_ROLES.includes(savedRoleString as UserRole)
+      ) {
+        return savedRoleString as UserRole;
       }
+      return null;
     }
-  }, []);
+  );
 
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: '',
-    country: '',
-    role: 'shopper' as UserRole,
+  // Initialize form data with pre-selected role if available
+  const [formData, setFormData] = useState(() => {
+    const savedRoleString = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
+    const initialRole =
+      savedRoleString && VALID_USER_ROLES.includes(savedRoleString as UserRole)
+        ? (savedRoleString as UserRole)
+        : ('shopper' as UserRole);
+
+    return {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      phone: '',
+      country: '',
+      role: initialRole,
+    };
   });
-
-  useEffect(() => {
-    if (preSelectedRole) {
-      setFormData(prev => ({ ...prev, role: preSelectedRole }));
-    }
-  }, [preSelectedRole]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
@@ -129,6 +132,12 @@ export default function RegisterPage() {
     if (!isLoaded) return;
 
     setErrors({});
+
+    // Validate role selection
+    if (!formData.role || !VALID_USER_ROLES.includes(formData.role)) {
+      setErrors({ general: 'Please select a valid role.' });
+      return;
+    }
 
     const passwordValidation = validatePassword(formData.password);
     if (!passwordValidation.isValid) {
@@ -181,6 +190,14 @@ export default function RegisterPage() {
             generalError = error.message;
           }
         });
+      } else if (err.message) {
+        // Handle role-related errors or other Clerk errors
+        if (err.message.includes('role') || err.message.includes('metadata')) {
+          generalError =
+            'There was an issue with role selection. Please try again.';
+        } else {
+          generalError = err.message;
+        }
       }
 
       setErrors(newErrors);
@@ -305,7 +322,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Right Side - Branded Content (MODIFIED) */}
-        <div className='hidden  lg:flex flex-1 bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex-col justify-between px-12 py-8 text-white relative overflow-y-hidden'>
+        <div className='hidden  lg:flex flex-1 bg-linear-to-br from-purple-900 via-purple-800 to-indigo-900 flex-col justify-between px-12 py-8 text-white relative overflow-y-hidden'>
           {/* Decorative elements (kept from your original code) */}
           <div className='absolute inset-0 bg-[url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")]'></div>
 

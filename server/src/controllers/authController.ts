@@ -1,7 +1,13 @@
 import { Request, Response } from 'express';
 import { User, VALID_USER_ROLES } from '../models/User.js';
+import { RoleAuditLog } from '../models/RoleAuditLog.js';
 import { z } from 'zod';
 import { verifyWebhook } from '@clerk/express/webhooks';
+import {
+  logAuthEvent,
+  SecurityEventType,
+} from '../middleware/securityLogger.js';
+import { createErrorResponse } from '../errors.js';
 
 // Validation schemas
 const updateUserSchema = z.object({
@@ -18,13 +24,17 @@ const registerUserSchema = z.object({
   clerkId: z.string().min(1),
   fullName: z.string().min(1).max(100),
   email: z.string().email(),
-  role: z.enum(['shopper', 'traveler', 'vendor', 'admin']).default('shopper'),
+  role: z.enum(VALID_USER_ROLES),
   phone: z
     .string()
     .regex(/^\+?[\d\s\-\(\)]+$/)
     .optional(),
   country: z.string().max(100).optional(),
   profileImage: z.string().url().optional(),
+});
+
+const updateRoleSchema = z.object({
+  role: z.enum(VALID_USER_ROLES),
 });
 
 /**
@@ -53,13 +63,31 @@ export const registerUser = async (
 
     // Extract and map data from Clerk's nested payload
     const clerkData = evt.data;
+
+    // Extract role from Clerk's unsafeMetadata
+    const roleFromMetadata = clerkData.unsafe_metadata?.['role'];
+    let role: string;
+    if (
+      roleFromMetadata &&
+      VALID_USER_ROLES.includes(roleFromMetadata as any)
+    ) {
+      role = roleFromMetadata as string;
+    } else {
+      console.warn(
+        `Invalid or missing role in Clerk metadata for user ${clerkData.id}: ${roleFromMetadata}. Defaulting to 'shopper'.`
+      );
+      role = 'shopper';
+      // Log this as a potential issue for monitoring
+      logAuthEvent(SecurityEventType.ROLE_CHANGED)(req, res, () => {});
+    }
+
     const userData = {
       clerkId: clerkData.id,
       fullName:
         `${clerkData.first_name || ''} ${clerkData.last_name || ''}`.trim() ||
         'Unknown User', // Fallback if names are missing
       email: clerkData.email_addresses?.[0]?.email_address || '',
-      role: 'shopper', // Default or derive based on your logic
+      role,
       phone: clerkData.phone_numbers?.[0]?.phone_number || undefined,
       country: undefined, // Clerk doesn't provide this by default; set based on your needs
       profileImage: clerkData.image_url || undefined,
@@ -100,19 +128,29 @@ export const registerUser = async (
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({
-        error: 'Validation Error',
-        message: 'Invalid input data',
-        details: error.issues,
-      });
+      res
+        .status(400)
+        .json(
+          createErrorResponse(
+            'Validation Error',
+            'Invalid input data',
+            'VALIDATION_ERROR',
+            error.issues
+          )
+        );
       return;
     }
 
     console.error('👤 Register user error:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to register user',
-    });
+    res
+      .status(500)
+      .json(
+        createErrorResponse(
+          'Internal Server Error',
+          'Failed to register user',
+          'INTERNAL_ERROR'
+        )
+      );
   }
 };
 
@@ -154,10 +192,15 @@ export const updateUserProfile = async (
 ): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      res
+        .status(401)
+        .json(
+          createErrorResponse(
+            'Unauthorized',
+            'User not authenticated',
+            'AUTH_REQUIRED'
+          )
+        );
       return;
     }
 
@@ -166,10 +209,11 @@ export const updateUserProfile = async (
     // Find and update user
     const user = await User.findById(req.user.id);
     if (!user) {
-      res.status(404).json({
-        error: 'Not Found',
-        message: 'User not found',
-      });
+      res
+        .status(404)
+        .json(
+          createErrorResponse('Not Found', 'User not found', 'USER_NOT_FOUND')
+        );
       return;
     }
 
@@ -195,19 +239,29 @@ export const updateUserProfile = async (
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({
-        error: 'Validation Error',
-        message: 'Invalid input data',
-        details: error.issues,
-      });
+      res
+        .status(400)
+        .json(
+          createErrorResponse(
+            'Validation Error',
+            'Invalid input data',
+            'VALIDATION_ERROR',
+            error.issues
+          )
+        );
       return;
     }
 
     console.error('👤 Update user profile error:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to update profile',
-    });
+    res
+      .status(500)
+      .json(
+        createErrorResponse(
+          'Internal Server Error',
+          'Failed to update profile',
+          'INTERNAL_ERROR'
+        )
+      );
   }
 };
 
@@ -244,10 +298,15 @@ export const getAllUsers = async (
   try {
     // Check authentication
     if (!req.user) {
-      res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      res
+        .status(401)
+        .json(
+          createErrorResponse(
+            'Unauthorized',
+            'User not authenticated',
+            'AUTH_REQUIRED'
+          )
+        );
       return;
     }
 
@@ -269,10 +328,15 @@ export const getAllUsers = async (
     if (pageStr) {
       const p = parseInt(pageStr, 10);
       if (isNaN(p) || p < 1) {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: 'Invalid page parameter',
-        });
+        res
+          .status(400)
+          .json(
+            createErrorResponse(
+              'Bad Request',
+              'Invalid page parameter',
+              'INVALID_PARAMETER'
+            )
+          );
         return;
       }
       page = p;
@@ -281,10 +345,15 @@ export const getAllUsers = async (
     if (limitStr) {
       const l = parseInt(limitStr, 10);
       if (isNaN(l) || l < 1 || l > 100) {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: 'Invalid limit parameter',
-        });
+        res
+          .status(400)
+          .json(
+            createErrorResponse(
+              'Bad Request',
+              'Invalid limit parameter',
+              'INVALID_PARAMETER'
+            )
+          );
         return;
       }
       limit = l;
@@ -313,10 +382,15 @@ export const getAllUsers = async (
     });
   } catch (error) {
     console.error('👤 Get all users error:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to get users',
-    });
+    res
+      .status(500)
+      .json(
+        createErrorResponse(
+          'Internal Server Error',
+          'Failed to get users',
+          'INTERNAL_ERROR'
+        )
+      );
   }
 };
 
@@ -330,19 +404,29 @@ export const updateUserRole = async (
   try {
     // Check authentication
     if (!req.user) {
-      res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      res
+        .status(401)
+        .json(
+          createErrorResponse(
+            'Unauthorized',
+            'User not authenticated',
+            'AUTH_REQUIRED'
+          )
+        );
       return;
     }
 
     // Check admin role
     if (req.user.role !== 'admin') {
-      res.status(403).json({
-        error: 'Forbidden',
-        message: 'Admin access required',
-      });
+      res
+        .status(403)
+        .json(
+          createErrorResponse(
+            'Forbidden',
+            'Admin access required',
+            'INSUFFICIENT_PERMISSIONS'
+          )
+        );
       return;
     }
 
@@ -352,40 +436,56 @@ export const updateUserRole = async (
     // TODO: Allow superadmin to bypass this guard when implemented
     // Prevent admin from changing their own role
     if (req.user.id.toString() === userId) {
-      res.status(403).json({
-        error: 'Forbidden',
-        message: 'Admins cannot modify their own role',
-      });
+      res
+        .status(403)
+        .json(
+          createErrorResponse(
+            'Forbidden',
+            'Admins cannot modify their own role',
+            'SELF_MODIFICATION_NOT_ALLOWED'
+          )
+        );
       return;
     }
 
     // Fetch target user to check their current role
     const targetUser = await User.findById(userId);
     if (!targetUser) {
-      res.status(404).json({
-        error: 'Not Found',
-        message: 'User not found',
-      });
+      res
+        .status(404)
+        .json(
+          createErrorResponse('Not Found', 'User not found', 'USER_NOT_FOUND')
+        );
       return;
     }
 
     // Prevent regular admins from modifying other admins
     // TODO: Allow superadmin to bypass this guard when implemented
     if (targetUser.role === 'admin') {
-      res.status(403).json({
-        error: 'Forbidden',
-        message: 'Regular admins cannot modify other admin roles',
-      });
+      res
+        .status(403)
+        .json(
+          createErrorResponse(
+            'Forbidden',
+            'Regular admins cannot modify other admin roles',
+            'ADMIN_MODIFICATION_NOT_ALLOWED'
+          )
+        );
       return;
     }
 
     // Use centralized VALID_USER_ROLES constant for consistent validation
     // This ensures runtime validation matches the UserRole type definition
     if (!VALID_USER_ROLES.includes(role)) {
-      res.status(400).json({
-        error: 'Validation Error',
-        message: 'Invalid role',
-      });
+      res
+        .status(400)
+        .json(
+          createErrorResponse(
+            'Validation Error',
+            'Invalid role',
+            'INVALID_ROLE'
+          )
+        );
       return;
     }
 
@@ -396,11 +496,35 @@ export const updateUserRole = async (
     );
 
     if (!user) {
-      res.status(404).json({
-        error: 'Not Found',
-        message: 'User not found',
-      });
+      res
+        .status(404)
+        .json(
+          createErrorResponse('Not Found', 'User not found', 'USER_NOT_FOUND')
+        );
       return;
+    }
+
+    // Create audit log entry for role change
+    try {
+      await RoleAuditLog.create({
+        userId: user._id,
+        changedBy: req.user.id,
+        oldRole: targetUser.role,
+        newRole: role,
+        timestamp: new Date(),
+        ip: req.ip || req.connection.remoteAddress || 'Unknown',
+        userAgent: req.get('User-Agent') || 'Unknown',
+        reason: 'Admin role update',
+        metadata: {
+          endpoint: req.path,
+          method: req.method,
+          adminEmail: req.user.email,
+          targetUserEmail: user.email,
+        },
+      });
+    } catch (auditError) {
+      console.error('Failed to create role audit log:', auditError);
+      // Don't fail the role update if audit logging fails
     }
 
     console.log(`👤 User role updated: ${user.email} -> ${role}`);
@@ -415,9 +539,172 @@ export const updateUserRole = async (
     });
   } catch (error) {
     console.error('👤 Update user role error:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to update user role',
+    res
+      .status(500)
+      .json(
+        createErrorResponse(
+          'Internal Server Error',
+          'Failed to update user role',
+          'INTERNAL_ERROR'
+        )
+      );
+  }
+};
+
+/**
+ * Update own role
+ */
+export const updateOwnRole = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    // Check authentication
+    if (!req.user) {
+      res
+        .status(401)
+        .json(
+          createErrorResponse(
+            'Unauthorized',
+            'User not authenticated',
+            'AUTH_REQUIRED'
+          )
+        );
+      return;
+    }
+
+    // Validate request body
+    const validatedData = updateRoleSchema.parse(req.body);
+    const { role } = validatedData;
+
+    // Find the current user
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      res
+        .status(404)
+        .json(
+          createErrorResponse('Not Found', 'User not found', 'USER_NOT_FOUND')
+        );
+      return;
+    }
+
+    // Prevent users from changing to admin role
+    if (role === 'admin' && user.role !== 'admin') {
+      res
+        .status(403)
+        .json(
+          createErrorResponse(
+            'Forbidden',
+            'Users cannot assign themselves admin role',
+            'ADMIN_ROLE_NOT_ALLOWED'
+          )
+        );
+      return;
+    }
+
+    // Prevent admins from changing their own role to non-admin
+    if (user.role === 'admin' && role !== 'admin') {
+      res
+        .status(403)
+        .json(
+          createErrorResponse(
+            'Forbidden',
+            'Admins cannot change their own role',
+            'ADMIN_ROLE_CHANGE_NOT_ALLOWED'
+          )
+        );
+      return;
+    }
+
+    // Check if role is actually changing
+    if (user.role === role) {
+      res
+        .status(400)
+        .json(
+          createErrorResponse(
+            'Bad Request',
+            'Role is already set to the requested value',
+            'ROLE_ALREADY_SET'
+          )
+        );
+      return;
+    }
+
+    // Store old role for logging
+    const oldRole = user.role;
+
+    // Update the role
+    user.role = role;
+    await user.save();
+
+    // Create audit log entry for self role change
+    try {
+      await RoleAuditLog.create({
+        userId: user._id,
+        changedBy: req.user.id, // Same as userId for self-change
+        oldRole,
+        newRole: role,
+        timestamp: new Date(),
+        ip: req.ip || req.connection.remoteAddress || 'Unknown',
+        userAgent: req.get('User-Agent') || 'Unknown',
+        reason: 'Self role update',
+        metadata: {
+          endpoint: req.path,
+          method: req.method,
+          userEmail: user.email,
+          isSelfChange: true,
+        },
+      });
+    } catch (auditError) {
+      console.error('Failed to create role audit log:', auditError);
+      // Don't fail the role update if audit logging fails
+    }
+
+    console.log(
+      `👤 User updated own role: ${user.email} (${oldRole} -> ${role})`
+    );
+
+    // Log the role change event
+    logAuthEvent(SecurityEventType.ROLE_CHANGED)(req, res, () => {});
+
+    res.json({
+      message: 'Role updated successfully',
+      user: {
+        id: user._id,
+        clerkId: user.clerkId,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        country: user.country,
+        profileImage: user.profileImage,
+        updatedAt: user.updatedAt,
+      },
     });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res
+        .status(400)
+        .json(
+          createErrorResponse(
+            'Validation Error',
+            'Invalid input data',
+            'VALIDATION_ERROR',
+            error.issues
+          )
+        );
+      return;
+    }
+
+    console.error('👤 Update own role error:', error);
+    res
+      .status(500)
+      .json(
+        createErrorResponse(
+          'Internal Server Error',
+          'Failed to update role',
+          'INTERNAL_ERROR'
+        )
+      );
   }
 };
