@@ -7,7 +7,7 @@ import {
   ApiError,
 } from '@/types/auth';
 import { useUser } from './useUser';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -43,7 +43,7 @@ export const useRoleManagement = () => {
   const [isOffline, setIsOffline] = useState(!isOnline());
 
   // Network status monitoring
-  useState(() => {
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const handleOnline = () => setIsOffline(false);
       const handleOffline = () => setIsOffline(true);
@@ -56,7 +56,7 @@ export const useRoleManagement = () => {
         window.removeEventListener('offline', handleOffline);
       };
     }
-  });
+  }, []);
 
   /**
    * Enhanced mutation function with retry logic
@@ -64,7 +64,7 @@ export const useRoleManagement = () => {
   const createRetryableMutationFn = useCallback(
     (endpoint: string, method: string = 'PUT') =>
       async (variables: { userId?: string; role: UserRole }) => {
-        if (isOffline) {
+        if (!isOnline()) {
           throw new Error(
             'You are currently offline. Please check your internet connection and try again.'
           );
@@ -139,7 +139,7 @@ export const useRoleManagement = () => {
 
         throw lastError || new Error('Request failed after all retries');
       },
-    [getToken, isOffline]
+    [getToken]
   );
 
   /**

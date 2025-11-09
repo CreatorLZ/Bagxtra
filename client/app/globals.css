@@ -10,6 +10,7 @@
   --color-purple-900: #3d1a3e;
   --color-purple-800: #542456;
   --font-sans: var(--font-manrope);
+  --font-space-grotesk: var(--font-space-grotesk);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -126,6 +127,10 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.font-space-grotesk {
+  font-family: var(--font-space-grotesk), sans-serif;
 }
 .cl-userButtonAvatarBox {
   height: 2.5rem; /* or 48px */

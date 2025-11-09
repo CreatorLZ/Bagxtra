@@ -85,12 +85,7 @@ export const authenticateToken = async (
     }
 
     // Find user in database with timeout protection
-    const user = await Promise.race([
-      User.findByClerkId(payload.sub),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Database query timeout')), 5000)
-      ),
-    ]);
+    const user = await User.findOne({ clerkId: payload.sub }).maxTimeMS(5000);
 
     if (!user) {
       console.warn(
@@ -123,11 +118,15 @@ export const authenticateToken = async (
     );
     logAuthEvent(SecurityEventType.AUTH_SUCCESS)(req, res, () => {});
     next();
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('🔐 Auth middleware error:', error);
 
     // Handle database timeout specifically
-    if (error instanceof Error && error.message === 'Database query timeout') {
+    if (
+      error instanceof Error &&
+      (error.name === 'MongoTimeoutError' ||
+        (error.name === 'MongooseError' && error.message.includes('timeout')))
+    ) {
       res.status(503).json({
         error: 'Service Unavailable',
         message: 'Service temporarily unavailable - please try again later',

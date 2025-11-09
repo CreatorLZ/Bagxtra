@@ -1,6 +1,12 @@
 'use client';
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, {
+  Component,
+  ErrorInfo,
+  ReactNode,
+  useState,
+  useEffect,
+} from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
@@ -67,6 +73,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   </summary>
                   <pre className='mt-2 text-xs bg-muted p-2 rounded overflow-auto'>
                     {this.state.error.toString()}
+                    {'\n\n'}
                     {this.state.errorInfo?.componentStack}
                   </pre>
                 </details>
@@ -96,11 +103,20 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 // Hook for functional components
+/**
+ * Hook that integrates with React Error Boundaries by storing errors in state
+ * and throwing them during render so React can catch them.
+ *
+ * @returns A function that sets the error state, triggering the error boundary.
+ */
 export const useErrorHandler = () => {
-  return (error: Error, errorInfo?: { componentStack?: string }) => {
-    console.error('Error caught by useErrorHandler:', error, errorInfo);
+  const [error, setError] = useState<Error | null>(null);
 
-    // In a real app, you might want to send this to an error reporting service
-    // like Sentry, LogRocket, etc.
-  };
+  useEffect(() => {
+    if (error) {
+      throw error;
+    }
+  }, [error]);
+
+  return setError;
 };

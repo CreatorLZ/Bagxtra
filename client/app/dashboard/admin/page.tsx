@@ -40,7 +40,13 @@ import { ErrorMessage } from '@/components/ui/error-message';
 const AdminUserManagement = () => {
   const { user: currentUser } = useUser();
   const [page, setPage] = useState(1);
+  const [failedRoleUpdateUserId, setFailedRoleUpdateUserId] = useState<
+    string | null
+  >(null);
+  const [failedRoleUpdateRole, setFailedRoleUpdateRole] =
+    useState<UserRole | null>(null);
   const limit = 10;
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   const {
     data: usersData,
@@ -64,13 +70,18 @@ const AdminUserManagement = () => {
   const isAdmin = currentUser?.role === 'admin';
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
+    setUpdatingUserId(userId);
     try {
       await updateUserRole(userId, newRole);
       // Refetch users to get updated data
       refetchUsers();
     } catch (error) {
       console.error('Failed to update user role:', error);
+      setFailedRoleUpdateUserId(userId);
+      setFailedRoleUpdateRole(newRole);
       // Error is already handled by the hook and displayed in the UI
+    } finally {
+      setUpdatingUserId(null);
     }
   };
 
@@ -79,6 +90,10 @@ const AdminUserManagement = () => {
   };
 
   const handleRetryRoleUpdate = (userId: string, role: UserRole) => {
+    if (!userId || !role) {
+      console.warn('Cannot retry role update: missing userId or role');
+      return;
+    }
     retryUpdateUserRole(userId, role);
   };
 
@@ -177,7 +192,12 @@ const AdminUserManagement = () => {
         {updateUserRoleError && (
           <ErrorMessage
             error={updateUserRoleError}
-            onRetry={() => handleRetryRoleUpdate('', 'shopper')} // Will be overridden by component
+            onRetry={() =>
+              handleRetryRoleUpdate(
+                failedRoleUpdateUserId!,
+                failedRoleUpdateRole!
+              )
+            }
             isRetrying={isUpdatingUserRole}
             isOffline={roleManagementOffline}
             title='Failed to Update User Role'
@@ -238,7 +258,7 @@ const AdminUserManagement = () => {
                               handleRoleChange(user._id, value)
                             }
                             disabled={
-                              isUpdatingUserRole ||
+                              updatingUserId === user._id ||
                               user._id === currentUser?.id ||
                               roleManagementOffline
                             }
@@ -254,7 +274,7 @@ const AdminUserManagement = () => {
                               ))}
                             </SelectContent>
                           </Select>
-                          {isUpdatingUserRole && (
+                          {updatingUserId === user._id && (
                             <div className='flex items-center gap-1 mt-1 text-xs text-muted-foreground'>
                               <Loader2 className='h-3 w-3 animate-spin' />
                               Updating...

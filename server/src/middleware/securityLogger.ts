@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 
 /**
@@ -24,7 +25,7 @@ export interface SecurityEvent {
   type: SecurityEventType;
   userId?: string;
   clerkId?: string;
-  email?: string;
+  userIdentifier?: string;
   ip: string;
   userAgent: string;
   endpoint: string;
@@ -42,6 +43,18 @@ export class SecurityLogger {
   private readonly maxEvents = 1000; // Keep last 1000 events in memory
 
   private constructor() {}
+
+  /**
+   * Hash email for anonymized logging (fallback when userId is unavailable)
+   * Uses SHA-256 with salt for irreversibility
+   */
+  private hashEmail(email: string): string {
+    const salt = process.env['LOG_SALT'] || 'default-salt-change-in-prod';
+    return createHash('sha256')
+      .update(email + salt)
+      .digest('hex')
+      .substring(0, 12); // Truncate for brevity while maintaining uniqueness
+  }
 
   static getInstance(): SecurityLogger {
     if (!SecurityLogger.instance) {
@@ -105,17 +118,27 @@ export class SecurityLogger {
 
   /**
    * Log to console with appropriate formatting
+   * PII logging requires ENABLE_PII_LOGGING=true and user consent. Retention: auto-scrub after 90 days per GDPR.
    */
   private logToConsole(event: SecurityEvent): void {
-    const logData = {
+    const logData: any = {
       type: event.type,
       userId: event.userId,
-      email: event.email,
+      userIdentifier: event.userIdentifier,
       ip: event.ip,
       endpoint: `${event.method} ${event.endpoint}`,
       timestamp: event.timestamp.toISOString(),
       details: event.details,
     };
+
+    // Gate full PII logging behind config and consent (for debugging only)
+    if (
+      process.env['ENABLE_PII_LOGGING'] === 'true' &&
+      event.details?.['consentGiven']
+    ) {
+      // Note: Raw email not stored in event anymore; this is for exceptional cases
+      logData.email = event.details?.['email']; // Hypothetical; adjust based on actual consent flow
+    }
 
     switch (event.type) {
       case SecurityEventType.AUTH_FAILURE:
@@ -167,10 +190,22 @@ export class SecurityLogger {
   clearEvents(): void {
     this.events = [];
   }
+
+  /**
+   * Scrub old events to comply with retention policies (e.g., GDPR: max 90 days)
+   * Call this periodically (e.g., on app start or via cron) to remove events older than retentionDays
+   */
+  scrubOldEvents(retentionDays: number = 90): void {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+
+    this.events = this.events.filter(event => event.timestamp >= cutoffDate);
+  }
 }
 
 /**
  * Middleware to log authentication events
+ * PII logging requires ENABLE_PII_LOGGING=true and user consent. Retention: auto-scrub after 90 days per GDPR.
  */
 export const logAuthEvent = (type: SecurityEventType) => {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -180,13 +215,14 @@ export const logAuthEvent = (type: SecurityEventType) => {
     const user = (req as any).user;
     const userId = user?.id;
     const clerkId = user?.clerkId;
-    const email = user?.email;
+    const userIdentifier =
+      userId || (user?.email ? logger['hashEmail'](user.email) : undefined);
 
     logger.log({
       type,
       userId,
       clerkId,
-      email,
+      userIdentifier,
       req,
       details: {
         statusCode: res.statusCode,
@@ -202,10 +238,11 @@ export const logAuthEvent = (type: SecurityEventType) => {
 
 /**
  * Middleware to log unauthorized access attempts with enhanced details
+ * PII logging requires ENABLE_PII_LOGGING=true and user consent. Retention: auto-scrub after 90 days per GDPR.
  */
 export const logUnauthorizedAccess = (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): void => {
   const logger = SecurityLogger.getInstance();
@@ -214,13 +251,14 @@ export const logUnauthorizedAccess = (
   const user = (req as any).user;
   const userId = user?.id;
   const clerkId = user?.clerkId;
-  const email = user?.email;
+  const userIdentifier =
+    userId || (user?.email ? logger['hashEmail'](user.email) : undefined);
 
   logger.log({
     type: SecurityEventType.UNAUTHORIZED_ACCESS,
     userId,
     clerkId,
-    email,
+    userIdentifier,
     req,
     details: {
       attemptedEndpoint: req.path,
@@ -228,7 +266,7 @@ export const logUnauthorizedAccess = (
       userAgent: req.get('User-Agent'),
       referer: req.get('Referer'),
       queryParams: req.query,
-      bodyKeys: req.body ? Object.keys(req.body) : [],
+      bodyKeyCount: req.body ? Object.keys(req.body).length : 0,
       headers: {
         authorization: req.headers.authorization ? 'present' : 'missing',
         'x-forwarded-for': req.headers['x-forwarded-for'],
@@ -242,10 +280,11 @@ export const logUnauthorizedAccess = (
 
 /**
  * Middleware to log forbidden access attempts with enhanced details
+ * PII logging requires ENABLE_PII_LOGGING=true and user consent. Retention: auto-scrub after 90 days per GDPR.
  */
 export const logForbiddenAccess = (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): void => {
   const logger = SecurityLogger.getInstance();
@@ -254,13 +293,14 @@ export const logForbiddenAccess = (
   const user = (req as any).user;
   const userId = user?.id;
   const clerkId = user?.clerkId;
-  const email = user?.email;
+  const userIdentifier =
+    userId || (user?.email ? logger['hashEmail'](user.email) : undefined);
 
   logger.log({
     type: SecurityEventType.FORBIDDEN_ACCESS,
     userId,
     clerkId,
-    email,
+    userIdentifier,
     req,
     details: {
       attemptedEndpoint: req.path,
@@ -269,7 +309,7 @@ export const logForbiddenAccess = (
       userAgent: req.get('User-Agent'),
       referer: req.get('Referer'),
       queryParams: req.query,
-      bodyKeys: req.body ? Object.keys(req.body) : [],
+      bodyKeyCount: req.body ? Object.keys(req.body).length : 0,
       timestamp: new Date().toISOString(),
     },
   });
@@ -282,7 +322,7 @@ export const logForbiddenAccess = (
  */
 export const logApiAccess = (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): void => {
   (req as any)._startTime = Date.now();

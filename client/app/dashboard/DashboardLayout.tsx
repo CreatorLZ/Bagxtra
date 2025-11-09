@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
+import { Skeleton } from '@/components/ui/loading-skeleton';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -93,7 +94,7 @@ const generalItems = [
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const { role } = useRole();
   const [bagCount] = useState(3); // Example count, replace with actual data
   const [notificationCount] = useState(5); // Example count, replace with actual data
@@ -114,14 +115,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          'fixed top-0 left-0 h-screen z-50 w-64 shadow-sm border-r border-gray-100 transform transition-all duration-300 ease-in-out lg:translate-x-0',
-          'bg-linear-to-t from-gray-50 to-white',
+          'fixed top-0 left-0 h-screen z-50 w-64 shadow-xs border-r border-gray-100 transform transition-all duration-300 ease-in-out lg:translate-x-0',
+          'bg-white',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className='flex flex-col h-full '>
           {/* Logo/Brand */}
-          <div className='flex items-center px-6 h-16 border-b border-gray-100'>
+          <div className='flex items-center px-6 h-16 border-b border-gray-100 '>
             <div className='flex items-center space-x-2'>
               {/* <div className='w-8 h-8 bg-purple-900 rounded-lg flex items-center justify-center'>
                 <span className='text-white text-lg font-bold'>B</span>
@@ -131,57 +132,65 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* Navigation */}
-          <nav className='flex-1 px-0 py-6 overflow-y-auto'>
-            <div className='space-y-1'>
-              <div className='px-3 mb-2 ml-3'>
-                <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider'>
-                  MENU
-                </p>
-              </div>
-              {navigationItems.map(item => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.name === 'Home' &&
-                    pathname.startsWith('/dashboard') &&
-                    !pathname.includes('/shipments') &&
-                    !pathname.includes('/orders') &&
-                    !pathname.includes('/profile') &&
-                    !pathname.includes('/settings') &&
-                    !pathname.includes('/help'));
-                return (
-                  <div key={item.name} className='relative'>
-                    {isActive && (
-                      <div className='absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-purple-900 rounded-r-full' />
-                    )}
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        'flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 group',
-                        isActive
-                          ? ' text-purple-900 font-semibold'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          <nav className='flex flex-col h-full px-0 py-6'>
+            {/* MENU Section */}
+            <div className='flex-1 overflow-y-auto'>
+              <div className='space-y-1'>
+                <div className='px-3 mb-2 ml-3'>
+                  <p className='text-xs font-bold  text-gray-800 uppercase tracking-widest'>
+                    MENU
+                  </p>
+                </div>
+                {navigationItems.map(item => {
+                  const isActive =
+                    pathname === item.href ||
+                    (item.name === 'Home' &&
+                      pathname.startsWith('/dashboard') &&
+                      !pathname.includes('/shipments') &&
+                      !pathname.includes('/orders') &&
+                      !pathname.includes('/profile') &&
+                      !pathname.includes('/settings') &&
+                      !pathname.includes('/help'));
+                  return (
+                    <div key={item.name} className='relative'>
+                      {isActive && (
+                        <div className='absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-purple-900 rounded-r-full' />
                       )}
-                      onClick={() => setSidebarOpen(false)}
-                    >
-                      <item.icon
+                      <Link
+                        href={item.href}
                         className={cn(
-                          'mr-3 ml-3 h-5 w-5',
+                          'flex items-center px-3 py-2.5 text-sm font-medium rounded-none transition-all duration-150 group',
                           isActive
-                            ? 'text-purple-900'
-                            : 'text-gray-400 group-hover:text-gray-600'
+                            ? ' text-purple-900 font-semibold bg-purple-50'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                         )}
-                      />
-                      {item.name}
-                    </Link>
-                  </div>
-                );
-              })}
+                        onClick={() => setSidebarOpen(false)}
+                      >
+                        <item.icon
+                          className={cn(
+                            'mr-3 ml-3 h-5 w-5',
+                            isActive
+                              ? 'text-purple-900'
+                              : 'text-gray-400 group-hover:text-gray-600'
+                          )}
+                        />
+                        {item.name}
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div className='px-3 my-4'>
+              <div className='border-t border-gray-200'></div>
             </div>
 
             {/* General Section */}
-            <div className='mt-8 space-y-1'>
+            <div className='space-y-1'>
               <div className='px-3 mb-2 ml-3'>
-                <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider'>
+                <p className='text-xs font-bold  text-gray-800 uppercase tracking-widest'>
                   GENERAL
                 </p>
               </div>
@@ -223,8 +232,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main content */}
       <div className='h-screen lg:ml-64 flex flex-col bg-white'>
         {/* Top navbar */}
-        <div className='sticky top-0 z-40 bg-white border-b border-gray-100'>
-          <div className='flex items-center justify-between bg-gray-50 m-2 rounded-lg h-16 px-4 sm:px-6 lg:px-8'>
+        <div className='sticky top-0 z-40 bg-white border-b border-gray-200 '>
+          <div className='flex items-center justify-between bg-gray-50 m-0 rounded-lg h-16 px-4 sm:px-6 lg:px-8'>
             {/* Mobile menu button */}
             <Button
               variant='ghost'
@@ -239,7 +248,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className='flex-1 max-w-md mx-4'>
               <div className='flex flex-col'>
                 <div className='text-sm font-medium text-gray-900'>
-                  Hello, {user?.firstName || 'User'}
+                  {isLoaded ? (
+                    `Hello, ${user?.firstName || 'User'}`
+                  ) : (
+                    <Skeleton className='h-4 w-24' />
+                  )}
                 </div>
                 <div className='flex items-center text-xs text-purple-900 mt-1'>
                   <MapPin className='h-4 w-4 mr-1' />
@@ -281,33 +294,46 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               {/* User info and button */}
               <div className='flex items-center space-x-3'>
                 <div className='flex items-center'>
-                  <UserButton
-                    afterSignOutUrl='/'
-                    appearance={{
-                      baseTheme: undefined,
-                      variables: {
-                        borderRadius: '8px',
-                      },
-                      elements: {
-                        userButtonAvatarBox: 'h-12 w-12',
-                        userButtonTrigger: 'h-12 w-12',
-                        userButtonPopoverFooter: {
-                          display: 'none',
+                  {isLoaded ? (
+                    <UserButton
+                      afterSignOutUrl='/'
+                      appearance={{
+                        baseTheme: undefined,
+                        variables: {
+                          borderRadius: '8px',
                         },
-                      },
-                    }}
-                  />
+                        elements: {
+                          userButtonAvatarBox: 'h-12 w-12',
+                          userButtonTrigger: 'h-12 w-12',
+                          userButtonPopoverFooter: {
+                            display: 'none',
+                          },
+                        },
+                      }}
+                    />
+                  ) : (
+                    <Skeleton className='h-12 w-12 rounded-full' />
+                  )}
                 </div>
                 <div className='hidden md:flex flex-col '>
                   <span className='text-sm font-medium text-gray-900'>
-                    {user?.fullName ||
-                      user?.firstName + ' ' + user?.lastName ||
-                      'User'}
+                    {isLoaded ? (
+                      user?.fullName ||
+                      (user?.firstName && user?.lastName
+                        ? `${user.firstName} ${user.lastName}`
+                        : user?.firstName || 'User')
+                    ) : (
+                      <Skeleton className='h-4 w-32' />
+                    )}
                   </span>
                   <span className='text-xs text-gray-500'>
-                    {user?.primaryEmailAddress?.emailAddress ||
+                    {isLoaded ? (
+                      user?.primaryEmailAddress?.emailAddress ||
                       user?.emailAddresses?.[0]?.emailAddress ||
-                      ''}
+                      ''
+                    ) : (
+                      <Skeleton className='h-3 w-40' />
+                    )}
                   </span>
                 </div>
               </div>
@@ -316,7 +342,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Page content */}
-        <main className='flex-1 overflow-y-auto bg-gray-50 m-2 rounded-lg'>
+        <main className='flex-1 overflow-y-auto bg-gray-50 m-0 rounded-lg'>
           <div className='py-8'>
             <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
               {children}

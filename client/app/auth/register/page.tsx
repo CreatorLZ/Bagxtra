@@ -68,39 +68,38 @@ export default function RegisterPage() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const router = useRouter();
 
-  // Initialize pre-selected role from localStorage
-  const [preSelectedRole, setPreSelectedRole] = useState<UserRole | null>(
-    () => {
-      const savedRoleString = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
-      if (
-        savedRoleString &&
-        VALID_USER_ROLES.includes(savedRoleString as UserRole)
-      ) {
-        return savedRoleString as UserRole;
-      }
-      return null;
-    }
-  );
+  // Initialize pre-selected role from localStorage (SSR-safe)
+  const [preSelectedRole, setPreSelectedRole] = useState<UserRole | null>(null);
 
-  // Initialize form data with pre-selected role if available
-  const [formData, setFormData] = useState(() => {
+  // Load pre-selected role from localStorage on client mount to avoid SSR errors
+  useEffect(() => {
     const savedRoleString = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
-    const initialRole =
-      savedRoleString && VALID_USER_ROLES.includes(savedRoleString as UserRole)
-        ? (savedRoleString as UserRole)
-        : ('shopper' as UserRole);
+    if (
+      savedRoleString &&
+      VALID_USER_ROLES.includes(savedRoleString as UserRole)
+    ) {
+      setPreSelectedRole(savedRoleString as UserRole);
+    }
+  }, []);
 
-    return {
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      phone: '',
-      country: '',
-      role: initialRole,
-    };
+  // Initialize form data with default values (SSR-safe)
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phone: '',
+    country: '',
+    role: 'shopper' as UserRole,
   });
+
+  // Update form data role when preSelectedRole is loaded from localStorage
+  useEffect(() => {
+    if (preSelectedRole) {
+      setFormData(prev => ({ ...prev, role: preSelectedRole }));
+    }
+  }, [preSelectedRole]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);

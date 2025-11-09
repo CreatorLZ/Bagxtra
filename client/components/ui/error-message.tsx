@@ -11,6 +11,7 @@ interface ErrorMessageProps {
   isOffline?: boolean;
   title?: string;
   className?: string;
+  onRecoveryAction?: (action: string) => void;
 }
 
 export const ErrorMessage: React.FC<ErrorMessageProps> = ({
@@ -20,6 +21,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
   isOffline = false,
   title,
   className,
+  onRecoveryAction,
 }) => {
   if (!error) return null;
 
@@ -132,11 +134,21 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
             </Button>
           )}
 
-          {recoveryAction && recoveryAction !== 'Try again' && (
-            <Button variant='outline' size='sm'>
-              {recoveryAction}
-            </Button>
-          )}
+          {recoveryAction &&
+            recoveryAction !== 'Try again' &&
+            (onRecoveryAction ? (
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => onRecoveryAction(recoveryAction)}
+              >
+                {recoveryAction}
+              </Button>
+            ) : (
+              <span className='text-sm text-muted-foreground'>
+                {recoveryAction}
+              </span>
+            ))}
         </div>
       </AlertDescription>
     </Alert>

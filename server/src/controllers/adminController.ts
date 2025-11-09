@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { RoleAuditLog } from '../models/RoleAuditLog';
+import { User } from '../models/User';
 import { createErrorResponse } from '../errors.js';
 
 /**
@@ -243,7 +244,7 @@ export const getRoleAuditStats = async (
         { $limit: 5 },
         {
           $lookup: {
-            from: 'users',
+            from: User.collection.name,
             localField: '_id',
             foreignField: '_id',
             as: 'user',
@@ -270,7 +271,7 @@ export const getRoleAuditStats = async (
         { $limit: 5 },
         {
           $lookup: {
-            from: 'users',
+            from: User.collection.name,
             localField: '_id',
             foreignField: '_id',
             as: 'user',

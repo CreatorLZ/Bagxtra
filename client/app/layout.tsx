@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Manrope } from 'next/font/google';
+import { Manrope, Space_Grotesk } from 'next/font/google';
 import {
   ClerkProvider,
   SignInButton,
@@ -16,6 +16,11 @@ const manrope = Manrope({
   subsets: ['latin'],
 });
 
+const spaceGrotesk = Space_Grotesk({
+  variable: '--font-space-grotesk',
+  subsets: ['latin'],
+});
+
 export const metadata: Metadata = {
   title: 'BagXtra - Peer-to-Peer Logistics Platform',
   description:
@@ -29,7 +34,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <body className={`${manrope.variable} antialiased`}>
+      <body
+        className={`${manrope.variable} ${spaceGrotesk.variable} antialiased`}
+      >
         <ClerkProvider>
           <QueryProvider>{children}</QueryProvider>
         </ClerkProvider>

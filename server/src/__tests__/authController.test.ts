@@ -7,8 +7,8 @@ import {
   getAllUsers,
   updateUserRole,
   updateOwnRole,
-} from '../controllers/authController.ts';
-import { User } from '../models/User.ts';
+} from '../controllers/authController';
+import { User } from '../models/User';
 import '../server.ts'; // Ensure server is initialized for tests
 
 describe('Auth Controller', () => {
