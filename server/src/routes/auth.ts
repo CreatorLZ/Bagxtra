@@ -66,8 +66,9 @@ router.put(
 
 /**
  * @route POST /api/auth/reset-password
- * @desc Handle password reset (Clerk-managed)
+ * @desc Handle password reset (deprecated - now handled by Clerk client-side)
  * @access Public
+ * @deprecated Use Clerk's client-side password reset flow instead
  */
 router.post(
   '/reset-password',

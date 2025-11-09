@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // ... your existing config
+  turbopack: {
+    root: './',  // Points to the client directory as the root
+  },
 };
-
 export default nextConfig;
