@@ -184,7 +184,7 @@ export default function ShopperDashboardPage() {
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Button className='bg-gradient-to-r from-white to-gray-100 text-purple-900 rounded-full shadow-lg hover:shadow-xl hover:from-gray-50 hover:to-white active:scale-95 transition-all duration-200 px-2 py-2.5 md:py-6 font-bold cursor-pointer group hover:px-2.5'>
+                  <Button className='bg-linear-to-r font-space-grotesk from-white to-gray-100 text-purple-900 rounded-full shadow-lg hover:shadow-xl hover:from-gray-50 hover:to-white active:scale-95 transition-all duration-200 px-2 py-2.5 md:py-6 font-bold cursor-pointer group hover:px-2.5'>
                     Place an Order
                     <motion.span
                       className='ml-2 flex items-center justify-center h-7 w-7 bg-purple-900 rounded-full p-5 font-bold group-hover:bg-purple-800 group-active:scale-90 transition-all duration-200'
