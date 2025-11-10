@@ -2,9 +2,10 @@
 
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+// import { Button } from '@/components/ui/button'; // Not needed here anymore
 import { ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
+import { PlaceOrderModal } from '@/components/PlaceOrderModal'; // 1. Import the modal
 
 interface Order {
   id: string;
@@ -23,6 +24,8 @@ type OrderStatus =
 
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<OrderStatus>('accepted');
+  // 2. Add state to control the modal
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
   // Mock orders data organized by status
   const ordersByStatus: Record<OrderStatus, Order[]> = {
@@ -272,10 +275,20 @@ export default function OrdersPage() {
         </div>
 
         {/* Floating Action Button */}
-        <button className='fixed bottom-24 right-8 w-14 h-14 bg-purple-800 hover:bg-purple-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-colors'>
+        <button
+          // 3. Update the onClick handler
+          onClick={() => setIsOrderModalOpen(true)}
+          className='fixed bottom-24 right-8 w-14 h-14 bg-purple-800 hover:bg-purple-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-colors'
+        >
           <span className='text-2xl font-light'>+</span>
         </button>
       </div>
+
+      {/* 4. Render the modal */}
+      <PlaceOrderModal
+        isOpen={isOrderModalOpen}
+        onOpenChange={setIsOrderModalOpen}
+      />
     </DashboardLayout>
   );
 }

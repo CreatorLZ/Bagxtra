@@ -4,6 +4,7 @@ import {
   getRoleAuditLogs,
   getRoleAuditStats,
 } from '../controllers/adminController.js';
+import { getAdminDashboard } from '../controllers/dashboardController.js';
 import { requireAuth, requirePermissions } from '../middleware/auth.js';
 import {
   validateBody,
@@ -43,18 +44,7 @@ router.get(
   '/dashboard',
   requireAuth,
   requirePermissions(['*'], { requireAll: false }),
-  (req, res) => {
-    res.json({
-      message: 'Admin dashboard data',
-      user: req.user,
-      stats: {
-        totalUsers: 0, // Would be populated from database
-        activeUsers: 0,
-        totalTrips: 0,
-        totalRevenue: 0,
-      },
-    });
-  }
+  getAdminDashboard
 );
 
 /**

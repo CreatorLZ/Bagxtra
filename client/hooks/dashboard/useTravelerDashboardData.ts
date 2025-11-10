@@ -1,94 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@clerk/nextjs';
+import { TravelerDashboardData } from '@/types/dashboard';
 
-interface TravelerDashboardData {
-  activeTrips: number;
-  pendingRequests: number;
-  earningsThisMonth: number;
-  totalEarnings: number;
-  upcomingTrips: Array<{
-    id: string;
-    destination: string;
-    departureDate: string;
-    returnDate: string;
-    status: 'upcoming' | 'active' | 'completed';
-  }>;
-  recentRequests: Array<{
-    id: string;
-    shopperName: string;
-    item: string;
-    destination: string;
-    reward: number;
-    status: 'pending' | 'accepted' | 'delivered';
-  }>;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const useTravelerDashboardData = () => {
-  const [data, setData] = useState<TravelerDashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        // TODO: Replace with actual API call
-        // const response = await fetch('/api/traveler/dashboard');
-        // const data = await response.json();
+  return useQuery<TravelerDashboardData>({
+    queryKey: ['traveler-dashboard'],
+    queryFn: async () => {
+      const token = await getToken();
+      if (!token) throw new Error('No authentication token');
 
-        // Mock data for now
-        const mockData: TravelerDashboardData = {
-          activeTrips: 2,
-          pendingRequests: 5,
-          earningsThisMonth: 1250.0,
-          totalEarnings: 8750.0,
-          upcomingTrips: [
-            {
-              id: '1',
-              destination: 'London, UK',
-              departureDate: '2024-12-15',
-              returnDate: '2024-12-30',
-              status: 'upcoming',
-            },
-            {
-              id: '2',
-              destination: 'New York, USA',
-              departureDate: '2025-01-10',
-              returnDate: '2025-01-25',
-              status: 'upcoming',
-            },
-          ],
-          recentRequests: [
-            {
-              id: '1',
-              shopperName: 'John Doe',
-              item: 'iPhone 15 Pro',
-              destination: 'London, UK',
-              reward: 150.0,
-              status: 'pending',
-            },
-            {
-              id: '2',
-              shopperName: 'Jane Smith',
-              item: 'MacBook Air',
-              destination: 'New York, USA',
-              reward: 200.0,
-              status: 'accepted',
-            },
-          ],
-        };
-
-        setData(mockData);
-        setError(null);
-      } catch (err) {
-        setError('Failed to load dashboard data');
-        console.error('Error fetching traveler dashboard data:', err);
-      } finally {
-        setIsLoading(false);
+      const response = await fetch(`${API_URL}/api/dashboard/traveler`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch traveler dashboard data');
       }
-    };
-
-    fetchDashboardData();
-  }, []);
-
-  return { data, isLoading, error };
+      const result = await response.json();
+      return result.data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 };

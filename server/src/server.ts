@@ -107,6 +107,7 @@ app.get('/health', (_req: express.Request, res: express.Response) => {
 // Import routes
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
+import dashboardRoutes from './routes/dashboard.js';
 import { registerUser } from './controllers/authController.js';
 
 // API routes
@@ -124,6 +125,9 @@ app.use('/api/auth', authRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
+
+// Dashboard routes
+app.use('/api/dashboard', dashboardRoutes);
 
 // Webhook routes (separate route to match Clerk docs)
 app.post(

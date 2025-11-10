@@ -67,7 +67,7 @@ export default function TravelerDashboardPage() {
         animate='visible'
       >
         {/* Header - Hidden on desktop since DashboardLayout has it */}
-        <motion.div 
+        <motion.div
           className='md:hidden flex items-start justify-between mb-4'
           variants={itemVariants}
         >
@@ -92,7 +92,7 @@ export default function TravelerDashboardPage() {
 
         {/* Purple Banner */}
         <motion.div variants={itemVariants}>
-          <Card className='bg-purple-900 text-white p-6 md:p-8 rounded-2xl shadow-lg border-0 relative overflow-hidden'>
+          <Card className='bg-purple-900 text-white p-6 md:p-8 rounded-2xl shadow-lg border-0 relative '>
             <motion.div
               className='absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24'
               animate={{
@@ -119,13 +119,13 @@ export default function TravelerDashboardPage() {
               }}
             />
 
-            <div className='relative flex items-center justify-between'>
+            <div className='relative flex items-center justify-between h-56'>
               <div className='flex-1 pr-4'>
-                 <h1 className=' text-white mb-1 text-sm font-medium font-space-grotesk lg:mb-2'>
-                   Hello, Traveler
-                 </h1>
+                <h1 className=' text-white/80 mb-1 text-sm font-medium font-space-grotesk lg:mb-3'>
+                  Hello, Traveler 🤗👋
+                </h1>
                 <motion.p
-                  className='text-purple-100 mb-3 text-sm md:text-base lg:mb-5'
+                  className='text-purple-100 mb-3 text-sm md:text-base lg:mb-6'
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3, duration: 0.5 }}
@@ -147,15 +147,15 @@ export default function TravelerDashboardPage() {
 
               {/* Traveler Image */}
               <motion.div
-                className='w-20 h-28 md:w-32 md:h-40 relative shrink-0 rounded-xl overflow-hidden'
+                className='w-28 h-44 md:w-72 md:h-80 z-10 absolute right-0 md:right-4 -top-14 shrink-0 rounded-t-xl overflow-hidden'
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.5, duration: 0.6 }}
               >
                 <img
-                  src='https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=300&h=400&fit=crop'
+                  src='/woman.png'
                   alt='Traveler'
-                  className='w-full h-full object-cover object-top'
+                  className='w-fit h-80 object-cover object-top'
                 />
               </motion.div>
             </div>
@@ -179,7 +179,6 @@ export default function TravelerDashboardPage() {
 
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
             <Card className='p-6 rounded-2xl shadow-sm border border-gray-100'>
-
               <div className='flex items-start space-x-4 mb-4'>
                 <motion.div
                   className='w-14 h-14 rounded-full overflow-hidden shrink-0'
@@ -224,7 +223,6 @@ export default function TravelerDashboardPage() {
             </Card>
 
             <Card className='p-6 rounded-2xl shadow-sm border border-gray-100'>
-
               <div className='flex items-start space-x-4 mb-4'>
                 <motion.div
                   className='w-14 h-14 rounded-full overflow-hidden shrink-0'
@@ -383,7 +381,9 @@ export default function TravelerDashboardPage() {
             {/* Order Card 3 */}
             <Card className='p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer'>
               <div className='flex items-center space-x-2 mb-3'>
-                <span className='text-xs text-gray-400'>Posted 2 hours ago</span>
+                <span className='text-xs text-gray-400'>
+                  Posted 2 hours ago
+                </span>
               </div>
 
               <div className='flex items-start space-x-4 mb-4'>
@@ -427,7 +427,9 @@ export default function TravelerDashboardPage() {
             {/* Order Card 4 */}
             <Card className='p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer'>
               <div className='flex items-center space-x-2 mb-3'>
-                <span className='text-xs text-gray-400'>Posted 3 hours ago</span>
+                <span className='text-xs text-gray-400'>
+                  Posted 3 hours ago
+                </span>
               </div>
 
               <div className='flex items-start space-x-4 mb-4'>
