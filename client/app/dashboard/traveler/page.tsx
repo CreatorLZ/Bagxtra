@@ -80,44 +80,46 @@ export default function TravelerDashboardPage() {
               <span className='text-sm'>Los Angeles, USA</span>
             </div>
           </div>
-          <motion.div
+          {/* <motion.div
             className='relative'
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
             <Bell className='h-6 w-6 text-gray-600 cursor-pointer' />
             <span className='absolute -top-1 -right-1 h-3 w-3 bg-purple-600 rounded-full border-2 border-white'></span>
-          </motion.div>
+          </motion.div> */}
         </motion.div>
 
         {/* Purple Banner */}
         <motion.div variants={itemVariants}>
-          <Card className='bg-purple-900 text-white p-6 md:p-8 rounded-2xl shadow-lg border-0 relative '>
-            <motion.div
-              className='absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24'
-              animate={{
-                y: [0, -20, 0],
-                x: [0, 10, 0],
-                scale: [1, 1.1, 1],
-              }}
-              transition={{
-                duration: 8,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            />
-            <motion.div
-              className='absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16'
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.5, 0.8, 0.5],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            />
+          <Card className='bg-purple-900 text-white p-6 md:p-8 rounded-2xl shadow-lg border-0 relative'>
+            <div className='absolute inset-0 overflow-hidden'>
+              <motion.div
+                className='absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24'
+                animate={{
+                  y: [0, -20, 0],
+                  x: [0, 10, 0],
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+              <motion.div
+                className='absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mb-16'
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.5, 0.8, 0.5],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+            </div>
 
             <div className='relative flex items-center justify-between h-56'>
               <div className='flex-1 pr-4'>
@@ -147,7 +149,7 @@ export default function TravelerDashboardPage() {
 
               {/* Traveler Image */}
               <motion.div
-                className='w-28 h-44 md:w-72 md:h-80 z-10 absolute right-0 md:right-4 -top-14 shrink-0 rounded-t-xl overflow-hidden'
+                className='w-28 h-44 md:w-64 md:h-80 z-10 absolute right-0 md:right-4 -top-14 shrink-0 rounded-t-xl overflow-hidden'
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.5, duration: 0.6 }}
@@ -155,7 +157,7 @@ export default function TravelerDashboardPage() {
                 <img
                   src='/woman.png'
                   alt='Traveler'
-                  className='w-fit h-80 object-cover object-top'
+                  className='w-full h-80 object-cover object-top'
                 />
               </motion.div>
             </div>
