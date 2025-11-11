@@ -123,11 +123,11 @@ export default function TravelerDashboardPage() {
 
             <div className='relative flex items-center justify-between h-56'>
               <div className='flex-1 pr-4'>
-                <h1 className=' text-white/80 mb-1 text-sm font-medium font-space-grotesk lg:mb-3'>
-                  Hello, Traveler 🤗👋
+                <h1 className=' text-white/90 mb-1 md:text-sm text-sm font-medium font-space-grotesk lg:mb-3'>
+                  Hello, Traveler 👋
                 </h1>
                 <motion.p
-                  className='text-purple-100 mb-3 text-sm md:text-base lg:mb-6'
+                  className='text-white text-xl md:text-xl font-semibold mb-3 lg:mb-6'
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3, duration: 0.5 }}
@@ -141,7 +141,7 @@ export default function TravelerDashboardPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Button className='bg-white text-purple-900 hover:bg-gray-100 rounded-lg px-4 md:px-6 py-2 md:py-6 cursor-pointer text-sm md:text-base font-semibold shadow-md font-space-grotesk'>
+                  <Button className='bg-purple-800 text-white hover:shadow-lg hover:bg-purple-800 rounded-lg px-4 md:px-6 py-2 md:py-6 cursor-pointer text-sm md:text-base font-semibold shadow-md font-space-grotesk'>
                     Enter Travel Details
                   </Button>
                 </motion.div>

@@ -3,12 +3,13 @@
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { Card } from '@/components/ui/card';
 // import { Button } from '@/components/ui/button'; // Not needed here anymore
-import { ShoppingBag } from 'lucide-react';
+import { Plus, ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
 import { PlaceOrderModal } from '@/components/PlaceOrderModal'; // 1. Import the modal
+import { useRole } from '@/hooks/useRole';
 
 interface Order {
-  id: string;
+  amount: string;
   item: string;
   details: string;
   timing: string | null;
@@ -18,127 +19,257 @@ interface Order {
 type OrderStatus =
   | 'accepted'
   | 'incoming'
+  | 'outgoing'
   | 'pending'
   | 'completed'
   | 'disputed';
 
 export default function OrdersPage() {
+  const { role } = useRole();
   const [activeTab, setActiveTab] = useState<OrderStatus>('accepted');
   // 2. Add state to control the modal
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
-  // Mock orders data organized by status
-  const ordersByStatus: Record<OrderStatus, Order[]> = {
-    accepted: [
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe",
-        details: 'Drop off in',
-        timing: '25hrs 50mins',
-        additionalInfo: null,
-      },
-    ],
-    incoming: [
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe, wed...",
-        details: 'Sent a delivery proposal',
-        timing: null,
-        additionalInfo: '? Tracking No',
-      },
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe, wed...",
-        details: 'Traveller has accepted to deliver your item',
-        timing: null,
-        additionalInfo: '? Tracking No',
-      },
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe, wed...",
-        details: 'Waiting for traveller',
-        timing: null,
-        additionalInfo: '? Tracking No',
-      },
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe",
-        details: 'Accepted pending purchase',
-        timing: null,
-        additionalInfo: null,
-      },
-    ],
-    pending: [
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe, wed...",
-        details: 'Delivery by 12:45, Today',
-        timing: null,
-        additionalInfo: '2 items',
-      },
-    ],
-    completed: [
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe, wed...",
-        details: 'Delivered 11/02/2025',
-        timing: null,
-        additionalInfo: '? items',
-      },
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe, wed...",
-        details: 'Delivered 11/02/2025',
-        timing: null,
-        additionalInfo: '3 items',
-      },
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe",
-        details: 'Delivered 11/02/2025',
-        timing: null,
-        additionalInfo: null,
-      },
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe",
-        details: 'Delivered 11/02/2025',
-        timing: null,
-        additionalInfo: null,
-      },
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe",
-        details: 'Delivered 11/02/2025',
-        timing: null,
-        additionalInfo: null,
-      },
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe",
-        details: 'Delivered 11/02/2025',
-        timing: null,
-        additionalInfo: null,
-      },
-    ],
-    disputed: [
-      {
-        id: 'TC1200045',
-        item: "Zara's new shoe, wed...",
-        details: 'Dispute opened on 10/25/2025',
-        timing: null,
-        additionalInfo: 'Under review',
-      },
-    ],
+  // Role-specific mock orders data
+  const getOrdersByStatus = (): Record<OrderStatus, Order[]> => {
+    if (role === 'traveler') {
+      return {
+        accepted: [
+          {
+            amount: '$300.00',
+            item: "Zara's new shoe",
+            details: 'Waiting for Shoppers payment',
+            timing: null,
+            additionalInfo: null,
+          },
+        ],
+        outgoing: [
+          {
+            amount: '$120.50',
+            item: "Zara's new shoe, wed...",
+            details: 'Delivery by 12:45 Today',
+            timing: null,
+            additionalInfo: 'Tracking: TRK123456',
+          },
+          {
+            amount: '$75.25',
+            item: "Zara's new shoe",
+            details: 'Delivery by 12:45 Today',
+            timing: null,
+            additionalInfo: 'Tracking: TRK789012',
+          },
+          {
+            amount: '$30.00',
+            item: "Zara's new shoe, wed...",
+            details: 'En route to destination country',
+            timing: null,
+            additionalInfo: 'Tracking: TRK345678',
+          },
+          {
+            amount: '$95.75',
+            item: "Zara's new shoe",
+            details: 'Delivery by 12:45 Today',
+            timing: null,
+            additionalInfo: null,
+          },
+        ],
+        pending: [
+          {
+            amount: '$60.99',
+            item: "Zara's new shoe, wed...",
+            details: 'Accepted pending purchase',
+            timing: null,
+            additionalInfo: '1 item',
+          },
+        ],
+        completed: [
+          {
+            amount: '$150.00',
+            item: "Zara's new shoe, wed...",
+            details: 'Delivered 11/02/2025',
+            timing: null,
+            additionalInfo: 'Payment received',
+          },
+          {
+            amount: '$85.50',
+            item: "Zara's new shoe, wed...",
+            details: 'Delivered 11/02/2025',
+            timing: null,
+            additionalInfo: 'Payment processed',
+          },
+          {
+            amount: '$25.99',
+            item: "Zara's new shoe",
+            details: 'Delivered 11/02/2025',
+            timing: null,
+            additionalInfo: null,
+          },
+          {
+            amount: '$110.25',
+            item: "Zara's new shoe",
+            details: 'Delivered 11/02/2025',
+            timing: null,
+            additionalInfo: null,
+          },
+          {
+            amount: '$40.75',
+            item: "Zara's new shoe",
+            details: 'Delivered 11/02/2025',
+            timing: null,
+            additionalInfo: null,
+          },
+          {
+            amount: '$200.00',
+            item: "Zara's new shoe",
+            details: 'Delivered 11/02/2025',
+            timing: null,
+            additionalInfo: null,
+          },
+        ],
+        disputed: [
+          {
+            amount: '$55.49',
+            item: "Zara's new shoe, wed...",
+            details: 'Dispute opened on 10/25/2025',
+            timing: null,
+            additionalInfo: 'Under review',
+          },
+        ],
+        incoming: [], // Not used for travelers
+      };
+    }
+
+    // Default shopper orders
+    return {
+      accepted: [
+        {
+          amount: '$300.00',
+          item: "Zara's new shoe",
+          details: 'Waiting for Shoppers Payment',
+          timing: null,
+          additionalInfo: null,
+        },
+      ],
+      incoming: [
+        {
+          amount: '$120.50',
+          item: "Zara's new shoe",
+          details: 'Drop off in 23hrs 50mins',
+          timing: null,
+          additionalInfo: '? Tracking No',
+        },
+        {
+          amount: '$75.25',
+          item: "Zara's new shoe, wed...",
+          details: 'Delivery by 12:45 Today',
+          timing: null,
+          additionalInfo: '? Tracking No',
+        },
+        {
+          amount: '$30.00',
+          item: "Zara's new shoe, wed...",
+          details: 'Delivery by 12:45 Today',
+          timing: null,
+          additionalInfo: '? Tracking No',
+        },
+        {
+          amount: '$95.75',
+          item: "Zara's new shoe",
+          details: 'Delivery by 12:45 Today',
+          timing: null,
+          additionalInfo: null,
+        },
+      ],
+      pending: [
+        {
+          amount: '$60.99',
+          item: "Zara's new shoe, wed...",
+          details: 'Sent a delivery proposal',
+          timing: null,
+          additionalInfo: '2 items',
+        },
+      ],
+      completed: [
+        {
+          amount: '$150.00',
+          item: "Zara's new shoe, wed...",
+          details: 'Delivered 11/02/2025',
+          timing: null,
+          additionalInfo: '? items',
+        },
+        {
+          amount: '$85.50',
+          item: "Zara's new shoe, wed...",
+          details: 'Delivered 11/02/2025',
+          timing: null,
+          additionalInfo: '3 items',
+        },
+        {
+          amount: '$25.99',
+          item: "Zara's new shoe",
+          details: 'Delivered 11/02/2025',
+          timing: null,
+          additionalInfo: null,
+        },
+        {
+          amount: '$110.25',
+          item: "Zara's new shoe",
+          details: 'Delivered 11/02/2025',
+          timing: null,
+          additionalInfo: null,
+        },
+        {
+          amount: '$40.75',
+          item: "Zara's new shoe",
+          details: 'Delivered 11/02/2025',
+          timing: null,
+          additionalInfo: null,
+        },
+        {
+          amount: '$200.00',
+          item: "Zara's new shoe",
+          details: 'Delivered 11/02/2025',
+          timing: null,
+          additionalInfo: null,
+        },
+      ],
+      disputed: [
+        {
+          amount: '$55.49',
+          item: "Zara's new shoe, wed...",
+          details: 'Dispute opened on 10/25/2025',
+          timing: null,
+          additionalInfo: 'Under review',
+        },
+      ],
+      outgoing: [], // Not used for shoppers
+    };
   };
 
-  const tabs = [
-    { key: 'accepted' as OrderStatus, label: 'Accepted' },
-    { key: 'incoming' as OrderStatus, label: 'Incoming' },
-    { key: 'pending' as OrderStatus, label: 'Pending' },
-    { key: 'completed' as OrderStatus, label: 'Completed' },
-    { key: 'disputed' as OrderStatus, label: 'Disputed' },
-  ];
+  const ordersByStatus = getOrdersByStatus();
+
+  // Role-specific tabs
+  const getTabs = () => {
+    if (role === 'traveler') {
+      return [
+        { key: 'accepted' as OrderStatus, label: 'Accepted' },
+        { key: 'pending' as OrderStatus, label: 'Pending' },
+        { key: 'outgoing' as OrderStatus, label: 'Outgoing' },
+        { key: 'completed' as OrderStatus, label: 'Completed' },
+        { key: 'disputed' as OrderStatus, label: 'Disputed' },
+      ];
+    }
+    // Default to shopper tabs
+    return [
+      { key: 'accepted' as OrderStatus, label: 'Accepted' },
+      { key: 'incoming' as OrderStatus, label: 'Incoming' },
+      { key: 'pending' as OrderStatus, label: 'Pending' },
+      { key: 'completed' as OrderStatus, label: 'Completed' },
+      { key: 'disputed' as OrderStatus, label: 'Disputed' },
+    ];
+  };
+
+  const tabs = getTabs();
 
   const currentOrders = ordersByStatus[activeTab] || [];
 
@@ -163,13 +294,17 @@ export default function OrdersPage() {
   const getIconColor = (status: string) => {
     switch (status) {
       case 'accepted':
-        return 'bg-purple-300';
+        return 'bg-gray-300';
+      case 'pending':
+        return 'bg-orange-100';
+      case 'outgoing':
+        return 'bg-purple-100';
       case 'incoming':
-        return 'bg-orange-600';
+        return 'bg-purple-100';
       case 'completed':
-        return 'bg-green-600';
+        return 'bg-green-100';
       case 'disputed':
-        return 'bg-red-600';
+        return 'bg-red-200';
       default:
         return 'bg-purple-600';
     }
@@ -189,9 +324,9 @@ export default function OrdersPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`px-4 py-2.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.key
-                  ? 'bg-purple-900 text-white'
+                  ? 'bg-purple-50 text-purple-900 border-purple-900 border'
                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
               }`}
             >
@@ -213,17 +348,17 @@ export default function OrdersPage() {
               <div className='space-y-3'>
                 {orders.map((order, index) => (
                   <Card
-                    key={`${order.id}-${index}`}
-                    className='p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer'
+                    key={`${order.amount}-${index}`}
+                    className='p-4 shadow-none border-0 border-b border-gray-300 rounded-none cursor-pointer hover:shadow-sm hover:scale-105'
                   >
                     <div className='flex items-center space-x-4'>
                       {/* Icon */}
                       <div
-                        className={`w-12 h-12 ${getIconColor(
+                        className={`w-14 h-14 ${getIconColor(
                           activeTab
                         )} rounded-full flex items-center justify-center shrink-0`}
                       >
-                        <ShoppingBag className='h-6 w-6 text-white' />
+                        <img src='/totebag.png' alt='bag' />
                       </div>
 
                       {/* Order Details */}
@@ -245,13 +380,13 @@ export default function OrdersPage() {
 
                       {/* Right Info */}
                       <div className='text-right shrink-0'>
-                        {order.additionalInfo && (
+                        {/* {order.additionalInfo && (
                           <p className='text-sm text-gray-600 mb-1'>
                             {order.additionalInfo}
                           </p>
-                        )}
-                        <p className='text-xs font-mono text-gray-500'>
-                          {order.id}
+                        )} */}
+                        <p className='text-sm font-space-grotesk bg-gray-100 rounded-lg p-2 text-gray-500'>
+                          {order.amount}
                         </p>
                       </div>
                     </div>
@@ -274,14 +409,16 @@ export default function OrdersPage() {
           )}
         </div>
 
-        {/* Floating Action Button */}
-        <button
-          // 3. Update the onClick handler
-          onClick={() => setIsOrderModalOpen(true)}
-          className='fixed bottom-24 right-8 w-14 h-14 bg-purple-800 hover:bg-purple-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-colors'
-        >
-          <span className='text-2xl font-light'>+</span>
-        </button>
+        {/* Floating Action Button - Only show for shoppers */}
+        {role === 'shopper' && (
+          <button
+            // 3. Update the onClick handler
+            onClick={() => setIsOrderModalOpen(true)}
+            className='fixed bottom-24 right-8 w-14 h-14 bg-purple-800 hover:bg-purple-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-colors'
+          >
+            <Plus className='text-3xl font-light cursor-pointer' />
+          </button>
+        )}
       </div>
 
       {/* 4. Render the modal */}

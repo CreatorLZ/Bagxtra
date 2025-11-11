@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox'; // New
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'; // New
 import {
   ChevronLeft,
   Search,
@@ -32,6 +34,12 @@ import {
   Plus,
   Minus,
   ExternalLink,
+  MapPin, // New
+  CalendarDays, // New
+  Info, // New
+  Plane, // New
+  Star, // New
+  CheckCircle, // New
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -82,10 +90,42 @@ const stores = [
   { name: 'Amazon', logo: '/amazon.png' },
   { name: 'Walmart', logo: '/walmart.png' },
   { name: 'Adidas', logo: '/adidas.png' },
-  { name: 'Apples', logo: '/Apple.png' },
+  { name: 'Apples', logo: '/Apples.png' },
   { name: 'Ikea', logo: '/Ikea.png' },
   { name: 'Gucci', logo: '/gucci.png' },
   // ... other stores
+];
+
+// New Mock Data for Travelers
+const travelers = [
+  {
+    id: 1,
+    name: 'Adeshina Adewale',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
+    rating: 5,
+    origin: 'LA',
+    originTime: '10:30 am',
+    originDate: '12/12/25',
+    dest: 'LAG',
+    destTime: '12:40 pm',
+    destDate: '12/12/25',
+    duration: '2h10m',
+    match: 90,
+  },
+  {
+    id: 2,
+    name: 'Adeshina Adewale',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
+    rating: 5,
+    origin: 'LA',
+    originTime: '10:30 am',
+    originDate: '12/12/25',
+    dest: 'LAG',
+    destTime: '12:40 pm',
+    destDate: '12/12/25',
+    duration: '2h10m',
+    match: 70,
+  },
 ];
 
 // --- Helper Components ---
@@ -110,6 +150,115 @@ function FormField({
   );
 }
 
+// New Helper for Radio Options
+function RadioOption({
+  id,
+  label,
+  infoText,
+}: {
+  id: string;
+  label: string;
+  infoText: string;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-2">
+        <RadioGroupItem value={id} id={id} />
+        <Label htmlFor={id} className="font-medium text-gray-800">
+          {label}
+        </Label>
+      </div>
+      <button title={infoText}>
+        <Info className="h-5 w-5 text-gray-400" />
+      </button>
+    </div>
+  );
+}
+
+// Traveler Card Component
+function TravelerCard({
+  traveler,
+}: {
+  traveler: (typeof travelers)[0];
+}) {
+  const getMatchColor = (match: number) => {
+    if (match >= 90) return 'text-purple-900';
+    if (match >= 70) return 'text-purple-900';
+    return 'text-red-600';
+  };
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 space-y-4 shadow-sm">
+      {/* Top Section: Profile + Book Button */}
+      <div className="flex justify-between items-center border-b border-b-gray-200 pb-2.5">
+        <div className="flex flex-col items-left gap-3">
+          <Image
+            src={traveler.avatar}
+            alt={traveler.name}
+            width={80}
+            height={10}
+            className="rounded-lg bg-gray-200 h-24"
+          />
+          <div className="text-left">
+            <h3 className="font-semibold text-gray-900 flex items-center justify-center gap-1 font-sans">
+              {traveler.name}
+              {/* <CheckCircle className="h-4 w-4 text-green-500" /> */}
+              <img src="/verified.png" alt="check" className='h-4 w-4' />
+            </h3>
+            <div className="flex gap-0.5 justify-start">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-4 w-4 ${
+                    i < traveler.rating
+                      ? 'text-yellow-400 fill-yellow-400'
+                      : 'text-gray-300'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          className="text-purple-900 border-purple-900 hover:bg-purple-50 hover:text-purple-800 cursor-pointer"
+        >
+          Book Traveler
+        </Button>
+      </div>
+
+      {/* Middle Section: Flight Info */}
+      <div className="flex justify-between items-center text-sm">
+        <div className="text-left">
+          <div className="text-lg font-bold text-gray-900">
+            {traveler.origin}
+          </div>
+          <div className="text-gray-600 flex ">{traveler.originDate} <span className='pl-3'>--------</span></div>
+          <div className="text-gray-600">{traveler.originTime}</div>
+        </div>
+        <div className="text-center text-gray-500">
+          <Plane className="mx-auto" />
+          <div className="mt-1">{traveler.duration}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-lg font-bold text-gray-900">{traveler.dest}</div>
+          <div className="text-gray-600 flex"><span className='pr-3'>--------</span>{traveler.destDate}</div>
+          <div className="text-gray-600">{traveler.destTime}</div>
+        </div>
+      </div>
+
+      {/* Bottom Section: Match % */}
+      <div className="flex justify-center">
+        <div
+          className={`text-center font-semibold px-3 py-1 rounded-none border-b border-b-purple-900 ${getMatchColor(traveler.match)}`}
+        >
+          {traveler.match}% Match
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Main Modal Component ---
 interface PlaceOrderModalProps {
   isOpen: boolean;
@@ -120,7 +269,10 @@ export function PlaceOrderModal({
   isOpen,
   onOpenChange,
 }: PlaceOrderModalProps) {
-  const [view, setView] = useState<'details' | 'stores'>('details');
+  // Updated view state to include 'travelers'
+  const [view, setView] = useState<
+    'details' | 'stores' | 'delivery' | 'travelers'
+  >('details');
   const [quantity, setQuantity] = useState(1);
 
   const handleQuantityChange = (amount: number) => {
@@ -184,7 +336,7 @@ export function PlaceOrderModal({
             <button
               type='button'
               onClick={() => setView('stores')}
-              className='absolute right-2 top-1/2 -translate-y-1/2 text-sm font-semibold text-purple-700 hover:text-purple-800'
+              className='absolute right-2 top-1/2 -translate-y-1/2 text-sm font-semibold text-purple-700 hover:text-purple-800 cursor-pointer'
             >
               Browse Stores
             </button>
@@ -276,7 +428,7 @@ export function PlaceOrderModal({
         <div className='flex items-center justify-between'>
           <Label
             htmlFor='fragile'
-            className='text-sm font-medium text-gray-700'
+            className='text-sm font-medium text-gray-700 font-sans'
           >
             Is this a very fragile item?
           </Label>
@@ -287,6 +439,7 @@ export function PlaceOrderModal({
         <FormField
           id='additional-info'
           label='Additional Information (Highly needed)'
+          className='font-sans'
         >
           <Textarea
             id='additional-info'
@@ -300,7 +453,10 @@ export function PlaceOrderModal({
           <Button variant='outline' className='w-full sm:w-auto'>
             Add another item
           </Button>
-          <Button className='w-full sm:w-auto bg-purple-900 hover:bg-purple-800'>
+          <Button
+            className='w-full sm:w-auto bg-purple-900 hover:bg-purple-800'
+            onClick={() => setView('delivery')} // Updated onClick
+          >
             Enter Delivery Details
           </Button>
         </div>
@@ -308,40 +464,40 @@ export function PlaceOrderModal({
     </>
   );
 
-  //  "Browse Stores"
+  // "Browse Stores"
   const renderStoresView = () => (
     <>
-      <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
-        <div className='flex items-center'>
+      <DialogHeader className="sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl">
+        <div className="flex items-center">
           <button
-            type='button'
-            onClick={() => setView('details')}
-            className='p-1 rounded-full hover:bg-gray-100 mr-2'
+            type="button"
+            onClick={() => setView('details')} // Bug Fix: Was 'delivery', now 'details'
+            className="p-1 rounded-full hover:bg-gray-100 mr-2"
           >
-            <ChevronLeft className='h-6 w-6' />
+            <ChevronLeft className="h-6 w-6" />
           </button>
-          <DialogTitle className='text-lg font-semibold text-gray-900'>
+          <DialogTitle className="text-lg font-semibold text-gray-900">
             What store will this product be from?
           </DialogTitle>
         </div>
       </DialogHeader>
 
-      <div className='flex-1 overflow-y-auto p-6 space-y-4 rounded-xl'>
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 rounded-xl">
         {/* Search Bar */}
-        <div className='relative'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
-          <Input placeholder='Search for stores' className='h-11 pl-10' />
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Input placeholder="Search for stores" className="h-11 pl-10" />
         </div>
 
         {/* Store List */}
-        <div className='space-y-2'>
+        <div className="space-y-2">
           {stores.map(store => (
             <button
               key={store.name}
-              className='flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-100'
+              className="flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-100"
             >
-              <div className='flex items-center gap-3'>
-                <div className='w-32 h-10 rounded-none flex items-center justify-center overflow-hidden'>
+              <div className="flex items-center gap-3">
+                <div className="w-32 h-10 rounded-none flex items-center justify-center overflow-hidden">
                   <Image
                     src={store.logo}
                     alt={store.name}
@@ -352,8 +508,177 @@ export function PlaceOrderModal({
                 </div>
                 {/* <span className="font-medium">{store.name}</span> */}
               </div>
-              <ExternalLink className='h-5 w-5 text-purple-900 ' />
+              <ExternalLink className="h-5 w-5 text-purple-900 " />
             </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+
+  // New "Delivery Details" view (Step 2)
+  const renderDeliveryView = () => (
+    <>
+      <DialogHeader className="sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="p-1 rounded-full hover:bg-gray-100"
+              onClick={() => setView('details')} // Goes back to details
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <DialogTitle className="text-lg font-semibold text-gray-900">
+              Delivery Details
+            </DialogTitle>
+          </div>
+          <span className="text-sm font-medium text-gray-500">Step 2/3</span>
+        </div>
+      </DialogHeader>
+
+      {/* Scrollable Form Content */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl">
+        <p className="text-sm text-gray-500 text-center border-b border-b-gray-200 pb-2.5 mb-8">
+          Travelers have up to 24 hours after arrival to drop off items at our
+          approved stores for you to pick up.
+        </p>
+
+        {/* Pickup Checkbox */}
+        <div className="flex items-center space-x-2">
+          <Checkbox id="pickup-for-me" />
+          <Label
+            htmlFor="pickup-for-me"
+            className="text-sm font-medium text-gray-800 font-sans"
+          >
+            Somebody will be picking up my item(s) for me
+          </Label>
+        </div>
+
+        {/* Delivering To */}
+        <FormField id="delivering-to" label="Delivering To">
+          <div className="relative">
+            <Input
+              id="delivering-to"
+              placeholder="Lagos, Nigeria"
+              className="h-11 pl-10"
+            />
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          </div>
+        </FormField>
+
+        {/* Delivery Date Range */}
+        <FormField id="date-range" label="Delivery Date Range">
+          <div className="relative">
+            <Input
+              id="date-range"
+              placeholder="15th May, 2025 - 20th May, 2025"
+              className="h-11 pl-10"
+            />
+            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          </div>
+        </FormField>
+
+        {/* Additional Phone Number */}
+        <FormField id="phone" label="Additional Phone Number">
+          <div className="flex gap-2">
+            <Select defaultValue="NG">
+              <SelectTrigger className="w-[100px] h-11">
+                <SelectValue placeholder="🇳🇬" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NG">🇳🇬</SelectItem>
+                <SelectItem value="US">🇺🇸</SelectItem>
+                <SelectItem value="GB">🇬🇧</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="910 000 0000"
+              className="h-11"
+            />
+          </div>
+        </FormField>
+
+        {/* How carried */}
+        <div className="space-y-3">
+          <Label>How do you want this product carried?</Label>
+          <RadioGroup defaultValue="carry-on" className="space-y-2">
+            <RadioOption
+              id="carry-on"
+              label="Carry-On"
+              infoText="Item will be carried on the plane with the traveler."
+            />
+            <RadioOption
+              id="check-in"
+              label="Check-In"
+              infoText="Item will be checked in as luggage."
+            />
+          </RadioGroup>
+        </div>
+
+        {/* How delivered */}
+        <div className="space-y-3">
+          <Label>How do you want this package delivered?</Label>
+          <RadioGroup defaultValue="in-person" className="space-y-2">
+            <RadioOption
+              id="in-person"
+              label="In-person"
+              infoText="Meet the traveler in person for drop-off."
+            />
+            <RadioOption
+              id="store-pickup"
+              label="BagXtra store pick-up"
+              infoText="Pick up your item from a secure BagXtra partner store."
+            />
+          </RadioGroup>
+        </div>
+
+        {/* Button */}
+        <div className="pt-6 mt-4 border-t rounded-b-xl">
+          <Button
+            className="w-full bg-purple-900 hover:bg-purple-800"
+            onClick={() => setView('travelers')} 
+          >
+            Find Traveler
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+
+  // New "Find Traveler" view (Step 3)
+  const renderTravelerView = () => (
+    <>
+      <DialogHeader className="sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="p-1 rounded-full hover:bg-gray-100"
+              onClick={() => setView('delivery')} // Goes back to delivery
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <DialogTitle className="text-lg font-semibold text-gray-900">
+              Find Traveller
+            </DialogTitle>
+          </div>
+          <span className="text-sm font-medium text-gray-500">Step 3/3</span>
+        </div>
+      </DialogHeader>
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl bg-gray-50">
+        <p className="text-sm text-gray-500 border-b border-b-gray-200 pb-2.5 mb-8 text-center">
+          Travelers have up to 24 hours after arrival to drop off items at our
+          approved stores for you to pick up.
+        </p>
+
+        {/* Traveler List */}
+        <div className="space-y-4">
+          {travelers.map((traveler) => (
+            <TravelerCard key={traveler.id} traveler={traveler} />
           ))}
         </div>
       </div>
@@ -362,9 +687,12 @@ export function PlaceOrderModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-md p-0 gap-0 flex flex-col max-h-[90vh] h-full font-space-grotesk rounded-xl'>
-        {/* Conditionally render the view */}
-        {view === 'details' ? renderDetailsView() : renderStoresView()}
+      <DialogContent className="sm:max-w-md lg:max-w-lg p-0 gap-0 flex flex-col max-h-[90vh] h-full font-space-grotesk rounded-xl">
+        {/* Updated rendering logic */}
+        {view === 'details' && renderDetailsView()}
+        {view === 'stores' && renderStoresView()}
+        {view === 'delivery' && renderDeliveryView()}
+        {view === 'travelers' && renderTravelerView()}
       </DialogContent>
     </Dialog>
   );

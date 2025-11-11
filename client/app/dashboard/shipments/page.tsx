@@ -25,7 +25,7 @@ export default function TrackOrdersPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className='text-2xl font-bold text-gray-900'>Track</h1>
+          <h1 className='text-2xl font-bold text-purple-900'>Track</h1>
         </motion.div>
 
         {/* Illustration Area */}
@@ -95,15 +95,15 @@ export default function TrackOrdersPage() {
                   }}
                 >
                   <Handbag
-                    className='w-20 h-20 text-gray-800'
-                    strokeWidth={1.5}
+                    className='w-20 h-20 md:w-24 md:h-24 text-gray-800'
+                    strokeWidth={1.1}
                   />
                 </motion.div>
               </motion.div>
 
               {/* Starting location pin */}
               <motion.div
-                className='absolute bottom-10 left-12'
+                className='absolute bottom-10 md:bottom-7 left-12 md:left-7'
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -123,7 +123,7 @@ export default function TrackOrdersPage() {
                   }}
                 >
                   <MapPin
-                    className='w-12 h-12 text-gray-700 fill-gray-400'
+                    className='w-12 h-12 md:w-14 md:h-16 text-gray-700 fill-gray-400'
                     strokeWidth={1.5}
                   />
                 </motion.div>
@@ -187,7 +187,7 @@ export default function TrackOrdersPage() {
 
         {/* Input Section */}
         <motion.div
-          className='space-y-4 pb-8 px-48'
+          className='space-y-4 pb-8 px-56'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.9 }}
@@ -195,7 +195,7 @@ export default function TrackOrdersPage() {
           <div>
             <label
               htmlFor='tracking-number'
-              className='block text-sm text-gray-600 mb-2'
+              className='block text-sm text-gray-600 mb-2 font-space-grotesk'
             >
               Enter Tracking Number
             </label>
@@ -204,8 +204,8 @@ export default function TrackOrdersPage() {
               type='text'
               value={trackingNumber}
               onChange={e => setTrackingNumber(e.target.value)}
-              placeholder='e.g: TC200234'
-              className='w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-900 focus:border-transparent text-gray-900 placeholder-gray-400 transition-all'
+              placeholder='TC200234'
+              className='w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-900 focus:border-transparent text-gray-900 placeholder-gray-400 placeholder:text-sm transition-all'
               whileFocus={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
             />
@@ -214,7 +214,7 @@ export default function TrackOrdersPage() {
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
               onClick={handleTrackParcel}
-              className='w-full bg-purple-800 hover:bg-purple-900 text-white py-7 rounded-xl font-semibold text-base transition-all'
+              className='w-full bg-purple-800 hover:bg-purple-900 text-white py-7 rounded-xl font-semibold text-base transition-all font-space-grotesk cursor-pointer'
             >
               Track Parcel
             </Button>

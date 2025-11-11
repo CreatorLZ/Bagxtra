@@ -35,15 +35,16 @@ interface DashboardLayoutProps {
 
 // Role-specific navigation items
 const getNavigationItems = (role: string | null) => {
+  const homeHref = role ? `/dashboard/${role}` : '/dashboard';
   const baseItems = [
-    { name: 'Home', href: '/dashboard', icon: HomeIcon },
+    { name: 'Home', href: homeHref, icon: HomeIcon },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
   ];
 
   switch (role) {
     case 'traveler':
       return [
-        { name: 'Home', href: '/dashboard', icon: HomeIcon },
+        { name: 'Home', href: `/dashboard/traveler`, icon: HomeIcon },
         { name: 'Orders', href: '/dashboard/orders', icon: Package },
         { name: 'Trips', href: '/dashboard/trips', icon: Plane },
         { name: 'Wallet', href: '/dashboard/wallet', icon: Wallet },
@@ -51,14 +52,14 @@ const getNavigationItems = (role: string | null) => {
       ];
     case 'shopper':
       return [
-        { name: 'Home', href: '/dashboard', icon: HomeIcon },
+        { name: 'Home', href: `/dashboard/shopper`, icon: HomeIcon },
         { name: 'Track', href: '/dashboard/shipments', icon: MapPinCheck },
         { name: 'Orders', href: '/dashboard/orders', icon: Package },
         { name: 'Profile', href: '/dashboard/profile', icon: User },
       ];
     case 'vendor':
       return [
-        { name: 'Home', href: '/dashboard', icon: HomeIcon },
+        { name: 'Home', href: `/dashboard/vendor`, icon: HomeIcon },
         { name: 'Services', href: '/dashboard/services', icon: Package },
         { name: 'Orders', href: '/dashboard/orders', icon: Package },
         {
@@ -70,7 +71,7 @@ const getNavigationItems = (role: string | null) => {
       ];
     case 'admin':
       return [
-        { name: 'Home', href: '/dashboard', icon: HomeIcon },
+        { name: 'Home', href: `/dashboard/admin`, icon: HomeIcon },
         { name: 'Users', href: '/dashboard/users', icon: Users },
         { name: 'System', href: '/dashboard/system', icon: Settings },
         {
@@ -142,15 +143,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </p>
                 </div>
                 {navigationItems.map(item => {
-                  const isActive =
-                    pathname === item.href ||
-                    (item.name === 'Home' &&
-                      pathname.startsWith('/dashboard') &&
-                      !pathname.includes('/shipments') &&
-                      !pathname.includes('/orders') &&
-                      !pathname.includes('/profile') &&
-                      !pathname.includes('/settings') &&
-                      !pathname.includes('/help'));
+                  const isActive = pathname === item.href;
                   return (
                     <div key={item.name} className='relative'>
                       {isActive && (
