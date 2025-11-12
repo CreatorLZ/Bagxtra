@@ -315,7 +315,7 @@ export default function OrdersPage() {
       <div className='space-y-6 pb-24'>
         {/* Header */}
         <div className='flex items-center justify-between mb-6'>
-          <h1 className='text-2xl font-bold text-gray-900'>Orders</h1>
+          <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>Orders</h1>
         </div>
 
         {/* Tabs */}

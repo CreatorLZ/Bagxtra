@@ -16,7 +16,7 @@ import {
   MapPin,
   CreditCard,
 } from 'lucide-react';
-import DashboardLayout from '../../DashboardLayout'; // Assuming this layout exists
+import DashboardLayout from '../../DashboardLayout'; 
 import { useState } from 'react';
 import { useRole } from '@/hooks/useRole';
 
@@ -30,7 +30,7 @@ const ToggleSwitch = ({
 }) => (
   <button
     onClick={() => setEnabled(!enabled)}
-    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
       enabled ? 'bg-purple-900' : 'bg-gray-200'
     }`}
   >
@@ -181,7 +181,7 @@ const ChangePasswordForm = ({
   };
 
   return (
-    <div className='p-6 md:p-8'>
+    <div className='p-0 md:p-0'>
       <h2 className='text-2xl font-semibold text-gray-900 mb-6'>
         Change Password
       </h2>
@@ -334,9 +334,9 @@ export default function UserProfilePage() {
       case 'profile':
       default:
         return (
-          <div className='p-6 md:p-8'>
+          <div className='p-0 md:p-0'>
             {/* Profile Header */}
-            <h1 className='text-2xl font-semibold text-gray-900 mb-6'>
+            <h1 className='text-2xl font-bold text-gray-900 mb-6 font-space-grotesk'>
               Profile
             </h1>
 
@@ -347,11 +347,11 @@ export default function UserProfilePage() {
                 alt={user.fullName || 'Profile'}
                 className='w-24 h-24 rounded-full border-4 border-white shadow-lg'
               />
-              <div className='flex items-center space-x-1 mt-3'>
+              <div className='flex items-center justify-center space-x-1 mt-3'>
                 <h2 className='text-xl font-bold text-gray-900'>
                   {user.fullName}
                 </h2>
-                <CheckCircle className='w-5 h-5 text-green-500' />
+                <img src="/verified.png" alt="verified" />
               </div>
               <div className='flex items-center space-x-1 mt-1'>
                 {[...Array(5)].map((_, i) => (
@@ -360,7 +360,7 @@ export default function UserProfilePage() {
               </div>
               <button
                 onClick={() => setActiveTab('edit')}
-                className='mt-4 px-5 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50'
+                className='mt-4 px-5 py-2 border border-purple-900 hover:bg-purple-50 rounded-lg text-sm font-medium text-purple-900 cursor-pointer'
               >
                 Edit Profile
               </button>
@@ -368,22 +368,22 @@ export default function UserProfilePage() {
 
             {/* Stats Bar - Role-specific */}
             {role === 'traveler' ? (
-              <div className='flex items-center justify-around w-full my-6 py-4 border-t border-b border-gray-200'>
+              <div className='flex items-center justify-around w-full my-6 py-4 border rounded-md border-gray-200 shadow-sm bg-white'>
                 <div className='text-center'>
-                  <p className='text-xl font-bold text-gray-900'>12</p>
-                  <p className='text-xs text-gray-500'>Trips Completed</p>
+                  <p className='text-xl font-bold text-gray-900'>23</p>
+                  <p className='text-xs text-gray-500'>No of Trips</p>
                 </div>
                 <div className='text-center'>
-                  <p className='text-xl font-bold text-gray-900'>$2,450</p>
-                  <p className='text-xs text-gray-500'>Total Earnings</p>
+                  <p className='text-xl font-bold text-gray-900'>20</p>
+                  <p className='text-xs text-gray-500'>Orders</p>
                 </div>
                 <div className='text-center'>
-                  <p className='text-xl font-bold text-gray-900'>4.8</p>
-                  <p className='text-xs text-gray-500'>Avg Rating</p>
+                  <p className='text-xl font-bold text-gray-900'>1</p>
+                  <p className='text-xs text-gray-500'>Orders Cancelled</p>
                 </div>
               </div>
             ) : role === 'shopper' ? (
-              <div className='flex items-center justify-around w-full my-6 py-4 border-t border-b border-gray-200'>
+              <div className='flex items-center justify-around w-full my-6 py-4 border rounded-md border-gray-200 shadow-sm bg-white'>
                 <div className='text-center'>
                   <p className='text-xl font-bold text-gray-900'>20</p>
                   <p className='text-xs text-gray-500'>No. of Orders</p>
@@ -415,7 +415,7 @@ export default function UserProfilePage() {
             )}
 
             {/* Settings List - Role-specific */}
-            <div>
+            <div className='shadow-sm rounded-sm border border-gray-200 py-4 bg-white'>
               <h3 className='text-sm font-semibold text-gray-500 px-2 mb-2'>
                 SETTINGS
               </h3>
@@ -549,10 +549,10 @@ export default function UserProfilePage() {
   return (
     <DashboardLayout>
       <div className='w-full h-full '>
-        <div className='bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden w-full '>
+        <div className='bg-transparent overflow-hidden w-full '>
           {/* Custom Header for sub-pages */}
           {activeTab !== 'profile' && (
-            <div className='p-4 border-b border-gray-200 flex items-center space-x-3'>
+            <div className='p-4 border-b border-gray-200 flex space-x-3'>
               <button
                 onClick={() => setActiveTab('profile')}
                 className='p-1 rounded-full text-gray-600 hover:bg-gray-100'
