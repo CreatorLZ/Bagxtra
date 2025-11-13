@@ -88,10 +88,8 @@ export const useAuthFlow = () => {
           typeof window.localStorage !== 'undefined'
         ) {
           if (action.payload) {
-            console.log('useAuthFlow: Setting role to localStorage:', action.payload);
             localStorage.setItem(STORAGE_KEYS.SELECTED_ROLE, action.payload);
           } else {
-            console.log('useAuthFlow: Removing role from localStorage');
             localStorage.removeItem(STORAGE_KEYS.SELECTED_ROLE);
           }
         }

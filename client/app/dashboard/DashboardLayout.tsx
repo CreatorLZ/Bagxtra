@@ -59,14 +59,10 @@ const getNavigationItems = (role: string | null) => {
       ];
     case 'vendor':
       return [
-        { name: 'Home', href: `/dashboard/vendor`, icon: HomeIcon },
-        { name: 'Services', href: '/dashboard/services', icon: Package },
+        { name: 'Overview', href: `/dashboard/vendor`, icon: LayoutDashboard },
         { name: 'Orders', href: '/dashboard/orders', icon: Package },
-        {
-          name: 'Analytics',
-          href: '/dashboard/analytics',
-          icon: LayoutDashboard,
-        },
+        { name: 'Transactions', href: '/dashboard/transactions', icon: Wallet },
+        { name: 'Disputes', href: '/dashboard/disputes', icon: MessageSquare },
         { name: 'Profile', href: '/dashboard/profile', icon: User },
       ];
     case 'admin':

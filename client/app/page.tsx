@@ -224,7 +224,6 @@ const BagXtraApp = (): React.JSX.Element => {
    */
   const RoleSelectionScreen = () => {
     const handleRoleSelect = (roleId: UserRole) => {
-      console.log('RoleSelectionScreen: Selecting role:', roleId);
       setSelectedRole(roleId);
     };
 

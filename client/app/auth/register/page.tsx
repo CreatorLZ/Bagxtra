@@ -74,15 +74,11 @@ export default function RegisterPage() {
   // Load pre-selected role from localStorage on client mount to avoid SSR errors
   useEffect(() => {
     const savedRoleString = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
-    console.log('RegisterPage: Loaded role from localStorage:', savedRoleString);
     if (
       savedRoleString &&
       VALID_USER_ROLES.includes(savedRoleString as UserRole)
     ) {
-      console.log('RegisterPage: Setting preSelectedRole to:', savedRoleString);
       setPreSelectedRole(savedRoleString as UserRole);
-    } else {
-      console.log('RegisterPage: No valid role found in localStorage');
     }
   }, []);
 
@@ -101,10 +97,7 @@ export default function RegisterPage() {
   // Update form data role when preSelectedRole is loaded from localStorage
   useEffect(() => {
     if (preSelectedRole) {
-      console.log('RegisterPage: Updating formData role to:', preSelectedRole);
       setFormData(prev => ({ ...prev, role: preSelectedRole }));
-    } else {
-      console.log('RegisterPage: No preSelectedRole, keeping default role');
     }
   }, [preSelectedRole]);
 
