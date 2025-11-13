@@ -25,6 +25,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [roleLoaded, setRoleLoaded] = useState(false);
 
   useEffect(() => {
     const savedRoleRaw = localStorage.getItem(STORAGE_KEYS.SELECTED_ROLE);
@@ -34,7 +35,15 @@ export default function LoginPage() {
     } else if (savedRoleRaw) {
       localStorage.removeItem(STORAGE_KEYS.SELECTED_ROLE);
     }
+    setRoleLoaded(true);
   }, []);
+
+  // Redirect to role selection if no role selected and not signed in
+  useEffect(() => {
+    if (roleLoaded && selectedRole === null && !isSignedIn) {
+      router.push('/');
+    }
+  }, [roleLoaded, selectedRole, isSignedIn, router]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,6 +57,15 @@ export default function LoginPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Show loading while checking role
+  if (!roleLoaded) {
+    return (
+      <div className='min-h-screen flex items-center justify-center bg-gray-50'>
+        <Loader2 className='h-8 w-8 animate-spin text-purple-900' />
+      </div>
+    );
+  }
 
   const handleSignOut = async () => {
     setIsSigningOut(true);

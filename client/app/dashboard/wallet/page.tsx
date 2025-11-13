@@ -120,7 +120,7 @@ export default function WalletPage() {
 
         {/* 1. Wallet Balance Card */}
         <div className="p-6 rounded-2xl shadow-xl text-white overflow-hidden relative isolate bg-purple-900">
-          {/* Background pattern/overlay (like the faint circles in the screenshot) */}
+          {/* Background pattern/overlay (like the faint circles in the figma) */}
           <div className="absolute inset-0 z-0 opacity-10">
             <div className="h-64 w-64 rounded-full bg-white blur-3xl absolute -top-16 -left-16" />
             <div className="h-48 w-48 rounded-full bg-white blur-3xl absolute -bottom-12 -right-12" />

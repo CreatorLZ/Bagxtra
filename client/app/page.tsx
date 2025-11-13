@@ -1,5 +1,7 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -21,6 +23,9 @@ import { RoleOption, UserRole } from '@/types/auth';
  * Flow: Splash (2s) → Onboarding → Role Selection → Auth Pages
  */
 const BagXtraApp = (): React.JSX.Element => {
+  const { isSignedIn } = useAuth();
+  const router = useRouter();
+
   const {
     currentScreen,
     selectedRole,
@@ -33,6 +38,13 @@ const BagXtraApp = (): React.JSX.Element => {
     currentStepIndex,
     totalSteps,
   } = useAuthFlow();
+
+  // Redirect signed-in users to dashboard
+  useEffect(() => {
+    if (isSignedIn) {
+      router.push('/dashboard');
+    }
+  }, [isSignedIn, router]);
 
   /**
    * Role options configuration
@@ -212,6 +224,7 @@ const BagXtraApp = (): React.JSX.Element => {
    */
   const RoleSelectionScreen = () => {
     const handleRoleSelect = (roleId: UserRole) => {
+      console.log('RoleSelectionScreen: Selecting role:', roleId);
       setSelectedRole(roleId);
     };
 
@@ -243,10 +256,10 @@ const BagXtraApp = (): React.JSX.Element => {
             <p className='text-gray-600 text-lg mb-6'>
               Select how you'd like to use BagXtra
             </p>
-            <ProgressIndicator
+            {/* <ProgressIndicator
               currentStep={currentStepIndex}
               totalSteps={totalSteps}
-            />
+            /> */}
           </div>
 
           {/* Role Cards Grid */}

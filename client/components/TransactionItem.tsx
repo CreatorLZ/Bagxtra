@@ -32,13 +32,13 @@ export function TransactionItem({ transaction }: TransactionItemProps) {
   )}`;
 
   return (
-    <Card className="p-4 shadow-none border-b border-gray-200 rounded-none cursor-pointer hover:bg-gray-50 transition-colors">
+    <Card className="p-4 shadow-none border-0 rounded-none cursor-pointer hover:bg-gray-50 transition-colors">
       <div className="flex items-center space-x-4">
-        {/* Icon (Matches the screenshot style) */}
+       
         <div
           className={`w-10 h-10 ${iconBg} rounded-full flex items-center justify-center shrink-0`}
         >
-          {/* Note: Screenshot uses an ArrowDownLeft for payment and ArrowUpRight for deposit (opposite of typical wallet conventions, but matching the screenshot style) */}
+          {/* Note: figma uses an ArrowDownLeft for payment and ArrowUpRight for deposit (opposite of typical wallet conventions, but matching the figma style) */}
           {isDeposit ? (
             <ArrowUpRight className={`h-5 w-5 ${iconColor}`} />
           ) : (

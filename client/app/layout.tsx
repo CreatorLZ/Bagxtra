@@ -37,7 +37,7 @@ export default function RootLayout({
       <body
         className={`${manrope.variable} ${spaceGrotesk.variable} antialiased`}
       >
-        <ClerkProvider>
+        <ClerkProvider signInUrl="/">
           <QueryProvider>{children}</QueryProvider>
         </ClerkProvider>
       </body>
