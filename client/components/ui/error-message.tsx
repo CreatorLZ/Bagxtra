@@ -193,3 +193,24 @@ export const PermissionErrorMessage: React.FC = () => (
     title='Access Denied'
   />
 );
+
+export const ClerkErrorMessage: React.FC<{
+  onRetry?: () => void;
+  isRetrying?: boolean;
+}> = ({ onRetry, isRetrying }) => {
+  // Placeholder for Sentry logging - to be implemented post-MVP
+  // console.log('Clerk authentication service error - logging to Sentry planned');
+
+  return (
+    <ErrorMessage
+      error={{
+        error: 'Authentication Service Unavailable',
+        message: 'Authentication service unavailable. Please refresh or try again later.',
+        code: 'CLERK_UNAVAILABLE',
+      }}
+      onRetry={onRetry}
+      isRetrying={isRetrying}
+      title='Authentication Error'
+    />
+  );
+};

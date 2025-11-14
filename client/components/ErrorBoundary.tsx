@@ -10,6 +10,7 @@ import React, {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { ClerkErrorMessage } from '@/components/ui/error-message';
 
 interface Props {
   children: ReactNode;
@@ -120,3 +121,72 @@ export const useErrorHandler = () => {
 
   return setError;
 };
+
+// Specialized error boundary for Clerk authentication errors
+interface ClerkErrorBoundaryProps {
+  children: ReactNode;
+  onRetry?: () => void;
+}
+
+interface ClerkErrorBoundaryState {
+  hasClerkError: boolean;
+  isRetrying: boolean;
+}
+
+export class ClerkErrorBoundary extends Component<ClerkErrorBoundaryProps, ClerkErrorBoundaryState> {
+  constructor(props: ClerkErrorBoundaryProps) {
+    super(props);
+    this.state = { hasClerkError: false, isRetrying: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ClerkErrorBoundaryState {
+    // Check if this is a Clerk-related error
+    const isClerkError = error.message?.includes('clerk') ||
+                        error.message?.includes('Clerk') ||
+                        error.stack?.includes('@clerk/nextjs') ||
+                        error.name === 'ClerkError';
+
+    if (isClerkError) {
+      return { hasClerkError: true, isRetrying: false };
+    }
+
+    // Re-throw non-Clerk errors to be caught by parent boundaries
+    throw error;
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Placeholder for Sentry logging - to be implemented post-MVP
+    // console.log('Clerk error caught:', error, errorInfo);
+
+    console.error('Clerk authentication error:', error, errorInfo);
+  }
+
+  handleRetry = async () => {
+    this.setState({ isRetrying: true });
+
+    try {
+      // Reset error state
+      this.setState({ hasClerkError: false, isRetrying: false });
+      // Call the retry function if provided
+      await this.props.onRetry?.();
+    } catch (error) {
+      console.error('Retry failed:', error);
+      this.setState({ hasClerkError: true, isRetrying: false });
+    }
+  };
+
+  render() {
+    if (this.state.hasClerkError) {
+      return (
+        <div className='p-6 max-w-2xl mx-auto'>
+          <ClerkErrorMessage
+            onRetry={this.handleRetry}
+            isRetrying={this.state.isRetrying}
+          />
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
