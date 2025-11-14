@@ -347,6 +347,11 @@ export default function VendorDashboardPage() {
                       <PaginationLink
                         isActive={page === currentPage}
                         onClick={() => setCurrentPage(page)}
+                         className={
+                        page === currentPage
+                          ? 'bg-purple-100 text-purple-800' // Active style
+                          : ''
+                      }
                       >
                         {page}
                       </PaginationLink>

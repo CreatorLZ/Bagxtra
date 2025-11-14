@@ -24,6 +24,8 @@ import {
   User,
   ShoppingBag,
   Plane,
+  CircleDollarSign,
+  MessageCircleWarning,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
@@ -60,9 +62,9 @@ const getNavigationItems = (role: string | null) => {
     case 'vendor':
       return [
         { name: 'Overview', href: `/dashboard/vendor`, icon: LayoutDashboard },
-        { name: 'Orders', href: '/dashboard/orders', icon: Package },
-        { name: 'Transactions', href: '/dashboard/transactions', icon: Wallet },
-        { name: 'Disputes', href: '/dashboard/disputes', icon: MessageSquare },
+        { name: 'Orders', href: '/dashboard/vendor/orders', icon: ShoppingBag },
+        { name: 'Transactions', href: '/dashboard/transactions', icon: CircleDollarSign },
+        { name: 'Disputes', href: '/dashboard/disputes', icon: MessageCircleWarning },
         { name: 'Profile', href: '/dashboard/profile', icon: User },
       ];
     case 'admin':
