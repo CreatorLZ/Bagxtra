@@ -165,13 +165,14 @@ export class ClerkErrorBoundary extends Component<ClerkErrorBoundaryProps, Clerk
     this.setState({ isRetrying: true });
 
     try {
-      // Reset error state
-      this.setState({ hasClerkError: false, isRetrying: false });
       // Call the retry function if provided
       await this.props.onRetry?.();
+      // Only reset error state after successful retry - prevents flash
+      this.setState({ hasClerkError: false, isRetrying: false });
     } catch (error) {
       console.error('Retry failed:', error);
-      this.setState({ hasClerkError: true, isRetrying: false });
+      // Keep error state, just reset retrying flag - no flash
+      this.setState({ isRetrying: false });
     }
   };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface UseClerkRetryOptions {
   maxRetries?: number;
@@ -9,7 +9,7 @@ interface UseClerkRetryOptions {
 }
 
 interface UseClerkRetryReturn {
-  retry: () => void;
+  retry: () => Promise<void>;
   isRetrying: boolean;
   retryCount: number;
   reset: () => void;
@@ -24,17 +24,41 @@ export const useClerkRetry = (
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isRetryingRef = useRef(false);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   const reset = useCallback(() => {
     setRetryCount(0);
     setIsRetrying(false);
+    isRetryingRef.current = false;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
   }, []);
 
-  const retry = useCallback(async () => {
+  const retry = useCallback(async (): Promise<void> => {
+    // Guard against concurrent retry operations
+    if (isRetryingRef.current) {
+      console.warn('Retry operation already in progress');
+      return;
+    }
+
     if (retryCount >= maxRetries) {
       console.warn('Max retry attempts reached for Clerk initialization');
       return;
     }
 
+    isRetryingRef.current = true;
     setIsRetrying(true);
     setRetryCount(prev => prev + 1);
 
@@ -42,8 +66,13 @@ export const useClerkRetry = (
       // Calculate exponential backoff delay
       const delay = Math.min(baseDelay * Math.pow(2, retryCount), maxDelay);
 
-      // Wait for the delay
-      await new Promise(resolve => setTimeout(resolve, delay));
+      // Wait for the delay with cleanup tracking
+      await new Promise<void>((resolve) => {
+        timeoutRef.current = setTimeout(() => {
+          timeoutRef.current = null;
+          resolve();
+        }, delay);
+      });
 
       // Execute the retry function
       if (onRetry) {
@@ -63,11 +92,13 @@ export const useClerkRetry = (
       // Let the component handle the final failure state
       if (retryCount >= maxRetries - 1) {
         setIsRetrying(false);
+        isRetryingRef.current = false;
         return;
       }
     }
 
     setIsRetrying(false);
+    isRetryingRef.current = false;
   }, [retryCount, maxRetries, baseDelay, maxDelay, onRetry]);
 
   return {
