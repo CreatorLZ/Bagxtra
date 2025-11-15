@@ -238,7 +238,7 @@ export function CreateTripModal({
         </FormField>
 
         {/* 6. Available Carry-On Luggage Space */}
-        <FormField
+        <FormFieldd
           id="carry-on-space"
           label="Available luggage Space - Carry On"
         >
