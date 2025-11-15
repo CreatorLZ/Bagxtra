@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useOrderStore } from '@/stores/orderStore';
 import {
   Dialog,
   DialogContent,
@@ -87,13 +88,12 @@ const categories = [
   },
 ];
 const stores = [
-  { name: 'Amazon', logo: '/amazon.png' },
-  { name: 'Walmart', logo: '/walmart.png' },
-  { name: 'Adidas', logo: '/adidas.png' },
-  { name: 'Apples', logo: '/Apples.png' },
-  { name: 'Ikea', logo: '/Ikea.png' },
-  { name: 'Gucci', logo: '/gucci.png' },
-  // ... other stores
+  { name: 'Amazon', logo: '/amazon.png', url: 'https://www.amazon.com' },
+  { name: 'Walmart', logo: '/walmart.png', url: 'https://www.walmart.com' },
+  { name: 'Adidas', logo: '/adidas.png', url: 'https://www.adidas.com' },
+  { name: 'Apple', logo: '/Apples.png', url: 'https://www.apple.com' },
+  { name: 'IKEA', logo: '/Ikea.png', url: 'https://www.ikea.com' },
+  { name: 'Gucci', logo: '/gucci.png', url: 'https://www.gucci.com' },
 ];
 
 // New Mock Data for Travelers
@@ -269,14 +269,25 @@ export function PlaceOrderModal({
   isOpen,
   onOpenChange,
 }: PlaceOrderModalProps) {
-  // Updated view state to include 'travelers'
+  // Updated view state to include 'travelers' and 'success'
   const [view, setView] = useState<
-    'details' | 'stores' | 'delivery' | 'travelers'
+    'details' | 'stores' | 'delivery' | 'travelers' | 'success'
   >('details');
-  const [quantity, setQuantity] = useState(1);
+
+  // Use Zustand store for form state
+  const {
+    formData,
+    updateProductDetails,
+    updateDeliveryDetails,
+    setQuantity,
+    resetForm,
+    submitOrder,
+    isSubmitting,
+  } = useOrderStore();
+
 
   const handleQuantityChange = (amount: number) => {
-    setQuantity(prev => Math.max(1, prev + amount));
+    setQuantity(Math.max(1, formData.quantity + amount));
   };
 
   // Render the "Product Details" form
@@ -304,12 +315,12 @@ export function PlaceOrderModal({
       <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl'>
         {/* Product Category Select */}
         <FormField id='category' label='Enter Product Category'>
-          <Select>
+          <Select value={formData.productDetails.category} onValueChange={(value) => updateProductDetails({ category: value })}>
             <SelectTrigger className='w-full h-11'>
               <SelectValue placeholder='Select a category' />
             </SelectTrigger>
             <SelectContent>
-         
+
               {categories.map(cat => (
                 <SelectItem key={cat.name} value={cat.name}>
                   <div className='flex items-center gap-3 py-2'>
@@ -332,6 +343,8 @@ export function PlaceOrderModal({
               id='url'
               placeholder='www.amazon.com'
               className='h-11 pr-24'
+              value={formData.productDetails.url || ''}
+              onChange={(e) => updateProductDetails({ url: e.target.value })}
             />
             <button
               type='button'
@@ -349,12 +362,20 @@ export function PlaceOrderModal({
             id='name'
             placeholder='Derma-cos skin-solve'
             className='h-11'
+            value={formData.productDetails.name}
+            onChange={(e) => updateProductDetails({ name: e.target.value })}
           />
         </FormField>
 
         {/* Product Colour */}
         <FormField id='colour' label='Enter Product Colour'>
-          <Input id='colour' placeholder='Teal Green' className='h-11' />
+          <Input
+            id='colour'
+            placeholder='Teal Green'
+            className='h-11'
+            value={formData.productDetails.colour || ''}
+            onChange={(e) => updateProductDetails({ colour: e.target.value })}
+          />
         </FormField>
 
         {/* Product Weight */}
@@ -363,14 +384,22 @@ export function PlaceOrderModal({
             id='weight'
             placeholder='e.g., 2kg or 0.5lbs'
             className='h-11'
+            value={formData.productDetails.weight || ''}
+            onChange={(e) => updateProductDetails({ weight: e.target.value })}
           />
         </FormField>
 
         {/* Product Price */}
         <FormField id='price' label='Enter Product Price'>
           <div className='flex gap-2'>
-            <Input id='price' placeholder='$250' className='h-11' />
-            <Select defaultValue='USD'>
+            <Input
+              id='price'
+              placeholder='$250'
+              className='h-11'
+              value={formData.productDetails.price}
+              onChange={(e) => updateProductDetails({ price: e.target.value })}
+            />
+            <Select value={formData.productDetails.currency} onValueChange={(value) => updateProductDetails({ currency: value })}>
               <SelectTrigger className='w-[100px] h-11'>
                 <SelectValue />
               </SelectTrigger>
@@ -412,7 +441,7 @@ export function PlaceOrderModal({
               <Minus className='h-5 w-5' />
             </button>
             <span className='text-lg font-semibold w-12 text-center'>
-              {quantity}
+              {formData.quantity}
             </span>
             <button
               type='button'
@@ -432,7 +461,11 @@ export function PlaceOrderModal({
           >
             Is this a very fragile item?
           </Label>
-          <Switch id='fragile' />
+          <Switch
+            id='fragile'
+            checked={formData.productDetails.fragile}
+            onCheckedChange={(checked) => updateProductDetails({ fragile: checked })}
+          />
         </div>
 
         {/* Additional Information */}
@@ -445,6 +478,8 @@ export function PlaceOrderModal({
             id='additional-info'
             placeholder='Explain in details all you want the product to look like'
             rows={4}
+            value={formData.productDetails.additionalInfo || ''}
+            onChange={(e) => updateProductDetails({ additionalInfo: e.target.value })}
           />
         </FormField>
 
@@ -492,9 +527,12 @@ export function PlaceOrderModal({
         {/* Store List */}
         <div className="space-y-2">
           {stores.map(store => (
-            <button
+            <a
               key={store.name}
-              className="flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-100"
+              href={store.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className="w-32 h-10 rounded-none flex items-center justify-center overflow-hidden">
@@ -508,8 +546,8 @@ export function PlaceOrderModal({
                 </div>
                 {/* <span className="font-medium">{store.name}</span> */}
               </div>
-              <ExternalLink className="h-5 w-5 text-purple-900 " />
-            </button>
+              <ExternalLink className="h-5 w-5 text-purple-900" />
+            </a>
           ))}
         </div>
       </div>
@@ -546,7 +584,11 @@ export function PlaceOrderModal({
 
         {/* Pickup Checkbox */}
         <div className="flex items-center space-x-2">
-          <Checkbox id="pickup-for-me" />
+          <Checkbox
+            id="pickup-for-me"
+            checked={formData.deliveryDetails.pickup}
+            onCheckedChange={(checked) => updateDeliveryDetails({ pickup: checked === true })}
+          />
           <Label
             htmlFor="pickup-for-me"
             className="text-sm font-medium text-gray-800 font-sans"
@@ -562,6 +604,8 @@ export function PlaceOrderModal({
               id="delivering-to"
               placeholder="Lagos, Nigeria"
               className="h-11 pl-10"
+              value={formData.deliveryDetails.deliveringTo}
+              onChange={(e) => updateDeliveryDetails({ deliveringTo: e.target.value })}
             />
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           </div>
@@ -574,6 +618,8 @@ export function PlaceOrderModal({
               id="date-range"
               placeholder="15th May, 2025 - 20th May, 2025"
               className="h-11 pl-10"
+              value={formData.deliveryDetails.dateRange}
+              onChange={(e) => updateDeliveryDetails({ dateRange: e.target.value })}
             />
             <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           </div>
@@ -582,7 +628,7 @@ export function PlaceOrderModal({
         {/* Additional Phone Number */}
         <FormField id="phone" label="Additional Phone Number">
           <div className="flex gap-2">
-            <Select defaultValue="NG">
+            <Select value={formData.deliveryDetails.phoneCountry} onValueChange={(value) => updateDeliveryDetails({ phoneCountry: value })}>
               <SelectTrigger className="w-[100px] h-11">
                 <SelectValue placeholder="🇳🇬" />
               </SelectTrigger>
@@ -597,6 +643,8 @@ export function PlaceOrderModal({
               type="tel"
               placeholder="910 000 0000"
               className="h-11"
+              value={formData.deliveryDetails.phone || ''}
+              onChange={(e) => updateDeliveryDetails({ phone: e.target.value })}
             />
           </div>
         </FormField>
@@ -604,7 +652,11 @@ export function PlaceOrderModal({
         {/* How carried */}
         <div className="space-y-3">
           <Label>How do you want this product carried?</Label>
-          <RadioGroup defaultValue="carry-on" className="space-y-2">
+          <RadioGroup
+            value={formData.deliveryDetails.carryOn ? 'carry-on' : 'check-in'}
+            onValueChange={(value) => updateDeliveryDetails({ carryOn: value === 'carry-on' })}
+            className="space-y-2"
+          >
             <RadioOption
               id="carry-on"
               label="Carry-On"
@@ -621,7 +673,11 @@ export function PlaceOrderModal({
         {/* How delivered */}
         <div className="space-y-3">
           <Label>How do you want this package delivered?</Label>
-          <RadioGroup defaultValue="in-person" className="space-y-2">
+          <RadioGroup
+            value={formData.deliveryDetails.storePickup ? 'store-pickup' : 'in-person'}
+            onValueChange={(value) => updateDeliveryDetails({ storePickup: value === 'store-pickup' })}
+            className="space-y-2"
+          >
             <RadioOption
               id="in-person"
               label="In-person"
@@ -635,14 +691,23 @@ export function PlaceOrderModal({
           </RadioGroup>
         </div>
 
-        {/* Button */}
+        {/* Buttons */}
         <div className="pt-6 mt-4 border-t rounded-b-xl">
-          <Button
-            className="w-full bg-purple-900 hover:bg-purple-800"
-            onClick={() => setView('travelers')} 
-          >
-            Find Traveler
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              className="w-full sm:flex-1 bg-purple-900 hover:bg-purple-800"
+              onClick={() => setView('travelers')}
+            >
+              Find Traveler
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full sm:flex-1 border-purple-900 text-purple-900 hover:bg-purple-50"
+              onClick={() => setView('success')}
+            >
+              Get proposal from travellers
+            </Button>
+          </div>
         </div>
       </div>
     </>
@@ -685,14 +750,51 @@ export function PlaceOrderModal({
     </>
   );
 
+  // Success view for proposal posting
+  const renderSuccessView = () => (
+    <div className="flex flex-col items-center justify-center p-8 text-center h-full bg-white">
+      <CheckCircle className="h-16 w-16 text-purple-900 mb-4" />
+      <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
+        Offer Posted
+      </DialogTitle>
+      <p className="text-sm text-gray-600 mb-6">
+        Travelers who are interested will send a proposal message and you can choose from them
+      </p>
+
+      {/* Action Buttons */}
+      <div className="space-y-3 w-full max-w-xs">
+        <Button
+          className="w-full bg-purple-900 hover:bg-purple-800 h-11"
+          onClick={() => {
+            resetForm();
+            onOpenChange(false);
+          }} // Reset and close the modal
+        >
+          Close
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full border-purple-900 text-purple-900 hover:bg-purple-50 h-11"
+          onClick={() => {
+            resetForm();
+            setView('details');
+          }} // Reset and start new order
+        >
+          Start New Order
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md lg:max-w-lg p-0 gap-0 flex flex-col max-h-[90vh] h-full font-space-grotesk rounded-xl">
+      <DialogContent className={`sm:max-w-md lg:max-w-lg p-0 gap-0 flex ${view === 'success' ? 'max-h-[50vh]' : 'flex-col max-h-[90vh] h-full'} font-space-grotesk rounded-xl`}>
         {/* Updated rendering logic */}
         {view === 'details' && renderDetailsView()}
         {view === 'stores' && renderStoresView()}
         {view === 'delivery' && renderDeliveryView()}
         {view === 'travelers' && renderTravelerView()}
+        {view === 'success' && renderSuccessView()}
       </DialogContent>
     </Dialog>
   );

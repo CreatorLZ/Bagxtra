@@ -1,206 +1,313 @@
 'use client';
 
+import { useState } from 'react';
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
-import { ChevronRight, ArrowUpRight, ArrowDownLeft, Filter } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DollarSign,
+  Search,
+  MoreHorizontal,
+  Wallet,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { motion } from 'framer-motion';
 
-// Mock data - replace with actual API call
-const transactions = [
+// --- Helper Components ---
+
+// Status Label Component (Adapted for Transactions Page Screenshot)
+const StatusBadge = ({ status }: { status: string }) => {
+  let dotClass = '';
+  let textClass = '';
+
+  switch (status.toLowerCase()) {
+    case 'received':
+      dotClass = 'bg-green-500';
+      textClass = 'text-green-800';
+      break;
+    case 'pending':
+    default:
+      dotClass = 'bg-yellow-500';
+      textClass = 'text-yellow-800';
+  }
+
+  return (
+    <div className="flex items-center">
+      <div className={`h-2 w-2 rounded-full mr-2 ${dotClass}`} />
+      <span className={`text-sm font-medium ${textClass}`}>
+        {status}
+      </span>
+    </div>
+  );
+};
+
+// --- Mock Data ---
+const mockTransactions = [
   {
-    id: 'TXN001',
-    type: 'credit',
-    amount: 2500.00,
-    description: 'Order payment - Zara handbag',
-    date: '2024-11-13',
-    status: 'completed',
+    shopper: 'Daramola Oluwadara',
+    traveler: 'Babariga Alex',
+    commission: 'NGN 500.00',
+    status: 'Pending',
+    paymentDate: '15-11-2024',
   },
   {
-    id: 'TXN002',
-    type: 'debit',
-    amount: 150.00,
-    description: 'Platform fee',
-    date: '2024-11-12',
-    status: 'completed',
+    shopper: 'Daramola Oluwadara',
+    traveler: 'Adeshina Adewale',
+    commission: 'NGN 500.00',
+    status: 'Received',
+    paymentDate: '15-11-2024',
   },
   {
-    id: 'TXN003',
-    type: 'credit',
-    amount: 1800.00,
-    description: 'Order payment - Nike sneakers',
-    date: '2024-11-11',
-    status: 'completed',
+    shopper: 'Daramola Oluwadara',
+    traveler: 'Adeshina Adewale',
+    commission: 'NGN 1500.00',
+    status: 'Received',
+    paymentDate: '15-11-2024',
   },
   {
-    id: 'TXN004',
-    type: 'credit',
-    amount: 3200.00,
-    description: 'Order payment - Gucci wallet',
-    date: '2024-11-10',
-    status: 'pending',
+    shopper: 'Daramola Oluwadara',
+    traveler: 'Adeshina Adewale',
+    commission: 'NGN 1500.00',
+    status: 'Received',
+    paymentDate: '15-11-2024',
+  },
+  {
+    shopper: 'Daramola Oluwadara',
+    traveler: 'Adeshina Adewale',
+    commission: 'NGN 1500.00',
+    status: 'Received',
+    paymentDate: '15-11-2024',
+  },
+  {
+    shopper: 'Daramola Oluwadara',
+    traveler: 'Adeshina Adewale',
+    commission: 'NGN 1500.00',
+    status: 'Received',
+    paymentDate: '15-11-2024',
+  },
+  {
+    shopper: 'Daramola Oluwadara',
+    traveler: 'Adeshina Adewale',
+    commission: 'NGN 1500.00',
+    status: 'Received',
+    paymentDate: '15-11-2024',
+  },
+  {
+    shopper: 'Daramola Oluwadara',
+    traveler: 'Adeshina Adewale',
+    commission: 'NGN 1500.00',
+    status: 'Received',
+    paymentDate: '15-11-2024',
+  },
+  // Add more data for pagination
+  {
+    shopper: 'Jane Smith',
+    traveler: 'Adeshina Adewale',
+    commission: 'NGN 1000.00',
+    status: 'Received',
+    paymentDate: '14-11-2024',
   },
 ];
 
-export default function TransactionsPage() {
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: [0.22, 1, 0.36, 1] as const,
-      },
-    },
-  };
-
-  const totalCredits = transactions
-    .filter(t => t.type === 'credit' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalDebits = transactions
-    .filter(t => t.type === 'debit' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
+// --- Main Vendor Transactions Page ---
+export default function VendorTransactionsPage() {
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8; // Screenshot shows 8 items
+  const totalPages = Math.ceil(mockTransactions.length / itemsPerPage);
+  const paginatedTransactions = mockTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <DashboardLayout>
-      <motion.div
-        className='max-w-6xl mx-auto space-y-6'
-        variants={containerVariants}
-        initial='hidden'
-        animate='visible'
-      >
-        {/* Header */}
-        <motion.div variants={itemVariants}>
-          <div className='flex items-center justify-between'>
+      <div className="space-y-6">
+        {/* Page Title */}
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Transactions
+        </h2>
+
+        {/* Commissions Received Banner */}
+        <Card className="rounded-lg shadow-xs border border-gray-200 font-space-grotesk bg-purple-50">
+          <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <h1 className='text-2xl font-bold text-gray-900'>Transactions</h1>
-              <p className='text-gray-600 mt-1'>Track all your financial transactions</p>
+              <h3 className="text-sm font-medium text-gray-700">
+                Commissions Received
+              </h3>
+              <p className="text-3xl font-bold text-gray-900">
+                NGN 20,000.00
+              </p>
             </div>
-            <Button variant='outline' className='flex items-center space-x-2'>
-              <Filter className='h-4 w-4' />
-              <span>Filter</span>
+            <Button className="bg-purple-800 hover:bg-purple-900 text-white">
+              <Wallet className="h-4 w-4 mr-2" />
+              Withdraw Funds
             </Button>
-          </div>
-        </motion.div>
-
-        {/* Summary Cards */}
-        <motion.div variants={itemVariants}>
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-            <Card className='p-6 rounded-2xl shadow-sm border border-gray-100'>
-              <div className='flex items-center space-x-4'>
-                <div className='w-12 h-12 bg-green-100 rounded-full flex items-center justify-center'>
-                  <ArrowDownLeft className='h-6 w-6 text-green-600' />
-                </div>
-                <div>
-                  <p className='text-sm font-medium text-gray-600'>Total Credits</p>
-                  <p className='text-2xl font-bold text-gray-900'>${totalCredits.toFixed(2)}</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className='p-6 rounded-2xl shadow-sm border border-gray-100'>
-              <div className='flex items-center space-x-4'>
-                <div className='w-12 h-12 bg-red-100 rounded-full flex items-center justify-center'>
-                  <ArrowUpRight className='h-6 w-6 text-red-600' />
-                </div>
-                <div>
-                  <p className='text-sm font-medium text-gray-600'>Total Debits</p>
-                  <p className='text-2xl font-bold text-gray-900'>${totalDebits.toFixed(2)}</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className='p-6 rounded-2xl shadow-sm border border-gray-100'>
-              <div className='flex items-center space-x-4'>
-                <div className='w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center'>
-                  <div className='w-6 h-6 bg-purple-600 rounded-full'></div>
-                </div>
-                <div>
-                  <p className='text-sm font-medium text-gray-600'>Net Balance</p>
-                  <p className='text-2xl font-bold text-gray-900'>${(totalCredits - totalDebits).toFixed(2)}</p>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </motion.div>
+          </CardContent>
+        </Card>
 
         {/* Transactions Table */}
-        <motion.div variants={itemVariants}>
-          <Card className='rounded-2xl shadow-sm border border-gray-100 overflow-hidden'>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className='font-semibold'>Transaction ID</TableHead>
-                  <TableHead className='font-semibold'>Type</TableHead>
-                  <TableHead className='font-semibold'>Description</TableHead>
-                  <TableHead className='font-semibold'>Amount</TableHead>
-                  <TableHead className='font-semibold'>Date</TableHead>
-                  <TableHead className='font-semibold'>Status</TableHead>
-                  <TableHead className='font-semibold'>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.map((transaction, index) => (
-                  <motion.tr
-                    key={transaction.id}
-                    className='border-b border-gray-100 hover:bg-gray-50'
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <TableCell className='font-medium'>{transaction.id}</TableCell>
-                    <TableCell>
-                      <div className='flex items-center space-x-2'>
-                        {transaction.type === 'credit' ? (
-                          <ArrowDownLeft className='h-4 w-4 text-green-600' />
-                        ) : (
-                          <ArrowUpRight className='h-4 w-4 text-red-600' />
-                        )}
-                        <span className='capitalize'>{transaction.type}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{transaction.description}</TableCell>
-                    <TableCell className={`font-semibold ${
-                      transaction.type === 'credit' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transaction.type === 'credit' ? '+' : '-'}${transaction.amount.toFixed(2)}
-                    </TableCell>
-                    <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={transaction.status === 'completed' ? 'default' : 'secondary'}
-                        className={transaction.status === 'completed' ? 'bg-green-100 text-green-800' : ''}
-                      >
-                        {transaction.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant='ghost' size='sm'>
-                        <ChevronRight className='h-4 w-4' />
-                      </Button>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </motion.div>
-      </motion.div>
+        <Card className="rounded-xl shadow-xs border-gray-200 font-space-grotesk">
+          <CardHeader className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0 p-4">
+            <h3 className="text-lg font-semibold text-gray-700">
+              Transactions
+            </h3>
+            <div className="flex items-center space-x-2">
+              <Select>
+                <SelectTrigger className="w-[120px] bg-white border-gray-300 rounded-md">
+                  <SelectValue placeholder="Order By" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date">Date</SelectItem>
+                  <SelectItem value="commission">Commission</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select>
+                <SelectTrigger className="w-[100px] bg-white border-gray-300 rounded-md">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="received">Received</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Search"
+                  className="pl-8 w-[180px] bg-white border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-purple-50 text-purple-900!">
+                  <TableRow>
+                    <TableHead className="w-[50px] px-4 text-purple-900!">
+                      <Checkbox />
+                    </TableHead>
+                    <TableHead className="px-4 text-purple-900">Shopper</TableHead>
+                    <TableHead className="px-4 text-purple-900">Traveler</TableHead>
+                    <TableHead className="px-4 text-purple-900">Commission Earned</TableHead>
+                    <TableHead className="px-4 text-purple-900">Status</TableHead>
+                    <TableHead className="px-4 text-purple-900">Payment Date</TableHead>
+                    <TableHead className="w-[50px] px-4 text-purple-900!"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedTransactions.map((tx, index) => (
+                    <TableRow key={index} className="hover:bg-gray-50">
+                      <TableCell className="px-4">
+                        <Checkbox />
+                      </TableCell>
+                      <TableCell className="px-4 font-medium text-gray-900">
+                        {tx.shopper}
+                      </TableCell>
+                      <TableCell className="px-4 text-gray-600">
+                        {tx.traveler}
+                      </TableCell>
+                      <TableCell className="px-4 text-gray-600">
+                        {tx.commission}
+                      </TableCell>
+                      <TableCell className="px-4">
+                        <StatusBadge status={tx.status} />
+                      </TableCell>
+                      <TableCell className="px-4 text-gray-600">
+                        {tx.paymentDate}
+                      </TableCell>
+                      <TableCell className="px-4 text-center">
+                        <button className="text-gray-500 hover:text-gray-900">
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex justify-center p-4">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
+                      className={
+                        currentPage === 1 ? 'pointer-events-none opacity-50' : ''
+                      }
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          isActive={page === currentPage}
+                          onClick={() => setCurrentPage(page)}
+                          className={
+                            page === currentPage
+                              ? 'bg-purple-100 text-purple-800' // Active style
+                              : ''
+                          }
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  )}
+                  {/* Add ellipsis logic here if totalPages is large */}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(prev + 1, totalPages)
+                        )
+                      }
+                      className={
+                        currentPage === totalPages
+                          ? 'pointer-events-none opacity-50'
+                          : ''
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </DashboardLayout>
   );
 }
