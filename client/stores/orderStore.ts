@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { z } from 'zod';
 
-// Validation schemas
+//  Validation schemas
 const productDetailsSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   url: z.string().url('Invalid URL').optional().or(z.literal('')),
