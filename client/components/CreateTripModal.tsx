@@ -142,7 +142,7 @@ export function CreateTripModal({
         {/* 1. Departure City */}
         <FormField id="departure-city" label="Enter Departure city">
           <div className="relative">
-            <Inputt]
+            <Input
               id="departure-city"
               placeholder="Los Angeles, USA"
               className="h-11 pl-10"
@@ -154,7 +154,7 @@ export function CreateTripModal({
         </FormField>
 
         {/* 2. Departure Date & Time */}
-        <div className="grid grid-cols-2 gap-4">
+        <divv className="grid grid-cols-2 gap-4">
           <FormField id="departure-date" label="Departure Date">
             <div className="relative">
               <Input
