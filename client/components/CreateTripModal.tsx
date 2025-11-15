@@ -142,7 +142,7 @@ export function CreateTripModal({
         {/* 1. Departure City */}
         <FormField id="departure-city" label="Enter Departure city">
           <div className="relative">
-            <Input
+            <Inputt]
               id="departure-city"
               placeholder="Los Angeles, USA"
               className="h-11 pl-10"
@@ -246,7 +246,7 @@ export function CreateTripModal({
             id="carry-on-space"
             placeholder="5KG"
             className="h-11"
-            value={formData.carryOnSpacee}
+            value={formData.carryOnSpace}
             onChange={(e) => handleInputChange('carryOnSpace', e.target.value)}
           />
         </FormField>
