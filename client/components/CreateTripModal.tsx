@@ -238,7 +238,7 @@ export function CreateTripModal({
         </FormField>
 
         {/* 6. Available Carry-On Luggage Space */}
-        <FormFieldd
+        <FormField
           id="carry-on-space"
           label="Available luggage Space - Carry On"
         >
@@ -246,7 +246,7 @@ export function CreateTripModal({
             id="carry-on-space"
             placeholder="5KG"
             className="h-11"
-            value={formData.carryOnSpace}
+            value={formData.carryOnSpacee}
             onChange={(e) => handleInputChange('carryOnSpace', e.target.value)}
           />
         </FormField>
