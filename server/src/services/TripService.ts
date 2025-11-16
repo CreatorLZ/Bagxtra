@@ -11,12 +11,15 @@ const createTripSchema = z.object({
     val => (typeof val === 'string' ? new Date(val) : val),
     z.date()
   ),
+  departureTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
   arrivalDate: z.preprocess(
     val => (typeof val === 'string' ? new Date(val) : val),
     z.date()
   ),
+  arrivalTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
   availableCarryOnKg: z.number().positive(),
   availableCheckedKg: z.number().positive(),
+  ticketPhoto: z.string().url().optional(),
   canCarryFragile: z.boolean(),
   canHandleSpecialDelivery: z.boolean(),
 });
@@ -35,9 +38,21 @@ export class TripService {
   ): Promise<ITrip> {
     const validatedData = createTripSchema.parse(tripData);
 
-    // Validate dates
-    if (validatedData.departureDate >= validatedData.arrivalDate) {
+    // Validate dates and times
+    if (validatedData.departureDate > validatedData.arrivalDate) {
       throw new Error('Arrival date must be after departure date');
+    } else if (validatedData.departureDate.getTime() === validatedData.arrivalDate.getTime()) {
+      // Same date, check times
+      const depTimeParts = validatedData.departureTime.split(':');
+      const arrTimeParts = validatedData.arrivalTime.split(':');
+      if (depTimeParts.length !== 2 || arrTimeParts.length !== 2) {
+        throw new Error('Invalid time format');
+      }
+      const depMinutes = parseInt(depTimeParts[0]!) * 60 + parseInt(depTimeParts[1]!);
+      const arrMinutes = parseInt(arrTimeParts[0]!) * 60 + parseInt(arrTimeParts[1]!);
+      if (depMinutes >= arrMinutes) {
+        throw new Error('Arrival time must be after departure time');
+      }
     }
 
     // Validate traveler exists and is a traveler
@@ -49,11 +64,18 @@ export class TripService {
       throw new Error('User is not a traveler');
     }
 
-    const trip = await this.tripRepo.create({
+    const createData = {
       ...validatedData,
       travelerId,
       status: 'open' as const,
-    });
+    };
+
+    // Remove ticketPhoto if it's undefined to avoid type issues
+    if (createData.ticketPhoto === undefined) {
+      delete (createData as any).ticketPhoto;
+    }
+
+    const trip = await this.tripRepo.create(createData as Partial<ITrip>);
 
     return trip;
   }
@@ -79,13 +101,27 @@ export class TripService {
       throw new Error('Cannot update completed trip');
     }
 
-    // Validate merged dates
+    // Validate merged dates and times
     const resultingDeparture =
       validatedUpdates.departureDate ?? trip.departureDate;
     const resultingArrival = validatedUpdates.arrivalDate ?? trip.arrivalDate;
+    const resultingDepTime = validatedUpdates.departureTime ?? trip.departureTime;
+    const resultingArrTime = validatedUpdates.arrivalTime ?? trip.arrivalTime;
     if (resultingDeparture && resultingArrival) {
-      if (resultingDeparture >= resultingArrival) {
+      if (resultingDeparture > resultingArrival) {
         throw new Error('Arrival date must be after departure date');
+      } else if (resultingDeparture.getTime() === resultingArrival.getTime()) {
+        // Same date, check times
+        const depTimeParts = resultingDepTime.split(':');
+        const arrTimeParts = resultingArrTime.split(':');
+        if (depTimeParts.length !== 2 || arrTimeParts.length !== 2) {
+          throw new Error('Invalid time format');
+        }
+        const depMinutes = parseInt(depTimeParts[0]!) * 60 + parseInt(depTimeParts[1]!);
+        const arrMinutes = parseInt(arrTimeParts[0]!) * 60 + parseInt(arrTimeParts[1]!);
+        if (depMinutes >= arrMinutes) {
+          throw new Error('Arrival time must be after departure time');
+        }
       }
     }
 

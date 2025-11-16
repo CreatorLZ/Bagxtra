@@ -19,13 +19,16 @@ import {
 } from '@/components/ui/select';
 import {
   ChevronLeft,
-  Calendar,
-  Clock,
   MapPin,
   CheckCircle,
   Pencil,
 } from 'lucide-react';
 import Image from 'next/image';
+import { DatePicker } from '@/components/DatePicker';
+import { TimePicker } from '@/components/TimePicker';
+import { PhotoUpload } from '@/components/PhotoUpload';
+import { format } from 'date-fns';
+import { useAuth } from '@clerk/nextjs';
 
 
 // Assuming this FormField component is defined or imported globally if needed,
@@ -73,7 +76,10 @@ export function CreateTripModal({
   isOpen,
   onOpenChange,
 }: CreateTripModalProps) {
+  const { getToken } = useAuth();
   const [view, setView] = useState<'form' | 'success'>('form');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string>('');
   const [formData, setFormData] = useState<FormData>({
     departureCity: '',
     departureDate: '',
@@ -97,22 +103,76 @@ export function CreateTripModal({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    // Here you would typically send the data to your backend
-    console.log('Submitting form data:', formData);
-    setView('success');
-    // Reset form data after successful submission
-    setFormData({
-      departureCity: '',
-      departureDate: '',
-      departureTime: '',
-      arrivalCity: '',
-      arrivalDate: '',
-      arrivalTime: '',
-      checkInSpace: '',
-      carryOnSpace: '',
-      ticketPhoto: '',
-    });
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
+      // Validate required fields
+      if (!formData.departureCity || !formData.arrivalCity || !formData.departureDate ||
+          !formData.arrivalDate || !formData.departureTime || !formData.arrivalTime ||
+          !formData.checkInSpace || !formData.carryOnSpace) {
+        throw new Error('Please fill in all required fields');
+      }
+
+      // Prepare data for API
+      const tripData = {
+        fromCountry: formData.departureCity,
+        toCountry: formData.arrivalCity,
+        departureDate: formData.departureDate,
+        departureTime: formData.departureTime,
+        arrivalDate: formData.arrivalDate,
+        arrivalTime: formData.arrivalTime,
+        availableCarryOnKg: parseFloat(formData.carryOnSpace),
+        availableCheckedKg: parseFloat(formData.checkInSpace),
+        ticketPhoto: formData.ticketPhoto || undefined,
+        canCarryFragile: true, // Default values
+        canHandleSpecialDelivery: true,
+      };
+
+      // Get Clerk token for authentication
+      const token = await getToken();
+
+      // Make API call
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/trips`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(tripData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to create trip');
+      }
+
+      // Success
+      setView('success');
+
+      // Reset form data after successful submission
+      setFormData({
+        departureCity: '',
+        departureDate: '',
+        departureTime: '',
+        arrivalCity: '',
+        arrivalDate: '',
+        arrivalTime: '',
+        checkInSpace: '',
+        carryOnSpace: '',
+        ticketPhoto: '',
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setSubmitError(errorMessage);
+      console.error('Trip creation error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Renders the main form for entering trip details (matching the screenshot)
@@ -156,28 +216,17 @@ export function CreateTripModal({
         {/* 2. Departure Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <FormField id="departure-date" label="Departure Date">
-            <div className="relative">
-              <Input
-                id="departure-date"
-                placeholder="12/11/2025"
-                className="h-11 pr-10"
-                value={formData.departureDate}
-                onChange={(e) => handleInputChange('departureDate', e.target.value)}
-              />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            </div>
+            <DatePicker
+              date={formData.departureDate ? new Date(formData.departureDate) : undefined}
+              onDateChange={(date) => handleInputChange('departureDate', date ? format(date, 'MM/dd/yyyy') : '')}
+              placeholder="12/11/2025"
+            />
           </FormField>
           <FormField id="departure-time" label="Departure Time">
-            <div className="relative">
-              <Input
-                id="departure-time"
-                placeholder="12 PM WAT"
-                className="h-11 pr-10"
-                value={formData.departureTime}
-                onChange={(e) => handleInputChange('departureTime', e.target.value)}
-              />
-              <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            </div>
+            <TimePicker
+              value={formData.departureTime}
+              onChange={(time) => handleInputChange('departureTime', time)}
+            />
           </FormField>
         </div>
 
@@ -191,35 +240,24 @@ export function CreateTripModal({
               value={formData.arrivalCity}
               onChange={(e) => handleInputChange('arrivalCity', e.target.value)}
             />
-            <MapPin className="!absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           </div>
         </FormField>
 
         {/* 4. Arrival Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <FormField id="arrival-date" label="Arrival Date">
-            <div className="relative">
-              <Input
-                id="arrival-date"
-                placeholder="12/11/2025"
-                className="h-11 pr-10"
-                value={formData.arrivalDate}
-                onChange={(e) => handleInputChange('arrivalDate', e.target.value)}
-              />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            </div>
+            <DatePicker
+              date={formData.arrivalDate ? new Date(formData.arrivalDate) : undefined}
+              onDateChange={(date) => handleInputChange('arrivalDate', date ? format(date, 'MM/dd/yyyy') : '')}
+              placeholder="12/11/2025"
+            />
           </FormField>
           <FormField id="arrival-time" label="Arrival Time">
-            <div className="relative">
-              <Input
-                id="arrival-time"
-                placeholder="12 PM WAT"
-                className="h-11 pr-10"
-                value={formData.arrivalTime}
-                onChange={(e) => handleInputChange('arrivalTime', e.target.value)}
-              />
-              <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            </div>
+            <TimePicker
+              value={formData.arrivalTime}
+              onChange={(time) => handleInputChange('arrivalTime', time)}
+            />
           </FormField>
         </div>
 
@@ -252,22 +290,29 @@ export function CreateTripModal({
         </FormField>
 
         {/* 7. Ticket photo (Optional) */}
-        <FormField id="ticket-photo" label="Ticket photo (Optional)">
-          <button
-            type="button"
-            className="w-full h-11 bg-gray-100 text-gray-600 rounded-lg border border-dashed border-gray-300 hover:bg-gray-200 text-sm font-medium"
-          >
-            Upload Photo
-          </button>
+        <FormField id="ticket-photo" label="Ticket photo (Optional)" className="min-h-[10rem]">
+          <PhotoUpload
+            endpoint="ticketUploader"
+            currentPhoto={formData.ticketPhoto}
+            onPhotoUpdate={(url: string) => handleInputChange('ticketPhoto', url)}
+            placeholder="Upload ticket photo"
+            className="w-full h-full"
+          />
         </FormField>
 
         {/* Submit Button */}
         <div className="pt-4 mt-4 border-t">
+          {submitError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {submitError}
+            </div>
+          )}
           <Button
             className="w-full bg-purple-900 hover:bg-purple-800 h-11"
             onClick={handleSubmit}
+            disabled={isSubmitting}
           >
-            Submit
+            {isSubmitting ? 'Creating Trip...' : 'Submit'}
           </Button>
         </div>
       </div>

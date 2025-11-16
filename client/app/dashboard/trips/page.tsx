@@ -4,13 +4,27 @@ import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { Plus, Plane } from 'lucide-react';
 import { useState } from 'react';
 import { useRole } from '@/hooks/useRole';
-import { CreateTripModal } from '@/components/CreateTripModal'; // Import the new modal
+import { CreateTripModal } from '@/components/CreateTripModal';
 import { TripCard } from '@/components/TripCard';
- // Import the new card component
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@clerk/nextjs';
 
 // --- Data Types ---
-interface Trip {
-  id: number;
+interface ApiTrip {
+  id: string;
+  fromCountry: string;
+  toCountry: string;
+  departureTime: string;
+  arrivalTime: string;
+  departureDate: string;
+  arrivalDate: string;
+  availableCarryOnKg: number;
+  availableCheckedKg: number;
+  status: string;
+}
+
+interface DisplayTrip {
+  id: string;
   departureCity: string;
   arrivalCity: string;
   departureTime: string;
@@ -22,53 +36,34 @@ interface Trip {
 
 type TripStatus = 'active' | 'pending' | 'completed';
 
-// --- Mock Data ---
-const mockTrips: Trip[] = [
-  {
-    id: 1,
-    departureCity: 'LA',
-    arrivalCity: 'LAG',
-    departureTime: '10:30 am',
-    arrivalTime: '12:40 pm',
-    departureDate: '12/05/25',
-    arrivalDate: '15/05/25',
-    availableKG: 15,
-  },
-  {
-    id: 2,
-    departureCity: 'LA',
-    arrivalCity: 'LAG',
-    departureTime: '10:30 am',
-    arrivalTime: '12:40 pm',
-    departureDate: '12/03/25',
-    arrivalDate: '15/03/25',
-    availableKG: 15,
-  },
-  {
-    id: 3,
-    departureCity: 'LA',
-    arrivalCity: 'LAG',
-    departureTime: '10:30 am',
-    arrivalTime: '12:40 pm',
-    departureDate: '12/03/25',
-    arrivalDate: '15/03/25',
-    availableKG: 15,
-  },
-  // Add more mock data for different months/statuses if needed
-];
-
-// Group trips by status and then by a mock month for display
-const getTripsByStatus = (): Record<TripStatus, Trip[]> => ({
-  active: mockTrips.slice(0, 1), // Only one active trip for demo
-  pending: mockTrips.slice(0, 3), // Three pending trips for demo
-  completed: mockTrips.slice(1, 3), // Two completed trips for demo
-});
+// Fetch trips from API
+const fetchTrips = async (getToken: () => Promise<string | null>): Promise<ApiTrip[]> => {
+  const token = await getToken();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const response = await fetch(`${apiUrl}/api/trips`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch trips');
+  }
+  const result = await response.json();
+  return result.data || [];
+};
 
 // --- Main Component ---
 export default function TripsPage() {
-  const { role } = useRole(); 
+  const { role } = useRole();
+  const { getToken } = useAuth();
   const [activeTab, setActiveTab] = useState<TripStatus>('active');
-  const [isTripModalOpen, setIsTripModalOpen] = useState(false); // State for the modal
+  const [isTripModalOpen, setIsTripModalOpen] = useState(false);
+
+  // Fetch trips data
+  const { data: trips = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['trips'],
+    queryFn: () => fetchTrips(getToken),
+  });
 
   // Tabs for the Traveler UI
   const tabs: { key: TripStatus; label: string }[] = [
@@ -77,28 +72,48 @@ export default function TripsPage() {
     { key: 'completed', label: 'Completed' },
   ];
 
-  const tripsByStatus = getTripsByStatus();
+  // Transform API trips to component format
+  const transformedTrips: DisplayTrip[] = trips.map((trip: ApiTrip) => ({
+    id: trip.id,
+    departureCity: trip.fromCountry,
+    arrivalCity: trip.toCountry,
+    departureTime: trip.departureTime,
+    arrivalTime: trip.arrivalTime,
+    departureDate: new Date(trip.departureDate).toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit'
+    }),
+    arrivalDate: new Date(trip.arrivalDate).toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit'
+    }),
+    availableKG: trip.availableCarryOnKg + trip.availableCheckedKg,
+  }));
+
+  // Group trips by status
+  const tripsByStatus = transformedTrips.reduce((acc: Record<TripStatus, DisplayTrip[]>, trip) => {
+    // For now, treat all as pending since we don't have status logic yet
+    const status: TripStatus = 'pending';
+    if (!acc[status]) acc[status] = [];
+    acc[status].push(trip);
+    return acc;
+  }, { active: [], pending: [], completed: [] } as Record<TripStatus, DisplayTrip[]>);
+
   const currentTrips = tripsByStatus[activeTab] || [];
 
-  // Group trips by month (using hardcoded month logic for demo as in OrdersPage)
+  // Group trips by month
   const groupedTrips = currentTrips.reduce(
-    (acc: Record<string, Trip[]>, trip, index) => {
-      let month = '';
-      const date = trip.departureDate.split('/'); // e.g., ['12', '05', '25']
-      const monthIndex = parseInt(date[1], 10);
+    (acc: Record<string, DisplayTrip[]>, trip) => {
+      const date = new Date(trip.departureDate);
+      const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-      // Simple mock month grouping logic
-      if (monthIndex === 5) month = 'May 2025'; // 05/25 -> May
-      else if (monthIndex === 4) month = 'April 2025'; // 04/25 -> April
-      else if (monthIndex === 3) month = 'March 2025'; // 03/25 -> March
-      else if (index === 0) month = 'April 2025';
-      else month = 'March 2025';
-
-      if (!acc[month]) acc[month] = [];
-      acc[month].push(trip);
+      if (!acc[monthName]) acc[monthName] = [];
+      acc[monthName].push(trip);
       return acc;
     },
-    {}
+    {} as Record<string, DisplayTrip[]>
   );
 
   // Only Travelers should see this page/data (and the FAB)

@@ -16,7 +16,7 @@ const requiredEnvVars = [
   'CLERK_SECRET_KEY',
   'CLERK_WEBHOOK_SECRET',
   'STRIPE_SECRET_KEY',
-  'UPLOADTHING_SECRET',
+  'UPLOADTHING_TOKEN',
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -108,6 +108,7 @@ app.get('/health', (_req: express.Request, res: express.Response) => {
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import dashboardRoutes from './routes/dashboard.js';
+import tripsRoutes from './routes/trips.js';
 import { registerUser } from './controllers/authController.js';
 
 // API routes
@@ -128,6 +129,9 @@ app.use('/api/admin', adminRoutes);
 
 // Dashboard routes
 app.use('/api/dashboard', dashboardRoutes);
+
+// Trips routes
+app.use('/api/trips', tripsRoutes);
 
 // Webhook routes (separate route to match Clerk docs)
 app.post(

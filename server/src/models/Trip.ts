@@ -8,9 +8,12 @@ export interface ITrip extends Document {
   fromCountry: string;
   toCountry: string;
   departureDate: Date;
+  departureTime: string;
   arrivalDate: Date;
+  arrivalTime: string;
   availableCarryOnKg: number;
   availableCheckedKg: number;
+  ticketPhoto?: string;
   status: TripStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -42,9 +45,19 @@ const tripSchema = new Schema<ITrip>(
       type: Date,
       required: true,
     },
+    departureTime: {
+      type: String,
+      required: true,
+      match: /^([01]\d|2[0-3]):([0-5]\d)$/,
+    },
     arrivalDate: {
       type: Date,
       required: true,
+    },
+    arrivalTime: {
+      type: String,
+      required: true,
+      match: /^([01]\d|2[0-3]):([0-5]\d)$/,
     },
     availableCarryOnKg: {
       type: Number,
@@ -55,6 +68,11 @@ const tripSchema = new Schema<ITrip>(
       type: Number,
       required: true,
       min: 0,
+    },
+    ticketPhoto: {
+      type: String,
+      trim: true,
+      default: null,
     },
     status: {
       type: String,

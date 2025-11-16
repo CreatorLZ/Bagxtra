@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 import { Plane } from 'lucide-react';
 
 interface Trip {
-  id: number;
+  id: string;
   departureCity: string;
   arrivalCity: string;
   departureTime: string;
