@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { requireAuth, authorizeRoles } from '../middleware/auth.js';
+import { validateParams, commonSchemas } from '../middleware/validation.js';
 import { TripService } from '../services/TripService.js';
 import { TripRepository, UserRepository } from '../services/repositoryImpl.js';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 
 const router = Router();
 
@@ -29,6 +31,10 @@ const updateTicketPhotoSchema = z.object({
   ticketPhoto: z.string().url(),
 });
 
+const cancelTripSchema = z.object({
+  reason: z.string().optional(),
+});
+
 /**
  * @route GET /api/trips
  * @desc Get all trips for the authenticated traveler
@@ -45,8 +51,11 @@ router.get('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
       });
     }
 
+    // Convert string ID to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
     // Get user's trips
-    const trips = await tripService.getTravelerTrips(userId as any);
+    const trips = await tripService.getTravelerTrips(userObjectId);
 
     res.status(200).json({
       success: true,
@@ -73,6 +82,7 @@ router.get('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
       message: 'Failed to fetch trips',
     });
   }
+  return;
 });
 
 /**
@@ -120,8 +130,11 @@ router.post('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
       canHandleSpecialDelivery: tripData.canHandleSpecialDelivery,
     };
 
+    // Convert string ID to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
     // Create the trip
-    const trip = await tripService.createTrip(userId as any, serviceData);
+    const trip = await tripService.createTrip(userObjectId, serviceData);
 
     res.status(201).json({
       success: true,
@@ -155,6 +168,7 @@ router.post('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
       message: 'Failed to create trip',
     });
   }
+  return;
 });
 
 /**
@@ -162,7 +176,7 @@ router.post('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
  * @desc Update ticket photo for a trip
  * @access Private (Traveler only)
  */
-router.put('/:tripId/ticket-photo', requireAuth, authorizeRoles('traveler'), async (req, res) => {
+router.put('/:tripId/ticket-photo', requireAuth, authorizeRoles('traveler'), validateParams(commonSchemas.tripId), async (req, res) => {
   try {
     const { tripId } = req.params;
     const { ticketPhoto } = updateTicketPhotoSchema.parse(req.body);
@@ -176,10 +190,14 @@ router.put('/:tripId/ticket-photo', requireAuth, authorizeRoles('traveler'), asy
       });
     }
 
+    // Convert string IDs to ObjectIds
+    const tripObjectId = new mongoose.Types.ObjectId(tripId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
     // Update the trip with the photo URL
     const updatedTrip = await tripService.updateTrip(
-      tripId as any,
-      userId as any,
+      tripObjectId,
+      userObjectId,
       { ticketPhoto }
     );
 
@@ -205,6 +223,156 @@ router.put('/:tripId/ticket-photo', requireAuth, authorizeRoles('traveler'), asy
       message: 'Failed to update ticket photo',
     });
   }
+  return;
+});
+
+/**
+ * @route PUT /api/trips/:tripId/activate
+ * @desc Activate a pending trip (start accepting bookings)
+ * @access Private (Traveler only)
+ */
+router.put('/:tripId/activate', requireAuth, authorizeRoles('traveler'), validateParams(commonSchemas.tripId), async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+    }
+
+    // Convert string IDs to ObjectIds
+    const tripObjectId = new mongoose.Types.ObjectId(tripId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const trip = await tripService.activateTrip(tripObjectId, userObjectId);
+    if (!trip) {
+      return res.status(404).json({ error: 'Not found', message: 'Trip not found' });
+    }
+    res.status(200).json({ success: true, message: 'Trip activated successfully', data: { id: trip._id, status: trip.status } });
+  } catch (error) {
+    console.error('Error activating trip:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Failed to activate trip' });
+  }
+  return;
+});
+
+/**
+ * @route PUT /api/trips/:tripId/cancel
+ * @desc Cancel a pending trip
+ * @access Private (Traveler only)
+ */
+router.put('/:tripId/cancel', requireAuth, authorizeRoles('traveler'), validateParams(commonSchemas.tripId), async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const { reason } = cancelTripSchema.parse(req.body);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+    }
+
+    // Convert string IDs to ObjectIds
+    const tripObjectId = new mongoose.Types.ObjectId(tripId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const trip = await tripService.cancelTrip(tripObjectId, userObjectId, reason);
+    if (!trip) {
+      return res.status(404).json({ error: 'Not found', message: 'Trip not found' });
+    }
+    res.status(200).json({ success: true, message: 'Trip cancelled successfully', data: { id: trip._id, status: trip.status } });
+  } catch (error) {
+    console.error('Error cancelling trip:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation Error', message: 'Invalid input data', details: error.issues });
+    }
+    res.status(500).json({ error: 'Internal server error', message: 'Failed to cancel trip' });
+  }
+  return;
+});
+
+/**
+ * @route PUT /api/trips/:tripId/mark-airborne
+ * @desc Mark trip as airborne (manual activation)
+ * @access Private (Traveler only)
+ */
+router.put('/:tripId/mark-airborne', requireAuth, authorizeRoles('traveler'), validateParams(commonSchemas.tripId), async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+    }
+
+    // Convert string IDs to ObjectIds
+    const tripObjectId = new mongoose.Types.ObjectId(tripId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const trip = await tripService.markAirborne(tripObjectId, userObjectId);
+    if (!trip) {
+      return res.status(404).json({ error: 'Not found', message: 'Trip not found' });
+    }
+    res.status(200).json({ success: true, message: 'Trip marked as airborne', data: { id: trip._id, status: trip.status } });
+  } catch (error) {
+    console.error('Error marking trip airborne:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Failed to mark trip airborne' });
+  }
+  return;
+});
+
+/**
+ * @route PUT /api/trips/:tripId/mark-arrived
+ * @desc Mark trip as arrived
+ * @access Private (Traveler only)
+ */
+router.put('/:tripId/mark-arrived', requireAuth, authorizeRoles('traveler'), validateParams(commonSchemas.tripId), async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+    }
+
+    // Convert string IDs to ObjectIds
+    const tripObjectId = new mongoose.Types.ObjectId(tripId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const trip = await tripService.markArrived(tripObjectId, userObjectId);
+    if (!trip) {
+      return res.status(404).json({ error: 'Not found', message: 'Trip not found' });
+    }
+    res.status(200).json({ success: true, message: 'Trip marked as arrived', data: { id: trip._id, arrivedAt: trip.arrivedAt } });
+  } catch (error) {
+    console.error('Error marking trip arrived:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Failed to mark trip arrived' });
+  }
+  return;
+});
+
+/**
+ * @route PUT /api/trips/:tripId/complete
+ * @desc Complete a trip
+ * @access Private (Traveler only)
+ */
+router.put('/:tripId/complete', requireAuth, authorizeRoles('traveler'), validateParams(commonSchemas.tripId), async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+    }
+
+    // Convert string IDs to ObjectIds
+    const tripObjectId = new mongoose.Types.ObjectId(tripId);
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const trip = await tripService.completeTrip(tripObjectId, userObjectId);
+    if (!trip) {
+      return res.status(404).json({ error: 'Not found', message: 'Trip not found' });
+    }
+    res.status(200).json({ success: true, message: 'Trip completed successfully', data: { id: trip._id, status: trip.status } });
+  } catch (error) {
+    console.error('Error completing trip:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Failed to complete trip' });
+  }
+  return;
 });
 
 export default router;

@@ -204,4 +204,9 @@ export const commonSchemas = {
   userId: z.object({
     userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID format'),
   }),
+
+  // Trip ID param
+  tripId: z.object({
+    tripId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid trip ID format'),
+  }),
 };

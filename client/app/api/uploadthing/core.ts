@@ -1,9 +1,12 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
-import { UploadThingError } from "uploadthing/server";
 
 const f = createUploadthing();
 
-const auth = (req: Request) => ({ id: "fakeId" }); // TODO: Implement proper auth
+// Sanitized logger for upload events
+const logUploadEvent = (event: string, fileKey?: string) => {
+  const sanitizedFileKey = fileKey ? fileKey.split('/').pop() : 'unknown';
+  console.log(`[UPLOAD] ${event} - File: ${sanitizedFileKey}`);
+};
 
 // FileRouter for your app, can contain multiple FileRoutes
 export const ourFileRouter = {
@@ -14,16 +17,9 @@ export const ourFileRouter = {
       maxFileCount: 1,
     },
   })
-    .middleware(async ({ req }) => {
-      // TODO: Add proper authentication check
-      return { uploadedBy: "traveler" };
-    })
-    .onUploadComplete(async ({ metadata, file }) => {
-      // This code RUNS ON YOUR SERVER after upload
-      console.log("Upload complete for userId:", metadata.uploadedBy);
-      console.log("File URL:", file.url);
-
-      return { uploadedBy: metadata.uploadedBy, url: file.url };
+    .onUploadComplete(async ({ file }) => {
+      logUploadEvent("Ticket upload complete", file.key);
+      return { url: file.ufsUrl };
     }),
 
   // Profile photo uploader for user profiles
@@ -33,15 +29,9 @@ export const ourFileRouter = {
       maxFileCount: 1,
     },
   })
-    .middleware(async ({ req }) => {
-      // TODO: Add proper authentication check
-      return { uploadedBy: "user" };
-    })
-    .onUploadComplete(async ({ metadata, file }) => {
-      console.log("Profile upload complete for userId:", metadata.uploadedBy);
-      console.log("File URL:", file.url);
-
-      return { uploadedBy: metadata.uploadedBy, url: file.url };
+    .onUploadComplete(async ({ file }) => {
+      logUploadEvent("Profile upload complete", file.key);
+      return { url: file.ufsUrl };
     }),
 
   // Document uploader for KYC and other documents
@@ -51,15 +41,9 @@ export const ourFileRouter = {
       maxFileCount: 5,
     },
   })
-    .middleware(async ({ req }) => {
-      // TODO: Add proper authentication check
-      return { uploadedBy: "user" };
-    })
-    .onUploadComplete(async ({ metadata, file }) => {
-      console.log("Document upload complete for userId:", metadata.uploadedBy);
-      console.log("File URL:", file.url);
-
-      return { uploadedBy: metadata.uploadedBy, url: file.url };
+    .onUploadComplete(async ({ file }) => {
+      logUploadEvent("Document upload complete", file.key);
+      return { url: file.ufsUrl };
     }),
 } satisfies FileRouter;
 

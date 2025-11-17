@@ -1,4 +1,4 @@
-import { ITrip, TripUpdateData } from '../models/Trip';
+import { ITrip, TripUpdateData, TripStatus } from '../models/Trip';
 import { IUser } from '../models/User';
 import { ITripRepository, IUserRepository } from './repositories';
 import mongoose from 'mongoose';
@@ -67,7 +67,7 @@ export class TripService {
     const createData = {
       ...validatedData,
       travelerId,
-      status: 'open' as const,
+      status: 'pending' as TripStatus,
     };
 
     // Remove ticketPhoto if it's undefined to avoid type issues
@@ -149,7 +149,7 @@ export class TripService {
     return await this.tripRepo.findByRoute(fromCountry, toCountry);
   }
 
-  async closeTrip(
+  async activateTrip(
     tripId: mongoose.Types.ObjectId,
     travelerId: mongoose.Types.ObjectId
   ): Promise<ITrip | null> {
@@ -159,14 +159,14 @@ export class TripService {
       throw new Error('Trip not found');
     }
     if (!trip.travelerId.equals(travelerId)) {
-      throw new Error('Unauthorized to close this trip');
+      throw new Error('Unauthorized to activate this trip');
     }
 
-    if (trip.status !== 'open') {
-      throw new Error('Trip is not open');
+    if (trip.status !== 'pending') {
+      throw new Error('Trip is not pending');
     }
 
-    return await this.tripRepo.update(tripId, { status: 'closed' } as any);
+    return await this.tripRepo.update(tripId, { status: 'active' as TripStatus, activatedAt: new Date() });
   }
 
   async completeTrip(
@@ -182,11 +182,16 @@ export class TripService {
       throw new Error('Unauthorized to complete this trip');
     }
 
-    if (trip.status !== 'closed') {
-      throw new Error('Trip must be closed before completion');
+    if (trip.status !== 'active') {
+      throw new Error('Trip must be active before completion');
     }
 
-    return await this.tripRepo.update(tripId, { status: 'completed' } as any);
+    if (trip.ordersDelivered < trip.ordersCount) {
+      await this.tripRepo.update(tripId, { hasIssues: true, issueReason: 'Undelivered orders' });
+      throw new Error('Cannot complete trip with undelivered orders');
+    }
+
+    return await this.tripRepo.update(tripId, { status: 'completed' as TripStatus, completedAt: new Date() });
   }
 
   async validateTripCapacity(
@@ -231,5 +236,74 @@ export class TripService {
     return await this.tripRepo.update(tripId, {
       [updateField]: newCapacity,
     } as any);
+  }
+
+  async cancelTrip(
+    tripId: mongoose.Types.ObjectId,
+    travelerId: mongoose.Types.ObjectId,
+    reason?: string
+  ): Promise<ITrip | null> {
+    const trip = await this.tripRepo.findById(tripId);
+    if (!trip) {
+      throw new Error('Trip not found');
+    }
+    if (!trip.travelerId.equals(travelerId)) {
+      throw new Error('Unauthorized');
+    }
+    if (trip.status !== 'pending') {
+      throw new Error('Can only cancel pending trips');
+    }
+    if (trip.ordersCount > 0) {
+      throw new Error('Cannot cancel trip with orders');
+    }
+    const updateData: Partial<ITrip> = {
+      status: 'cancelled' as TripStatus,
+      cancelledAt: new Date(),
+    };
+    if (reason) {
+      updateData.cancellationReason = reason;
+    }
+    return this.tripRepo.update(tripId, updateData);
+  }
+
+  async markAirborne(
+    tripId: mongoose.Types.ObjectId,
+    travelerId: mongoose.Types.ObjectId
+  ): Promise<ITrip | null> {
+    const trip = await this.tripRepo.findById(tripId);
+    if (!trip) {
+      throw new Error('Trip not found');
+    }
+    if (!trip.travelerId.equals(travelerId)) {
+      throw new Error('Unauthorized');
+    }
+    if (trip.status !== 'pending') {
+      throw new Error('Trip not pending');
+    }
+    return this.tripRepo.update(tripId, {
+      status: 'active' as TripStatus,
+      activatedAt: new Date(),
+      manuallyActivated: true
+    });
+  }
+
+  async markArrived(
+    tripId: mongoose.Types.ObjectId,
+    travelerId: mongoose.Types.ObjectId
+  ): Promise<ITrip | null> {
+    const trip = await this.tripRepo.findById(tripId);
+    if (!trip) {
+      throw new Error('Trip not found');
+    }
+    if (!trip.travelerId.equals(travelerId)) {
+      throw new Error('Unauthorized');
+    }
+    if (trip.status !== 'active') {
+      throw new Error('Trip not active');
+    }
+    return this.tripRepo.update(tripId, {
+      arrivedAt: new Date(),
+      manuallyArrived: true
+    });
   }
 }

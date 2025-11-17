@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -22,6 +23,8 @@ import {
   MapPin,
   CheckCircle,
   Pencil,
+  Luggage,
+  Loader2,
 } from 'lucide-react';
 import Image from 'next/image';
 import { DatePicker } from '@/components/DatePicker';
@@ -38,15 +41,18 @@ function FormField({
   label,
   children,
   className = '',
+  icon,
 }: {
   id: string;
   label: string;
   children: React.ReactNode;
   className?: string;
+  icon?: React.ReactNode;
 }) {
   return (
     <div className={`grid w-full items-center gap-1.5 ${className}`}>
       <Label htmlFor={id} className="text-sm font-medium text-gray-700">
+        {icon}
         {label}
       </Label>
       {children}
@@ -92,15 +98,96 @@ export function CreateTripModal({
     ticketPhoto: '',
   });
 
+  const [canCarryFragile, setCanCarryFragile] = useState(false);
+  const [canHandleSpecialDelivery, setCanHandleSpecialDelivery] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   // Reset view to 'form' when modal opens
   useEffect(() => {
     if (isOpen) {
       setView('form');
+      // Load draft from localStorage
+      const draft = localStorage.getItem('tripDraft');
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          setFormData(parsed);
+        } catch (e) {
+          console.error('Failed to load draft', e);
+        }
+      }
     }
   }, [isOpen]);
 
+  // Auto-save draft
+  useEffect(() => {
+    if (isOpen && formData.departureCity) { // Only save if there's some data
+      localStorage.setItem('tripDraft', JSON.stringify(formData));
+    }
+  }, [formData, isOpen]);
+
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error on change
+    setFieldErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const handleBlur = (field: keyof FormData) => {
+    const validation = validateForm(formData);
+    setFieldErrors(prev => ({ ...prev, [field]: validation.errors[field] || '' }));
+  };
+
+  const validateForm = (data: FormData): { isValid: boolean; errors: Record<string, string> } => {
+    const errors: Record<string, string> = {};
+
+    // Check required fields
+    if (!data.departureCity) errors.departureCity = 'Departure city is required';
+    if (!data.arrivalCity) errors.arrivalCity = 'Arrival city is required';
+    if (!data.departureDate) errors.departureDate = 'Departure date is required';
+    if (!data.arrivalDate) errors.arrivalDate = 'Arrival date is required';
+    if (!data.departureTime) errors.departureTime = 'Departure time is required';
+    if (!data.arrivalTime) errors.arrivalTime = 'Arrival time is required';
+    if (!data.checkInSpace) errors.checkInSpace = 'Check-in space is required';
+    if (!data.carryOnSpace) errors.carryOnSpace = 'Carry-on space is required';
+
+    // Validate dates
+    if (data.departureDate) {
+      const depDate = new Date(data.departureDate);
+      if (isNaN(depDate.getTime())) {
+        errors.departureDate = 'Invalid departure date format';
+      }
+    }
+    if (data.arrivalDate) {
+      const arrDate = new Date(data.arrivalDate);
+      if (isNaN(arrDate.getTime())) {
+        errors.arrivalDate = 'Invalid arrival date format';
+      }
+    }
+
+    // Validate times
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (data.departureTime && !timeRegex.test(data.departureTime)) {
+      errors.departureTime = 'Invalid departure time format. Use HH:mm (24-hour format)';
+    }
+    if (data.arrivalTime && !timeRegex.test(data.arrivalTime)) {
+      errors.arrivalTime = 'Invalid arrival time format. Use HH:mm (24-hour format)';
+    }
+
+    // Validate spaces
+    if (data.checkInSpace) {
+      const num = parseFloat(data.checkInSpace);
+      if (!isFinite(num) || num < 0.1 || num > 50) {
+        errors.checkInSpace = 'Check-in space must be between 0.1 and 50 kg';
+      }
+    }
+    if (data.carryOnSpace) {
+      const num = parseFloat(data.carryOnSpace);
+      if (!isFinite(num) || num < 0.1 || num > 50) {
+        errors.carryOnSpace = 'Carry-on space must be between 0.1 and 50 kg';
+      }
+    }
+
+    return { isValid: Object.keys(errors).length === 0, errors };
   };
 
   const handleSubmit = async () => {
@@ -108,11 +195,11 @@ export function CreateTripModal({
     setSubmitError('');
 
     try {
-      // Validate required fields
-      if (!formData.departureCity || !formData.arrivalCity || !formData.departureDate ||
-          !formData.arrivalDate || !formData.departureTime || !formData.arrivalTime ||
-          !formData.checkInSpace || !formData.carryOnSpace) {
-        throw new Error('Please fill in all required fields');
+      // Validate form
+      const validation = validateForm(formData);
+      if (!validation.isValid) {
+        const firstError = Object.values(validation.errors)[0];
+        throw new Error(firstError);
       }
 
       // Prepare data for API
@@ -126,12 +213,15 @@ export function CreateTripModal({
         availableCarryOnKg: parseFloat(formData.carryOnSpace),
         availableCheckedKg: parseFloat(formData.checkInSpace),
         ticketPhoto: formData.ticketPhoto || undefined,
-        canCarryFragile: true, // Default values
-        canHandleSpecialDelivery: true,
+        canCarryFragile,
+        canHandleSpecialDelivery,
       };
 
       // Get Clerk token for authentication
       const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required. Please sign in to create a trip.');
+      }
 
       // Make API call
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -165,6 +255,10 @@ export function CreateTripModal({
         carryOnSpace: '',
         ticketPhoto: '',
       });
+      setCanCarryFragile(false);
+      setCanHandleSpecialDelivery(false);
+      // Clear draft
+      localStorage.removeItem('tripDraft');
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -208,9 +302,18 @@ export function CreateTripModal({
               className="h-11 pl-10"
               value={formData.departureCity}
               onChange={(e) => handleInputChange('departureCity', e.target.value)}
+              onBlur={() => handleBlur('departureCity')}
+              disabled={isSubmitting}
+              aria-describedby={fieldErrors.departureCity ? 'departure-city-error' : undefined}
+              aria-required="true"
             />
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           </div>
+          {fieldErrors.departureCity && (
+            <p id="departure-city-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.departureCity}
+            </p>
+          )}
         </FormField>
 
         {/* 2. Departure Date & Time */}
@@ -239,9 +342,18 @@ export function CreateTripModal({
               className="h-11 pl-10"
               value={formData.arrivalCity}
               onChange={(e) => handleInputChange('arrivalCity', e.target.value)}
+              onBlur={() => handleBlur('arrivalCity')}
+              disabled={isSubmitting}
+              aria-describedby={fieldErrors.arrivalCity ? 'arrival-city-error' : undefined}
+              aria-required="true"
             />
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           </div>
+          {fieldErrors.arrivalCity && (
+            <p id="arrival-city-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.arrivalCity}
+            </p>
+          )}
         </FormField>
 
         {/* 4. Arrival Date & Time */}
@@ -265,29 +377,93 @@ export function CreateTripModal({
         <FormField
           id="check-in-space"
           label="Available luggage Space - Check In"
+          icon={<Luggage className="h-5 w-5 mr-2 inline" />}
         >
-          <Input
-            id="check-in-space"
-            placeholder="5KG"
-            className="h-11"
-            value={formData.checkInSpace}
-            onChange={(e) => handleInputChange('checkInSpace', e.target.value)}
-          />
+          <div className="relative">
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              id="check-in-space"
+              placeholder="e.g., 10.5"
+              title="Enter available weight in kilograms (e.g., 5 for 5kg)"
+              className="h-11 pl-3 pr-10 border rounded-md w-full"
+              value={formData.checkInSpace}
+              onChange={(e) => handleInputChange('checkInSpace', e.target.value)}
+              onBlur={() => handleBlur('checkInSpace')}
+              disabled={isSubmitting}
+              aria-describedby={fieldErrors.checkInSpace ? 'check-in-space-error' : undefined}
+              aria-required="true"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">KG</span>
+          </div>
+          {fieldErrors.checkInSpace && (
+            <p id="check-in-space-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.checkInSpace}
+            </p>
+          )}
         </FormField>
 
         {/* 6. Available Carry-On Luggage Space */}
         <FormField
           id="carry-on-space"
           label="Available luggage Space - Carry On"
+          icon={<Luggage className="h-5 w-5 mr-2 inline" />}
         >
-          <Input
-            id="carry-on-space"
-            placeholder="5KG"
-            className="h-11"
-            value={formData.carryOnSpace}
-            onChange={(e) => handleInputChange('carryOnSpace', e.target.value)}
-          />
+          <div className="relative">
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              id="carry-on-space"
+              placeholder="e.g., 10.5"
+              title="Enter available weight in kilograms (e.g., 5 for 5kg)"
+              className="h-11 pl-3 pr-10 border rounded-md w-full"
+              value={formData.carryOnSpace}
+              onChange={(e) => handleInputChange('carryOnSpace', e.target.value)}
+              onBlur={() => handleBlur('carryOnSpace')}
+              disabled={isSubmitting}
+              aria-describedby={fieldErrors.carryOnSpace ? 'carry-on-space-error' : undefined}
+              aria-required="true"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">KG</span>
+          </div>
+          {fieldErrors.carryOnSpace && (
+            <p id="carry-on-space-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.carryOnSpace}
+            </p>
+          )}
         </FormField>
+
+        {/* Fragile Items Switch */}
+        <div className='flex items-center justify-between'>
+          <Label
+            htmlFor='canCarryFragile'
+            className='text-sm font-medium text-gray-700'
+          >
+            Can carry fragile items?
+          </Label>
+          <Switch
+            id='canCarryFragile'
+            checked={canCarryFragile}
+            onCheckedChange={setCanCarryFragile}
+          />
+        </div>
+
+        {/* Special Delivery Switch */}
+        <div className='flex items-center justify-between'>
+          <Label
+            htmlFor='canHandleSpecialDelivery'
+            className='text-sm font-medium text-gray-700'
+          >
+            Can handle special delivery?
+          </Label>
+          <Switch
+            id='canHandleSpecialDelivery'
+            checked={canHandleSpecialDelivery}
+            onCheckedChange={setCanHandleSpecialDelivery}
+          />
+        </div>
 
         {/* 7. Ticket photo (Optional) */}
         <FormField id="ticket-photo" label="Ticket photo (Optional)" className="min-h-[10rem]">
@@ -312,7 +488,14 @@ export function CreateTripModal({
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Creating Trip...' : 'Submit'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Creating Trip...
+              </>
+            ) : (
+              'Submit'
+            )}
           </Button>
         </div>
       </div>

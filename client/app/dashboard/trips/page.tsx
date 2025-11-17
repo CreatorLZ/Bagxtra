@@ -8,6 +8,7 @@ import { CreateTripModal } from '@/components/CreateTripModal';
 import { TripCard } from '@/components/TripCard';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@clerk/nextjs';
+import { Button } from '@/components/ui/button';
 
 // --- Data Types ---
 interface ApiTrip {
@@ -32,9 +33,10 @@ interface DisplayTrip {
   departureDate: string;
   arrivalDate: string;
   availableKG: number;
+  status: TripStatus;
 }
 
-type TripStatus = 'active' | 'pending' | 'completed';
+type TripStatus = 'pending' | 'active' | 'completed' | 'cancelled';
 
 // Fetch trips from API
 const fetchTrips = async (getToken: () => Promise<string | null>): Promise<ApiTrip[]> => {
@@ -65,11 +67,40 @@ export default function TripsPage() {
     queryFn: () => fetchTrips(getToken),
   });
 
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className='flex items-center justify-center min-h-[400px]'>
+          <div className='text-center'>
+            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900 mx-auto mb-4'></div>
+            <p className="text-gray-600">Loading trips...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className='flex items-center justify-center min-h-[400px]'>
+          <div className='text-center'>
+            <Plane className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Failed to load trips</h3>
+            <p className="text-gray-600 mb-4">{error?.message || 'An error occurred'}</p>
+            <Button onClick={() => refetch()}>Retry</Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   // Tabs for the Traveler UI
   const tabs: { key: TripStatus; label: string }[] = [
     { key: 'active', label: 'Active' },
     { key: 'pending', label: 'Pending' },
     { key: 'completed', label: 'Completed' },
+    { key: 'cancelled', label: 'Cancelled' },
   ];
 
   // Transform API trips to component format
@@ -79,27 +110,33 @@ export default function TripsPage() {
     arrivalCity: trip.toCountry,
     departureTime: trip.departureTime,
     arrivalTime: trip.arrivalTime,
-    departureDate: new Date(trip.departureDate).toLocaleDateString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: '2-digit'
-    }),
-    arrivalDate: new Date(trip.arrivalDate).toLocaleDateString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: '2-digit'
-    }),
+    departureDate: (() => {
+      const d = new Date(trip.departureDate);
+      return isNaN(d.getTime()) ? 'Invalid date' : d.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+      });
+    })(),
+    arrivalDate: (() => {
+      const d = new Date(trip.arrivalDate);
+      return isNaN(d.getTime()) ? 'Invalid date' : d.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+      });
+    })(),
     availableKG: trip.availableCarryOnKg + trip.availableCheckedKg,
+    status: trip.status as TripStatus,
   }));
 
   // Group trips by status
   const tripsByStatus = transformedTrips.reduce((acc: Record<TripStatus, DisplayTrip[]>, trip) => {
-    // For now, treat all as pending since we don't have status logic yet
-    const status: TripStatus = 'pending';
+    const status = trip.status;
     if (!acc[status]) acc[status] = [];
     acc[status].push(trip);
     return acc;
-  }, { active: [], pending: [], completed: [] } as Record<TripStatus, DisplayTrip[]>);
+  }, { active: [], pending: [], completed: [], cancelled: [] } as Record<TripStatus, DisplayTrip[]>);
 
   const currentTrips = tripsByStatus[activeTab] || [];
 

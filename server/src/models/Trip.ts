@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type TripStatus = 'open' | 'closed' | 'completed';
+export type TripStatus = 'pending' | 'active' | 'completed' | 'cancelled';
 
 export interface ITrip extends Document {
   _id: mongoose.Types.ObjectId;
@@ -13,8 +13,19 @@ export interface ITrip extends Document {
   arrivalTime: string;
   availableCarryOnKg: number;
   availableCheckedKg: number;
-  ticketPhoto?: string;
+  ticketPhoto?: string | null;
   status: TripStatus;
+  activatedAt?: Date;
+  arrivedAt?: Date;
+  completedAt?: Date;
+  cancelledAt?: Date;
+  manuallyActivated?: boolean;
+  manuallyArrived?: boolean;
+  ordersCount: number;
+  ordersDelivered: number;
+  hasIssues?: boolean;
+  issueReason?: string;
+  cancellationReason?: string;
   createdAt: Date;
   updatedAt: Date;
   canCarryFragile: boolean;
@@ -76,10 +87,21 @@ const tripSchema = new Schema<ITrip>(
     },
     status: {
       type: String,
-      enum: ['open', 'closed', 'completed'],
-      default: 'open',
+      enum: ['pending', 'active', 'completed', 'cancelled'],
+      default: 'pending',
       required: true,
     },
+    activatedAt: Date,
+    arrivedAt: Date,
+    completedAt: Date,
+    cancelledAt: Date,
+    manuallyActivated: { type: Boolean, default: false },
+    manuallyArrived: { type: Boolean, default: false },
+    ordersCount: { type: Number, default: 0 },
+    ordersDelivered: { type: Number, default: 0 },
+    hasIssues: { type: Boolean, default: false },
+    issueReason: String,
+    cancellationReason: String,
     canCarryFragile: {
       type: Boolean,
       required: true,
@@ -104,5 +126,8 @@ tripSchema.pre('validate', function (next) {
 // Indexes for performance
 tripSchema.index({ toCountry: 1 });
 tripSchema.index({ departureDate: 1 });
+tripSchema.index({ status: 1 });
+tripSchema.index({ departureDate: 1, arrivalDate: 1 });
+tripSchema.index({ travelerId: 1, status: 1 });
 
 export const Trip = mongoose.model<ITrip>('Trip', tripSchema);

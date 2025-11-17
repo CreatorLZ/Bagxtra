@@ -13,6 +13,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@clerk/backend": "^1.15.4",
     "@clerk/nextjs": "^6.34.1",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -33,6 +34,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.552.0",
+    "mongoose": "^8.8.3",
     "next": "16.0.1",
     "react": "19.2.0",
     "react-day-picker": "^9.11.1",

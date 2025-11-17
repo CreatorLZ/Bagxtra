@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import http from 'http';
+import * as cron from 'node-cron';
 // import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node'; // Temporarily disabled due to type conflicts
 
 // Load environment variables
@@ -110,6 +111,7 @@ import adminRoutes from './routes/admin.js';
 import dashboardRoutes from './routes/dashboard.js';
 import tripsRoutes from './routes/trips.js';
 import { registerUser } from './controllers/authController.js';
+import { Trip } from './models/Trip.js';
 
 // API routes
 app.get('/api', (_req: express.Request, res: express.Response) => {
@@ -139,6 +141,29 @@ app.post(
   express.raw({ type: 'application/json' }),
   registerUser
 );
+
+// Background job for trip status auto-transitions
+cron.schedule('*/30 * * * *', async () => {
+  const now = new Date();
+  try {
+    // Pending → Active
+    await Trip.updateMany(
+      { status: 'pending', departureDate: { $lte: now }, arrivalDate: { $gt: now } },
+      { status: 'active', activatedAt: now }
+    );
+    // Active → Completed
+    const activeTrips = await Trip.find({ status: 'active', arrivalDate: { $lte: now } });
+    for (const trip of activeTrips) {
+      if (trip.ordersDelivered >= trip.ordersCount) {
+        await Trip.updateOne({ _id: trip._id }, { status: 'completed', completedAt: now });
+      } else {
+        await Trip.updateOne({ _id: trip._id }, { hasIssues: true, issueReason: 'Undelivered orders' });
+      }
+    }
+  } catch (error) {
+    console.error('Auto-transition error:', error);
+  }
+});
 
 // MongoDB connection with retry logic
 const connectDB = async (retries = 3): Promise<void> => {

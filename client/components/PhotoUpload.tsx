@@ -76,7 +76,7 @@ export function PhotoUpload({
     <div
       className={cn(
         'relative w-full h-full border-2 border-dashed rounded-lg overflow-hidden',
-        isHovering && !disabled ? 'border-purple-400 bg-purple-50' : 'border-gray-300',
+        isHovering && !disabled ? 'border-purple-800 bg-purple-50' : 'border-gray-300',
         disabled && 'opacity-50 cursor-not-allowed',
         error && 'border-red-400 bg-red-50',
         className
@@ -105,7 +105,7 @@ export function PhotoUpload({
                 <div className="text-sm">Uploading...</div>
               </div>
             ) : (
-              <div className="text-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className={cn("text-center text-white transition-opacity", (isHovering || isUploading) ? "opacity-100" : "opacity-0")}>
                 <Upload className="w-8 h-8 mx-auto mb-2" />
                 <div className="text-sm">Change Photo</div>
               </div>

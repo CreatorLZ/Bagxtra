@@ -138,7 +138,7 @@ export class DashboardService {
     const monthlyEarnings = await this.calculateMonthlyEarnings(userId, 'traveler');
 
     // Get active trips count
-    const activeTrips = trips.filter(trip => trip.status === 'open').length;
+    const activeTrips = trips.filter(trip => trip.status === 'active').length;
 
     // Get pending requests (matches that are pending approval)
     const pendingRequests = await Match.countDocuments({
@@ -362,7 +362,7 @@ export class DashboardService {
     const totalUsers = await User.countDocuments();
     const totalTrips = await Trip.countDocuments();
     const totalOrders = await ShopperRequest.countDocuments();
-    const activeTrips = await Trip.countDocuments({ status: 'open' });
+    const activeTrips = await Trip.countDocuments({ status: { $in: ['pending', 'active'] } });
     const completedTrips = await Trip.countDocuments({ status: 'completed' });
 
     // Calculate platform revenue (sum of all commissions)
