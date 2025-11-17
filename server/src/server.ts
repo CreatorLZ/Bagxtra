@@ -153,12 +153,20 @@ cron.schedule('*/30 * * * *', async () => {
     );
     // Active → Completed
     const activeTrips = await Trip.find({ status: 'active', arrivalDate: { $lte: now } });
+    const completedIds: mongoose.Types.ObjectId[] = [];
+    const issueIds: mongoose.Types.ObjectId[] = [];
     for (const trip of activeTrips) {
       if (trip.ordersDelivered >= trip.ordersCount) {
-        await Trip.updateOne({ _id: trip._id }, { status: 'completed', completedAt: now });
+        completedIds.push(trip._id);
       } else {
-        await Trip.updateOne({ _id: trip._id }, { hasIssues: true, issueReason: 'Undelivered orders' });
+        issueIds.push(trip._id);
       }
+    }
+    if (completedIds.length > 0) {
+      await Trip.updateMany({ _id: { $in: completedIds } }, { status: 'completed', completedAt: now });
+    }
+    if (issueIds.length > 0) {
+      await Trip.updateMany({ _id: { $in: issueIds } }, { hasIssues: true, issueReason: 'Undelivered orders' });
     }
   } catch (error) {
     console.error('Auto-transition error:', error);

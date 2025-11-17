@@ -30,7 +30,7 @@ import Image from 'next/image';
 import { DatePicker } from '@/components/DatePicker';
 import { TimePicker } from '@/components/TimePicker';
 import { PhotoUpload } from '@/components/PhotoUpload';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { useAuth } from '@clerk/nextjs';
 
 
@@ -59,6 +59,52 @@ function FormField({
     </div>
   );
 }
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+// Validation function for trip draft
+const isValidDraft = (obj: any): obj is FormData & { timestamp: number } => {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const requiredFields: (keyof FormData)[] = [
+    'departureCity',
+    'departureDate',
+    'departureTime',
+    'arrivalCity',
+    'arrivalDate',
+    'arrivalTime',
+    'checkInSpace',
+    'carryOnSpace',
+    'ticketPhoto',
+  ];
+  for (const key of requiredFields) {
+    if (!(key in obj) || typeof obj[key] !== 'string') return false;
+  }
+  return typeof obj.timestamp === 'number';
+};
+// Helper functions for date/time parsing
+const parseDate = (dateStr: string): Date | null => {
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return null;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return null;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+};
+
+const parseDateTime = (dateStr: string, timeStr: string): Date | null => {
+  const date = parseDate(dateStr);
+  if (!date) return null;
+  const timeParts = timeStr.split(':');
+  if (timeParts.length !== 2) return null;
+  const hour = parseInt(timeParts[0], 10);
+  const minute = parseInt(timeParts[1], 10);
+  if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  date.setHours(hour, minute, 0, 0);
+  return date;
+};
 
 // --- Main Modal Component ---
 interface CreateTripModalProps {
@@ -111,9 +157,26 @@ export function CreateTripModal({
       if (draft) {
         try {
           const parsed = JSON.parse(draft);
-          setFormData(parsed);
+          if (isValidDraft(parsed) && Date.now() - parsed.timestamp <= THIRTY_DAYS_MS) {
+            const { timestamp, ...data } = parsed;
+            // Convert old MM/dd/yyyy dates to yyyy-MM-dd
+            const convertedData = { ...data };
+            if (data.departureDate && data.departureDate.includes('/')) {
+              const parsedDate = parse(data.departureDate, 'MM/dd/yyyy', new Date());
+              convertedData.departureDate = format(parsedDate, 'yyyy-MM-dd');
+            }
+            if (data.arrivalDate && data.arrivalDate.includes('/')) {
+              const parsedDate = parse(data.arrivalDate, 'MM/dd/yyyy', new Date());
+              convertedData.arrivalDate = format(parsedDate, 'yyyy-MM-dd');
+            }
+            setFormData(convertedData);
+          } else {
+            localStorage.removeItem('tripDraft');
+            console.warn('Discarded invalid or stale trip draft');
+          }
         } catch (e) {
-          console.error('Failed to load draft', e);
+          localStorage.removeItem('tripDraft');
+          console.warn('Failed to parse trip draft, discarded');
         }
       }
     }
@@ -122,7 +185,7 @@ export function CreateTripModal({
   // Auto-save draft
   useEffect(() => {
     if (isOpen && formData.departureCity) { // Only save if there's some data
-      localStorage.setItem('tripDraft', JSON.stringify(formData));
+      localStorage.setItem('tripDraft', JSON.stringify({ ...formData, timestamp: Date.now() }));
     }
   }, [formData, isOpen]);
 
@@ -152,15 +215,13 @@ export function CreateTripModal({
 
     // Validate dates
     if (data.departureDate) {
-      const depDate = new Date(data.departureDate);
-      if (isNaN(depDate.getTime())) {
-        errors.departureDate = 'Invalid departure date format';
+      if (!parseDate(data.departureDate)) {
+        errors.departureDate = 'Invalid departure date format (YYYY-MM-DD)';
       }
     }
     if (data.arrivalDate) {
-      const arrDate = new Date(data.arrivalDate);
-      if (isNaN(arrDate.getTime())) {
-        errors.arrivalDate = 'Invalid arrival date format';
+      if (!parseDate(data.arrivalDate)) {
+        errors.arrivalDate = 'Invalid arrival date format (YYYY-MM-DD)';
       }
     }
 
@@ -171,6 +232,15 @@ export function CreateTripModal({
     }
     if (data.arrivalTime && !timeRegex.test(data.arrivalTime)) {
       errors.arrivalTime = 'Invalid arrival time format. Use HH:mm (24-hour format)';
+    }
+
+    // Validate that arrival is after departure
+    if (data.departureDate && data.departureTime && data.arrivalDate && data.arrivalTime) {
+      const depDateTime = parseDateTime(data.departureDate, data.departureTime);
+      const arrDateTime = parseDateTime(data.arrivalDate, data.arrivalTime);
+      if (depDateTime && arrDateTime && arrDateTime <= depDateTime) {
+        errors.arrivalDate = 'Arrival date and time must be after departure date and time';
+      }
     }
 
     // Validate spaces
@@ -198,8 +268,8 @@ export function CreateTripModal({
       // Validate form
       const validation = validateForm(formData);
       if (!validation.isValid) {
-        const firstError = Object.values(validation.errors)[0];
-        throw new Error(firstError);
+        setFieldErrors(validation.errors);
+        return;
       }
 
       // Prepare data for API
@@ -321,8 +391,8 @@ export function CreateTripModal({
           <FormField id="departure-date" label="Departure Date">
             <DatePicker
               date={formData.departureDate ? new Date(formData.departureDate) : undefined}
-              onDateChange={(date) => handleInputChange('departureDate', date ? format(date, 'MM/dd/yyyy') : '')}
-              placeholder="12/11/2025"
+              onDateChange={(date) => handleInputChange('departureDate', date ? format(date, 'yyyy-MM-dd') : '')}
+              placeholder="2025-12-11"
             />
           </FormField>
           <FormField id="departure-time" label="Departure Time">
@@ -361,8 +431,8 @@ export function CreateTripModal({
           <FormField id="arrival-date" label="Arrival Date">
             <DatePicker
               date={formData.arrivalDate ? new Date(formData.arrivalDate) : undefined}
-              onDateChange={(date) => handleInputChange('arrivalDate', date ? format(date, 'MM/dd/yyyy') : '')}
-              placeholder="12/11/2025"
+              onDateChange={(date) => handleInputChange('arrivalDate', date ? format(date, 'yyyy-MM-dd') : '')}
+              placeholder="2025-12-11"
             />
           </FormField>
           <FormField id="arrival-time" label="Arrival Time">

@@ -52,7 +52,12 @@ router.get('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
     }
 
     // Convert string ID to ObjectId
-    const userObjectId = new mongoose.Types.ObjectId(userId);
+    let userObjectId: mongoose.Types.ObjectId;
+    try {
+      userObjectId = new mongoose.Types.ObjectId(userId);
+    } catch {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid user ID' });
+    }
 
     // Get user's trips
     const trips = await tripService.getTravelerTrips(userObjectId);
@@ -131,7 +136,12 @@ router.post('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
     };
 
     // Convert string ID to ObjectId
-    const userObjectId = new mongoose.Types.ObjectId(userId);
+    let userObjectId: mongoose.Types.ObjectId;
+    try {
+      userObjectId = new mongoose.Types.ObjectId(userId);
+    } catch {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid user ID' });
+    }
 
     // Create the trip
     const trip = await tripService.createTrip(userObjectId, serviceData);
@@ -191,8 +201,14 @@ router.put('/:tripId/ticket-photo', requireAuth, authorizeRoles('traveler'), val
     }
 
     // Convert string IDs to ObjectIds
-    const tripObjectId = new mongoose.Types.ObjectId(tripId);
-    const userObjectId = new mongoose.Types.ObjectId(userId);
+    let tripObjectId: mongoose.Types.ObjectId;
+    let userObjectId: mongoose.Types.ObjectId;
+    try {
+      tripObjectId = new mongoose.Types.ObjectId(tripId);
+      userObjectId = new mongoose.Types.ObjectId(userId);
+    } catch {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid ID' });
+    }
 
     // Update the trip with the photo URL
     const updatedTrip = await tripService.updateTrip(
@@ -239,6 +255,14 @@ router.put('/:tripId/activate', requireAuth, authorizeRoles('traveler'), validat
       return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
     }
 
+    if (!mongoose.isValidObjectId(tripId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid trip ID' });
+    }
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid user ID' });
+    }
+
     // Convert string IDs to ObjectIds
     const tripObjectId = new mongoose.Types.ObjectId(tripId);
     const userObjectId = new mongoose.Types.ObjectId(userId);
@@ -267,6 +291,14 @@ router.put('/:tripId/cancel', requireAuth, authorizeRoles('traveler'), validateP
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+    }
+
+    if (!mongoose.isValidObjectId(tripId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid trip ID' });
+    }
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid user ID' });
     }
 
     // Convert string IDs to ObjectIds
@@ -301,6 +333,14 @@ router.put('/:tripId/mark-airborne', requireAuth, authorizeRoles('traveler'), va
       return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
     }
 
+    if (!mongoose.isValidObjectId(tripId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid trip ID' });
+    }
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid user ID' });
+    }
+
     // Convert string IDs to ObjectIds
     const tripObjectId = new mongoose.Types.ObjectId(tripId);
     const userObjectId = new mongoose.Types.ObjectId(userId);
@@ -330,6 +370,14 @@ router.put('/:tripId/mark-arrived', requireAuth, authorizeRoles('traveler'), val
       return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
     }
 
+    if (!mongoose.isValidObjectId(tripId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid trip ID' });
+    }
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid user ID' });
+    }
+
     // Convert string IDs to ObjectIds
     const tripObjectId = new mongoose.Types.ObjectId(tripId);
     const userObjectId = new mongoose.Types.ObjectId(userId);
@@ -357,6 +405,14 @@ router.put('/:tripId/complete', requireAuth, authorizeRoles('traveler'), validat
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+    }
+
+    if (!mongoose.isValidObjectId(tripId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid trip ID' });
+    }
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Invalid user ID' });
     }
 
     // Convert string IDs to ObjectIds
