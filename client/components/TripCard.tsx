@@ -17,11 +17,27 @@ interface TripCardProps {
 }
 
 export function TripCard({ trip }: TripCardProps) {
-  // Calculate approximate duration for the middle display (e.g., 48h10m)
-  // NOTE: This is a simplified calculation, a real app would use date/time libraries.
+  /**
+   * Calculates the actual flight duration based on departure and arrival date/time.
+   * @returns Duration in format "XhYm" (e.g., "2h30m")
+   */
   const calculateDuration = (): string => {
-    // Assuming a simple 48h10m for all mock data as per the screenshot
-    return '48h10m';
+    const parseDateTime = (dateStr: string, timeStr: string): Date => {
+      const [month, day, year] = dateStr.split('/').map(Number);
+      const [hour, minute] = timeStr.split(':').map(Number);
+      return new Date(2000 + year, month - 1, day, hour, minute);
+    };
+
+    const depDateTime = parseDateTime(trip.departureDate, trip.departureTime);
+    const arrDateTime = parseDateTime(trip.arrivalDate, trip.arrivalTime);
+
+    const diffMs = arrDateTime.getTime() - depDateTime.getTime();
+    if (diffMs < 0) return 'Invalid duration';
+
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${hours}h${minutes.toString().padStart(2, '0')}m`;
   };
 
   return (
