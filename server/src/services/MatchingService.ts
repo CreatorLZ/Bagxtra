@@ -1,7 +1,7 @@
 import { IBagItem } from '../models/BagItem';
 import { ITrip } from '../models/Trip';
-import { IUser } from '../models/User';
 import { ITripRepository, IUserRepository } from './repositories';
+import {  validateTripLeadTime } from '../config/businessRules';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 
@@ -40,10 +40,20 @@ export class MatchingService {
     const bagTotals = await this.calculateBagTotals(bagItems);
 
     // Find potential trips
-    const trips = await this.tripRepo.findByRoute(
+    const allTrips = await this.tripRepo.findByRoute(
       validatedCriteria.fromCountry,
       validatedCriteria.toCountry
     );
+
+    // Filter trips by lead time requirements
+    const trips = allTrips.filter(trip => {
+      const leadTimeValidation = validateTripLeadTime(trip.departureDate, {
+        itemCount: bagItems.length,
+        totalValue: bagTotals.totalValue,
+        hasSpecialDelivery: bagTotals.hasSpecialDelivery,
+      });
+      return leadTimeValidation.valid;
+    });
 
     const matches: MatchResult[] = [];
 

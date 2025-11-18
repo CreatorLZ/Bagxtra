@@ -110,8 +110,19 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import dashboardRoutes from './routes/dashboard.js';
 import tripsRoutes from './routes/trips.js';
+import shopperRequestRoutes from './routes/shopperRequests.js';
+import matchesRoutes from './routes/matches.js';
+import deliveryRoutes from './routes/delivery.js';
 import { registerUser } from './controllers/authController.js';
 import { Trip } from './models/Trip.js';
+import { BookingService } from './services/BookingService.js';
+import { NotificationService } from './services/NotificationService.js';
+import {
+  MatchRepository,
+  ShopperRequestRepository,
+  TripRepository,
+  BagItemRepository,
+} from './services/repositoryImpl.js';
 
 // API routes
 app.get('/api', (_req: express.Request, res: express.Response) => {
@@ -134,6 +145,15 @@ app.use('/api/dashboard', dashboardRoutes);
 
 // Trips routes
 app.use('/api/trips', tripsRoutes);
+
+// Shopper request routes
+app.use('/api/shopper-requests', shopperRequestRoutes);
+
+// Matches routes
+app.use('/api/matches', matchesRoutes);
+
+// Delivery routes
+app.use('/api/delivery', deliveryRoutes);
 
 // Webhook routes (separate route to match Clerk docs)
 app.post(
@@ -170,6 +190,44 @@ cron.schedule('*/30 * * * *', async () => {
     }
   } catch (error) {
     console.error('Auto-transition error:', error);
+  }
+});
+
+// Initialize booking service for cron jobs
+const matchRepo = new MatchRepository();
+const shopperRequestRepo = new ShopperRequestRepository();
+const tripRepo = new TripRepository();
+const bagItemRepo = new BagItemRepository();
+const notificationService = new NotificationService();
+const bookingService = new BookingService(
+  matchRepo,
+  shopperRequestRepo,
+  tripRepo,
+  bagItemRepo,
+  notificationService
+);
+
+// Cron job for processing expired cooldowns (every 5 minutes)
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    const result = await bookingService.processExpiredCooldowns();
+    if (result.processed > 0) {
+      console.log(`✅ Processed ${result.processed} expired cooldowns`);
+    }
+  } catch (error) {
+    console.error('Cooldown processing error:', error);
+  }
+});
+
+// Cron job for processing missed purchase deadlines (every 10 minutes)
+cron.schedule('*/10 * * * *', async () => {
+  try {
+    const result = await bookingService.processMissedPurchaseDeadlines();
+    if (result.cancelled > 0) {
+      console.log(`⚠️ Cancelled ${result.cancelled} requests due to missed purchase deadlines`);
+    }
+  } catch (error) {
+    console.error('Purchase deadline processing error:', error);
   }
 });
 
@@ -227,73 +285,8 @@ const connectDB = async (retries = 3): Promise<void> => {
 };
 
 // Error handling middleware
-app.use(
-  (
-    err: Error,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction
-  ) => {
-    console.error('Error:', err.stack);
-
-    // Handle custom error types
-    if (err.name === 'ValidationError') {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: err.message,
-        code: 'VALIDATION_ERROR',
-        field: (err as any).field,
-      });
-    }
-
-    if (err.name === 'BadRequestError') {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: err.message,
-        code: 'BAD_REQUEST',
-      });
-    }
-
-    if (err.name === 'NotFoundError') {
-      return res.status(404).json({
-        error: 'Not Found',
-        message: err.message,
-        code: 'NOT_FOUND',
-      });
-    }
-
-    if (err.name === 'UnauthorizedError' || err.name === 'AuthRequiredError') {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: err.message,
-        code: (err as any).code || 'UNAUTHORIZED',
-      });
-    }
-
-    if (
-      err.name === 'ForbiddenError' ||
-      err.name === 'InsufficientPermissionsError' ||
-      err.name === 'InvalidRoleError'
-    ) {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: err.message,
-        code: (err as any).code || 'FORBIDDEN',
-        details: (err as any).details,
-      });
-    }
-
-    // Default error response
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message:
-        process.env['NODE_ENV'] === 'development'
-          ? err.message
-          : 'Something went wrong',
-      code: 'INTERNAL_ERROR',
-    });
-  }
-);
+import { errorHandler } from './middleware/errorHandler.js';
+app.use(errorHandler);
 
 // 404 handler
 app.use((req: express.Request, res: express.Response) => {

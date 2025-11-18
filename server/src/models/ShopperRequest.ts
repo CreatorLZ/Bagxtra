@@ -5,6 +5,8 @@ export const SHOPPER_REQUEST_STATUSES = [
   'draft',
   'open',
   'matched',
+  'on_hold',
+  'purchase_pending',
   'pending_purchase',
   'purchased',
   'in_transit',
@@ -46,6 +48,11 @@ export interface IShopperRequest extends Document {
   refundAmount?: number;
   refundReason?: string;
   refundTimestamp?: Date;
+  cancellationReason?: string;
+  // New fields for enhanced matching
+  cooldownEndsAt?: Date;
+  purchaseDeadline?: Date;
+  cooldownProcessed: boolean;
 }
 
 const priceSummarySchema = new Schema<IPriceSummary>(
@@ -130,6 +137,21 @@ const shopperRequestSchema = new Schema<IShopperRequest>(
     },
     refundTimestamp: {
       type: Date,
+    },
+    cancellationReason: {
+      type: String,
+      trim: true,
+    },
+    cooldownEndsAt: {
+      type: Date,
+    },
+    purchaseDeadline: {
+      type: Date,
+    },
+    cooldownProcessed: {
+      type: Boolean,
+      default: false,
+      required: true,
     },
   },
   {

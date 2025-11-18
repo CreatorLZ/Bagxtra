@@ -17,9 +17,20 @@ const createTripSchema = z.object({
   fromCountry: z.string().min(1).max(100),
   toCountry: z.string().min(1).max(100),
   departureDate: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Invalid date format (MM/dd/yyyy)'),
-  departureTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+  departureTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:mm)'),
   arrivalDate: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Invalid date format (MM/dd/yyyy)'),
-  arrivalTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
+  arrivalTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:mm)'),
+  timezone: z.string().refine(
+    (tz) => {
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: tz });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Invalid timezone' }
+  ),
   availableCarryOnKg: z.number().positive(),
   availableCheckedKg: z.number().positive(),
   ticketPhoto: z.string().url().optional(),
@@ -72,6 +83,7 @@ router.get('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
         departureTime: trip.departureTime,
         arrivalDate: trip.arrivalDate,
         arrivalTime: trip.arrivalTime,
+        timezone: trip.timezone,
         availableCarryOnKg: trip.availableCarryOnKg,
         availableCheckedKg: trip.availableCheckedKg,
         ticketPhoto: trip.ticketPhoto,
@@ -95,11 +107,11 @@ router.get('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
  * @desc Create a new trip
  * @access Private (Traveler only)
  */
-router.post('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
+router.post('/', requireAuth, authorizeRoles('traveler'), async (req, res, next) => {
   try {
+    // Zod parsing will throw if invalid; middleware will catch it
     const tripData = createTripSchema.parse(req.body);
 
-    // Get user ID from auth middleware
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({
@@ -107,33 +119,6 @@ router.post('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
         message: 'User not authenticated',
       });
     }
-
-    // Convert date strings to Date objects and combine with times
-    const departureDateTime = new Date(`${tripData.departureDate} ${tripData.departureTime}`);
-    const arrivalDateTime = new Date(`${tripData.arrivalDate} ${tripData.arrivalTime}`);
-
-    // Validate date/time logic
-    if (departureDateTime >= arrivalDateTime) {
-      return res.status(400).json({
-        error: 'Validation Error',
-        message: 'Arrival date/time must be after departure date/time',
-      });
-    }
-
-    // Prepare data for service
-    const serviceData = {
-      fromCountry: tripData.fromCountry,
-      toCountry: tripData.toCountry,
-      departureDate: departureDateTime,
-      departureTime: tripData.departureTime,
-      arrivalDate: arrivalDateTime,
-      arrivalTime: tripData.arrivalTime,
-      availableCarryOnKg: tripData.availableCarryOnKg,
-      availableCheckedKg: tripData.availableCheckedKg,
-      ticketPhoto: tripData.ticketPhoto || undefined,
-      canCarryFragile: tripData.canCarryFragile,
-      canHandleSpecialDelivery: tripData.canHandleSpecialDelivery,
-    };
 
     // Convert string ID to ObjectId
     let userObjectId: mongoose.Types.ObjectId;
@@ -143,7 +128,23 @@ router.post('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
       return res.status(400).json({ error: 'Bad Request', message: 'Invalid user ID' });
     }
 
-    // Create the trip
+    // Prepare data for service
+    const serviceData = {
+      fromCountry: tripData.fromCountry,
+      toCountry: tripData.toCountry,
+      departureDate: tripData.departureDate,
+      departureTime: tripData.departureTime,
+      arrivalDate: tripData.arrivalDate,
+      arrivalTime: tripData.arrivalTime,
+      timezone: tripData.timezone,
+      availableCarryOnKg: tripData.availableCarryOnKg,
+      availableCheckedKg: tripData.availableCheckedKg,
+      ticketPhoto: tripData.ticketPhoto,
+      canCarryFragile: tripData.canCarryFragile,
+      canHandleSpecialDelivery: tripData.canHandleSpecialDelivery,
+    };
+
+    // Service will throw ValidationError/NotFoundError if needed; middleware will catch it
     const trip = await tripService.createTrip(userObjectId, serviceData);
 
     res.status(201).json({
@@ -163,22 +164,9 @@ router.post('/', requireAuth, authorizeRoles('traveler'), async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error creating trip:', error);
-
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        error: 'Validation Error',
-        message: 'Invalid input data',
-        details: error.issues,
-      });
-    }
-
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to create trip',
-    });
+    // Pass to error middleware
+    next(error);
   }
-  return;
 });
 
 /**

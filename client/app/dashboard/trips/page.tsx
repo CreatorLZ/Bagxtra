@@ -19,6 +19,7 @@ interface ApiTrip {
   arrivalTime: string;
   departureDate: string;
   arrivalDate: string;
+  timezone: string;
   availableCarryOnKg: number;
   availableCheckedKg: number;
   status: string;
@@ -32,6 +33,7 @@ interface DisplayTrip {
   arrivalTime: string;
   departureDate: string;
   arrivalDate: string;
+  timezone?: string;
   availableKG: number;
   status: TripStatus;
 }
@@ -66,6 +68,7 @@ export default function TripsPage() {
     queryKey: ['trips'],
     queryFn: () => fetchTrips(getToken),
   });
+
 
   if (isLoading) {
     return (
@@ -126,6 +129,7 @@ export default function TripsPage() {
         year: '2-digit'
       });
     })(),
+    timezone: trip.timezone,
     availableKG: trip.availableCarryOnKg + trip.availableCheckedKg,
     status: trip.status as TripStatus,
   }));

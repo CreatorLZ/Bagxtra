@@ -96,17 +96,17 @@ export function PhotoUpload({
           <div
             className={cn(
               'absolute inset-0 bg-black bg-opacity-0 flex items-center justify-center transition-all duration-200',
-              (isHovering || isUploading) && 'bg-opacity-40'
+              (isHovering || isUploading) && 'bg-opacity-60'
             )}
           >
             {isUploading ? (
-              <div className="text-center text-white">
-                <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+              <div className="text-center text-purple-900">
+                <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin text-purple-900" />
                 <div className="text-sm">Uploading...</div>
               </div>
             ) : (
-              <div className={cn("text-center text-white transition-opacity", (isHovering || isUploading) ? "opacity-100" : "opacity-0")}>
-                <Upload className="w-8 h-8 mx-auto mb-2" />
+              <div className={cn("text-center text-purple-900 transition-opacity", (isHovering || isUploading) ? "opacity-100" : "opacity-0")}>
+                <Upload className="w-8 h-8 mx-auto mb-2 text-purple-900" />
                 <div className="text-sm">Change Photo</div>
               </div>
             )}

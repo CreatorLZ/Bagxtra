@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Plane } from 'lucide-react';
+import { parseDateTimeToUTC } from '@/lib/utils/dateUtils';
 
 interface Trip {
   id: string;
@@ -9,6 +10,7 @@ interface Trip {
   arrivalTime: string;
   departureDate: string;
   arrivalDate: string;
+  timezone?: string;
   availableKG: number;
 }
 
@@ -22,22 +24,21 @@ export function TripCard({ trip }: TripCardProps) {
    * @returns Duration in format "XhYm" (e.g., "2h30m")
    */
   const calculateDuration = (): string => {
-    const parseDateTime = (dateStr: string, timeStr: string): Date => {
-      const [month, day, year] = dateStr.split('/').map(Number);
-      const [hour, minute] = timeStr.split(':').map(Number);
-      return new Date(2000 + year, month - 1, day, hour, minute);
-    };
+    try {
+      const depDateTime = parseDateTimeToUTC(trip.departureDate, trip.departureTime, trip.timezone);
+      const arrDateTime = parseDateTimeToUTC(trip.arrivalDate, trip.arrivalTime, trip.timezone);
 
-    const depDateTime = parseDateTime(trip.departureDate, trip.departureTime);
-    const arrDateTime = parseDateTime(trip.arrivalDate, trip.arrivalTime);
+      const diffMs = arrDateTime.getTime() - depDateTime.getTime();
+      if (diffMs < 0) return 'Invalid duration';
 
-    const diffMs = arrDateTime.getTime() - depDateTime.getTime();
-    if (diffMs < 0) return 'Invalid duration';
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-    return `${hours}h${minutes.toString().padStart(2, '0')}m`;
+      return `${hours}h${minutes.toString().padStart(2, '0')}m`;
+    } catch (error) {
+      console.error('Error calculating duration:', error);
+      return 'Invalid duration';
+    }
   };
 
   return (
@@ -80,6 +81,7 @@ export function TripCard({ trip }: TripCardProps) {
             {trip.availableKG} KG Available
           </span>
         </div>
+
       </div>
     </Card>
   );

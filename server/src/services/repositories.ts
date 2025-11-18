@@ -27,6 +27,8 @@ export interface IShopperRequestRepository {
   ): Promise<IShopperRequest | null>;
   findByShopper(shopperId: mongoose.Types.ObjectId): Promise<IShopperRequest[]>;
   findOpenRequests(): Promise<IShopperRequest[]>;
+  findByStatusAndCooldown(status: string, cooldownEnd: Date): Promise<IShopperRequest[]>;
+  findByStatusAndDeadline(status: string, deadline: Date): Promise<IShopperRequest[]>;
 }
 
 export interface ITripRepository {

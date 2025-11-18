@@ -11,6 +11,7 @@ export interface ITrip extends Document {
   departureTime: string;
   arrivalDate: Date;
   arrivalTime: string;
+  timezone: string;
   availableCarryOnKg: number;
   availableCheckedKg: number;
   ticketPhoto?: string | null;
@@ -30,6 +31,9 @@ export interface ITrip extends Document {
   updatedAt: Date;
   canCarryFragile: boolean;
   canHandleSpecialDelivery: boolean;
+  // New fields for enhanced matching
+  bookingEnabled: boolean;
+  bookingDisabledReason?: string;
 }
 export type TripUpdateData = Partial<
   Omit<ITrip, '_id' | 'travelerId' | 'createdAt' | 'updatedAt'>
@@ -69,6 +73,22 @@ const tripSchema = new Schema<ITrip>(
       type: String,
       required: true,
       match: /^([01]\d|2[0-3]):([0-5]\d)$/,
+    },
+    timezone: {
+      type: String,
+      required: true,
+      default: 'UTC',
+      validate: {
+        validator: (v: string) => {
+          try {
+            Intl.DateTimeFormat(undefined, { timeZone: v });
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        message: 'Invalid timezone',
+      },
     },
     availableCarryOnKg: {
       type: Number,
@@ -110,11 +130,29 @@ const tripSchema = new Schema<ITrip>(
       type: Boolean,
       required: true,
     },
+    bookingEnabled: {
+      type: Boolean,
+      default: true,
+      required: true,
+    },
+    bookingDisabledReason: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Virtual field for lead time days (calculated)
+tripSchema.virtual('leadTimeDays').get(function() {
+  const now = new Date();
+  const daysUntilDeparture = Math.ceil(
+    (this.departureDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  return Math.max(0, daysUntilDeparture);
+});
 
 tripSchema.pre('validate', function (next) {
   if (this.arrivalDate <= this.departureDate) {

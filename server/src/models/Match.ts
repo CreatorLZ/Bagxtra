@@ -19,6 +19,7 @@ export interface IMatch extends Document {
   deliveryPinExpiresAt?: Date;
   deliveryPinGeneratedAt?: Date;
   pinVerifiedAt?: Date;
+  deliveredToVendorAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,6 +63,9 @@ const matchSchema = new Schema<IMatch>(
       type: Date,
     },
     pinVerifiedAt: {
+      type: Date,
+    },
+    deliveredToVendorAt: {
       type: Date,
     },
     status: {

@@ -1,22 +1,34 @@
 import { ITrip, TripUpdateData, TripStatus } from '../models/Trip';
-import { IUser } from '../models/User';
 import { ITripRepository, IUserRepository } from './repositories';
+import { validateTripLeadTime } from '../config/businessRules';
+import {
+  ValidationError,
+  NotFoundError,
+  ForbiddenError,
+  BadRequestError
+} from '../errors';
 import mongoose from 'mongoose';
 import { z } from 'zod';
+import { parseDateTimeToUTC } from '../utils/dateUtils';
 
 const createTripSchema = z.object({
   fromCountry: z.string().min(1).max(100),
   toCountry: z.string().min(1).max(100),
-  departureDate: z.preprocess(
-    val => (typeof val === 'string' ? new Date(val) : val),
-    z.date()
+  departureDate: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Invalid date format (MM/dd/yyyy)'),
+  departureTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:mm)'),
+  arrivalDate: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Invalid date format (MM/dd/yyyy)'),
+  arrivalTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:mm)'),
+  timezone: z.string().refine(
+    (tz) => {
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: tz });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Invalid timezone' }
   ),
-  departureTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
-  arrivalDate: z.preprocess(
-    val => (typeof val === 'string' ? new Date(val) : val),
-    z.date()
-  ),
-  arrivalTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
   availableCarryOnKg: z.number().positive(),
   availableCheckedKg: z.number().positive(),
   ticketPhoto: z.string().url().optional(),
@@ -36,48 +48,53 @@ export class TripService {
     travelerId: mongoose.Types.ObjectId,
     tripData: z.infer<typeof createTripSchema>
   ): Promise<ITrip> {
-    const validatedData = createTripSchema.parse(tripData);
+    const validatedData = createTripSchema.parse(tripData) as Required<z.infer<typeof createTripSchema>>;
 
-    // Validate dates and times
-    if (validatedData.departureDate > validatedData.arrivalDate) {
-      throw new Error('Arrival date must be after departure date');
-    } else if (validatedData.departureDate.getTime() === validatedData.arrivalDate.getTime()) {
-      // Same date, check times
-      const depTimeParts = validatedData.departureTime.split(':');
-      const arrTimeParts = validatedData.arrivalTime.split(':');
-      if (depTimeParts.length !== 2 || arrTimeParts.length !== 2) {
-        throw new Error('Invalid time format');
-      }
-      const depMinutes = parseInt(depTimeParts[0]!) * 60 + parseInt(depTimeParts[1]!);
-      const arrMinutes = parseInt(arrTimeParts[0]!) * 60 + parseInt(arrTimeParts[1]!);
-      if (depMinutes >= arrMinutes) {
-        throw new Error('Arrival time must be after departure time');
-      }
+    const departureDate = parseDateTimeToUTC(validatedData['departureDate'] as unknown as string, validatedData['departureTime'] as unknown as string, validatedData['timezone'] as unknown as string);
+    const arrivalDate = parseDateTimeToUTC(validatedData['arrivalDate'] as unknown as string, validatedData['arrivalTime'] as unknown as string, validatedData['timezone'] as unknown as string);
+
+    if (departureDate > arrivalDate) {
+      throw new ValidationError(
+        'Arrival date must be after departure date.',
+        'INVALID_DATES'
+      );
     }
 
-    // Validate traveler exists and is a traveler
+    const leadTimeValidation = validateTripLeadTime(departureDate);
+    if (!leadTimeValidation.valid) {
+      throw new ValidationError(
+        leadTimeValidation.message || 'Trip does not meet lead time requirements',
+        'INSUFFICIENT_LEAD_TIME',
+        leadTimeValidation
+      );
+    }
+
     const traveler = await this.userRepo.findById(travelerId);
     if (!traveler) {
-      throw new Error('Traveler not found');
+      throw new NotFoundError('Your account could not be found. Please try logging out and logging back in.');
     }
     if (traveler.role !== 'traveler') {
-      throw new Error('User is not a traveler');
+      throw new ForbiddenError('Only travelers can create trips.', 'INVALID_ROLE');
     }
 
     const createData = {
-      ...validatedData,
       travelerId,
+      fromCountry: validatedData['fromCountry'] as unknown as string,
+      toCountry: validatedData['toCountry'] as unknown as string,
+      departureDate,
+      departureTime: validatedData['departureTime'] as unknown as string,
+      arrivalDate,
+      arrivalTime: validatedData['arrivalTime'] as unknown as string,
+      timezone: validatedData['timezone'] as unknown as string,
+      availableCarryOnKg: validatedData['availableCarryOnKg'] as unknown as number,
+      availableCheckedKg: validatedData['availableCheckedKg'] as unknown as number,
+      ticketPhoto: (validatedData['ticketPhoto'] as unknown as string) || null,
+      canCarryFragile: validatedData['canCarryFragile'] as unknown as boolean,
+      canHandleSpecialDelivery: validatedData['canHandleSpecialDelivery'] as unknown as boolean,
       status: 'pending' as TripStatus,
     };
 
-    // Remove ticketPhoto if it's undefined to avoid type issues
-    if (createData.ticketPhoto === undefined) {
-      delete (createData as any).ticketPhoto;
-    }
-
-    const trip = await this.tripRepo.create(createData as Partial<ITrip>);
-
-    return trip;
+    return await this.tripRepo.create(createData);
   }
 
   async updateTrip(
@@ -85,56 +102,88 @@ export class TripService {
     travelerId: mongoose.Types.ObjectId,
     updates: z.infer<typeof updateTripSchema>
   ): Promise<ITrip | null> {
-    const validatedUpdates = updateTripSchema.parse(updates) as TripUpdateData;
-
-    // Verify ownership
+    const validatedUpdates = updateTripSchema.parse(updates);
     const trip = await this.tripRepo.findById(tripId);
+
     if (!trip) {
-      throw new Error('Trip not found');
+      throw new NotFoundError('Trip not found');
     }
     if (!trip.travelerId.equals(travelerId)) {
-      throw new Error('Unauthorized to update this trip');
+      throw new ForbiddenError('Unauthorized to update this trip');
+    }
+    if (trip.status === 'completed') {
+      throw new BadRequestError('Cannot update completed trip');
     }
 
-    // Cannot update completed trips
-    if (trip.status === 'completed') {
-      throw new Error('Cannot update completed trip');
+    // Build update data with proper types
+    const updateData: TripUpdateData = {};
+
+    if (validatedUpdates['fromCountry'] !== undefined) updateData.fromCountry = validatedUpdates['fromCountry'] as unknown as string;
+    if (validatedUpdates['toCountry'] !== undefined) updateData.toCountry = validatedUpdates['toCountry'] as unknown as string;
+    if (validatedUpdates['timezone'] !== undefined) updateData.timezone = validatedUpdates['timezone'] as unknown as string;
+    if (validatedUpdates['availableCarryOnKg'] !== undefined) updateData.availableCarryOnKg = validatedUpdates['availableCarryOnKg'] as unknown as number;
+    if (validatedUpdates['availableCheckedKg'] !== undefined) updateData.availableCheckedKg = validatedUpdates['availableCheckedKg'] as unknown as number;
+    if (validatedUpdates['ticketPhoto'] !== undefined) updateData.ticketPhoto = validatedUpdates['ticketPhoto'] as unknown as string;
+    if (validatedUpdates['canCarryFragile'] !== undefined) updateData.canCarryFragile = validatedUpdates['canCarryFragile'] as unknown as boolean;
+    if (validatedUpdates['canHandleSpecialDelivery'] !== undefined) updateData.canHandleSpecialDelivery = validatedUpdates['canHandleSpecialDelivery'] as unknown as boolean;
+
+    // Handle departure date/time
+    if (validatedUpdates['departureDate'] !== undefined) {
+      const depTime = (validatedUpdates['departureTime'] as unknown as string) ?? trip.departureTime;
+      const tz = (validatedUpdates['timezone'] as unknown as string) ?? trip.timezone;
+      updateData.departureDate = parseDateTimeToUTC(validatedUpdates['departureDate'] as unknown as string, depTime, tz);
     }
+    if (validatedUpdates['departureTime'] !== undefined) updateData.departureTime = validatedUpdates['departureTime'] as unknown as string;
+
+    // Handle arrival date/time
+    if (validatedUpdates['arrivalDate'] !== undefined) {
+      const arrTime = (validatedUpdates['arrivalTime'] as unknown as string) ?? trip.arrivalTime;
+      const tz = (validatedUpdates['timezone'] as unknown as string) ?? trip.timezone;
+      updateData.arrivalDate = parseDateTimeToUTC(validatedUpdates['arrivalDate'] as unknown as string, arrTime, tz);
+    }
+    if (validatedUpdates['arrivalTime'] !== undefined) updateData.arrivalTime = validatedUpdates['arrivalTime'] as unknown as string;
 
     // Validate merged dates and times
-    const resultingDeparture =
-      validatedUpdates.departureDate ?? trip.departureDate;
-    const resultingArrival = validatedUpdates.arrivalDate ?? trip.arrivalDate;
-    const resultingDepTime = validatedUpdates.departureTime ?? trip.departureTime;
-    const resultingArrTime = validatedUpdates.arrivalTime ?? trip.arrivalTime;
+    const resultingDeparture = updateData.departureDate ?? trip.departureDate;
+    const resultingArrival = updateData.arrivalDate ?? trip.arrivalDate;
+    const resultingDepTime = updateData.departureTime ?? trip.departureTime;
+    const resultingArrTime = updateData.arrivalTime ?? trip.arrivalTime;
     if (resultingDeparture && resultingArrival) {
       if (resultingDeparture > resultingArrival) {
-        throw new Error('Arrival date must be after departure date');
+        throw new ValidationError('Arrival date must be after departure date', 'INVALID_DATES');
       } else if (resultingDeparture.getTime() === resultingArrival.getTime()) {
         // Same date, check times
         const depTimeParts = resultingDepTime.split(':');
         const arrTimeParts = resultingArrTime.split(':');
         if (depTimeParts.length !== 2 || arrTimeParts.length !== 2) {
-          throw new Error('Invalid time format');
+          throw new BadRequestError('Invalid time format');
         }
         const depMinutes = parseInt(depTimeParts[0]!) * 60 + parseInt(depTimeParts[1]!);
         const arrMinutes = parseInt(arrTimeParts[0]!) * 60 + parseInt(arrTimeParts[1]!);
         if (depMinutes >= arrMinutes) {
-          throw new Error('Arrival time must be after departure time');
+          throw new ValidationError('Arrival time must be after departure time', 'INVALID_DATES');
         }
       }
     }
 
-    return await this.tripRepo.update(tripId, validatedUpdates);
+    return await this.tripRepo.update(tripId, updateData);
+  }
+
+
+  async activateTrip(tripId: mongoose.Types.ObjectId, travelerId: mongoose.Types.ObjectId): Promise<ITrip | null> {
+    const trip = await this.tripRepo.findById(tripId);
+    if (!trip) throw new NotFoundError('Trip not found');
+    if (!trip.travelerId.equals(travelerId)) throw new ForbiddenError('Unauthorized');
+    if (trip.status !== 'pending') throw new BadRequestError('Trip is not pending');
+
+    return await this.tripRepo.update(tripId, { status: 'active' as TripStatus, activatedAt: new Date() });
   }
 
   async getTrip(tripId: mongoose.Types.ObjectId): Promise<ITrip | null> {
     return await this.tripRepo.findById(tripId);
   }
 
-  async getTravelerTrips(
-    travelerId: mongoose.Types.ObjectId
-  ): Promise<ITrip[]> {
+  async getTravelerTrips(travelerId: mongoose.Types.ObjectId): Promise<ITrip[]> {
     return await this.tripRepo.findByTraveler(travelerId);
   }
 
@@ -142,56 +191,8 @@ export class TripService {
     return await this.tripRepo.findOpenTrips();
   }
 
-  async getTripsByRoute(
-    fromCountry: string,
-    toCountry: string
-  ): Promise<ITrip[]> {
+  async getTripsByRoute(fromCountry: string, toCountry: string): Promise<ITrip[]> {
     return await this.tripRepo.findByRoute(fromCountry, toCountry);
-  }
-
-  async activateTrip(
-    tripId: mongoose.Types.ObjectId,
-    travelerId: mongoose.Types.ObjectId
-  ): Promise<ITrip | null> {
-    // Verify ownership
-    const trip = await this.tripRepo.findById(tripId);
-    if (!trip) {
-      throw new Error('Trip not found');
-    }
-    if (!trip.travelerId.equals(travelerId)) {
-      throw new Error('Unauthorized to activate this trip');
-    }
-
-    if (trip.status !== 'pending') {
-      throw new Error('Trip is not pending');
-    }
-
-    return await this.tripRepo.update(tripId, { status: 'active' as TripStatus, activatedAt: new Date() });
-  }
-
-  async completeTrip(
-    tripId: mongoose.Types.ObjectId,
-    travelerId: mongoose.Types.ObjectId
-  ): Promise<ITrip | null> {
-    // Verify ownership
-    const trip = await this.tripRepo.findById(tripId);
-    if (!trip) {
-      throw new Error('Trip not found');
-    }
-    if (!trip.travelerId.equals(travelerId)) {
-      throw new Error('Unauthorized to complete this trip');
-    }
-
-    if (trip.status !== 'active') {
-      throw new Error('Trip must be active before completion');
-    }
-
-    if (trip.ordersDelivered < trip.ordersCount) {
-      await this.tripRepo.update(tripId, { hasIssues: true, issueReason: 'Undelivered orders' });
-      throw new Error('Cannot complete trip with undelivered orders');
-    }
-
-    return await this.tripRepo.update(tripId, { status: 'completed' as TripStatus, completedAt: new Date() });
   }
 
   async validateTripCapacity(
@@ -201,7 +202,7 @@ export class TripService {
   ): Promise<{ available: boolean; availableWeight: number }> {
     const trip = await this.tripRepo.findById(tripId);
     if (!trip) {
-      throw new Error('Trip not found');
+      throw new NotFoundError('Trip not found');
     }
 
     const availableWeight = isCarryOn
@@ -219,7 +220,7 @@ export class TripService {
   ): Promise<ITrip | null> {
     const trip = await this.tripRepo.findById(tripId);
     if (!trip) {
-      throw new Error('Trip not found');
+      throw new NotFoundError('Trip not found');
     }
 
     const updateField = isCarryOn ? 'availableCarryOnKg' : 'availableCheckedKg';
@@ -228,7 +229,7 @@ export class TripService {
       : trip.availableCheckedKg;
 
     if (usedWeight > currentCapacity) {
-      throw new Error('Insufficient capacity');
+      throw new BadRequestError('Insufficient capacity');
     }
 
     const newCapacity = currentCapacity - usedWeight;
@@ -245,16 +246,16 @@ export class TripService {
   ): Promise<ITrip | null> {
     const trip = await this.tripRepo.findById(tripId);
     if (!trip) {
-      throw new Error('Trip not found');
+      throw new NotFoundError('Trip not found');
     }
     if (!trip.travelerId.equals(travelerId)) {
-      throw new Error('Unauthorized');
+      throw new ForbiddenError('Unauthorized');
     }
     if (trip.status !== 'pending') {
-      throw new Error('Can only cancel pending trips');
+      throw new BadRequestError('Can only cancel pending trips');
     }
     if (trip.ordersCount > 0) {
-      throw new Error('Cannot cancel trip with orders');
+      throw new BadRequestError('Cannot cancel trip with orders');
     }
     const updateData: Partial<ITrip> = {
       status: 'cancelled' as TripStatus,
@@ -272,13 +273,13 @@ export class TripService {
   ): Promise<ITrip | null> {
     const trip = await this.tripRepo.findById(tripId);
     if (!trip) {
-      throw new Error('Trip not found');
+      throw new NotFoundError('Trip not found');
     }
     if (!trip.travelerId.equals(travelerId)) {
-      throw new Error('Unauthorized');
+      throw new ForbiddenError('Unauthorized');
     }
     if (trip.status !== 'pending') {
-      throw new Error('Trip not pending');
+      throw new BadRequestError('Trip not pending');
     }
     return this.tripRepo.update(tripId, {
       status: 'active' as TripStatus,
@@ -293,17 +294,41 @@ export class TripService {
   ): Promise<ITrip | null> {
     const trip = await this.tripRepo.findById(tripId);
     if (!trip) {
-      throw new Error('Trip not found');
+      throw new NotFoundError('Trip not found');
     }
     if (!trip.travelerId.equals(travelerId)) {
-      throw new Error('Unauthorized');
+      throw new ForbiddenError('Unauthorized');
     }
     if (trip.status !== 'active') {
-      throw new Error('Trip not active');
+      throw new BadRequestError('Trip not active');
     }
     return this.tripRepo.update(tripId, {
       arrivedAt: new Date(),
       manuallyArrived: true
     });
+  }
+
+  async completeTrip(
+    tripId: mongoose.Types.ObjectId,
+    travelerId: mongoose.Types.ObjectId
+  ): Promise<ITrip | null> {
+    const trip = await this.tripRepo.findById(tripId);
+    if (!trip) {
+      throw new NotFoundError('Trip not found');
+    }
+    if (!trip.travelerId.equals(travelerId)) {
+      throw new ForbiddenError('Unauthorized to complete this trip');
+    }
+
+    if (trip.status !== 'active') {
+      throw new BadRequestError('Trip must be active before completion');
+    }
+
+    if (trip.ordersDelivered < trip.ordersCount) {
+      await this.tripRepo.update(tripId, { hasIssues: true, issueReason: 'Undelivered orders' });
+      throw new BadRequestError('Cannot complete trip with undelivered orders');
+    }
+
+    return await this.tripRepo.update(tripId, { status: 'completed' as TripStatus, completedAt: new Date() });
   }
 }

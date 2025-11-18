@@ -82,11 +82,11 @@ const isValidDraft = (obj: any): obj is FormData & { timestamp: number } => {
 };
 // Helper functions for date/time parsing
 const parseDate = (dateStr: string): Date | null => {
-  const parts = dateStr.split('-');
+  const parts = dateStr.split('/');
   if (parts.length !== 3) return null;
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10);
-  const day = parseInt(parts[2], 10);
+  const month = parseInt(parts[0], 10);
+  const day = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
   if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
   if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return null;
   const date = new Date(year, month - 1, day);
@@ -159,15 +159,15 @@ export function CreateTripModal({
           const parsed = JSON.parse(draft);
           if (isValidDraft(parsed) && Date.now() - parsed.timestamp <= THIRTY_DAYS_MS) {
             const { timestamp, ...data } = parsed;
-            // Convert old MM/dd/yyyy dates to yyyy-MM-dd
+            // Convert old yyyy-MM-dd dates to MM/dd/yyyy
             const convertedData = { ...data };
-            if (data.departureDate && data.departureDate.includes('/')) {
-              const parsedDate = parse(data.departureDate, 'MM/dd/yyyy', new Date());
-              convertedData.departureDate = format(parsedDate, 'yyyy-MM-dd');
+            if (data.departureDate && !data.departureDate.includes('/')) {
+              const parsedDate = parse(data.departureDate, 'yyyy-MM-dd', new Date());
+              convertedData.departureDate = format(parsedDate, 'MM/dd/yyyy');
             }
-            if (data.arrivalDate && data.arrivalDate.includes('/')) {
-              const parsedDate = parse(data.arrivalDate, 'MM/dd/yyyy', new Date());
-              convertedData.arrivalDate = format(parsedDate, 'yyyy-MM-dd');
+            if (data.arrivalDate && !data.arrivalDate.includes('/')) {
+              const parsedDate = parse(data.arrivalDate, 'yyyy-MM-dd', new Date());
+              convertedData.arrivalDate = format(parsedDate, 'MM/dd/yyyy');
             }
             setFormData(convertedData);
           } else {
@@ -216,12 +216,12 @@ export function CreateTripModal({
     // Validate dates
     if (data.departureDate) {
       if (!parseDate(data.departureDate)) {
-        errors.departureDate = 'Invalid departure date format (YYYY-MM-DD)';
+        errors.departureDate = 'Invalid departure date format (MM/dd/yyyy)';
       }
     }
     if (data.arrivalDate) {
       if (!parseDate(data.arrivalDate)) {
-        errors.arrivalDate = 'Invalid arrival date format (YYYY-MM-DD)';
+        errors.arrivalDate = 'Invalid arrival date format (MM/dd/yyyy)';
       }
     }
 
@@ -269,8 +269,12 @@ export function CreateTripModal({
       const validation = validateForm(formData);
       if (!validation.isValid) {
         setFieldErrors(validation.errors);
+        setIsSubmitting(false);
         return;
       }
+
+      // Get user's timezone
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
       // Prepare data for API
       const tripData = {
@@ -280,6 +284,7 @@ export function CreateTripModal({
         departureTime: formData.departureTime,
         arrivalDate: formData.arrivalDate,
         arrivalTime: formData.arrivalTime,
+        timezone,
         availableCarryOnKg: parseFloat(formData.carryOnSpace),
         availableCheckedKg: parseFloat(formData.checkInSpace),
         ticketPhoto: formData.ticketPhoto || undefined,
@@ -307,7 +312,28 @@ export function CreateTripModal({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to create trip');
+        // Handle structured error responses
+        if (result.code === 'INSUFFICIENT_LEAD_TIME') {
+          throw new Error(`${result.message}. ${result.suggestion || ''}`.trim());
+        } else if (result.code === 'INVALID_ROLE') {
+          throw new Error(`${result.message}. ${result.suggestion || ''}`.trim());
+        } else if (result.code === 'USER_NOT_FOUND') {
+          throw new Error(`${result.message}. ${result.suggestion || ''}`.trim());
+        } else if (result.code === 'INVALID_DATES') {
+          throw new Error(`${result.message}. ${result.suggestion || ''}`.trim());
+        } else if (result.code === 'INVALID_TIMEZONE') {
+          throw new Error(`${result.message}. ${result.suggestion || ''}`.trim());
+        } else if (result.code === 'VALIDATION_ERROR') {
+          // Handle Zod validation errors
+          const firstError = result.details?.[0];
+          if (firstError) {
+            throw new Error(`Validation Error: ${firstError.message}`);
+          }
+          throw new Error('Please check your input and try again');
+        } else {
+          // Generic error with fallback
+          throw new Error(result.message || result.error || 'Failed to create trip. Please try again.');
+        }
       }
 
       // Success
@@ -391,8 +417,8 @@ export function CreateTripModal({
           <FormField id="departure-date" label="Departure Date">
             <DatePicker
               date={formData.departureDate ? new Date(formData.departureDate) : undefined}
-              onDateChange={(date) => handleInputChange('departureDate', date ? format(date, 'yyyy-MM-dd') : '')}
-              placeholder="2025-12-11"
+              onDateChange={(date) => handleInputChange('departureDate', date ? format(date, 'MM/dd/yyyy') : '')}
+              placeholder="12/11/2025"
             />
           </FormField>
           <FormField id="departure-time" label="Departure Time">
@@ -431,8 +457,8 @@ export function CreateTripModal({
           <FormField id="arrival-date" label="Arrival Date">
             <DatePicker
               date={formData.arrivalDate ? new Date(formData.arrivalDate) : undefined}
-              onDateChange={(date) => handleInputChange('arrivalDate', date ? format(date, 'yyyy-MM-dd') : '')}
-              placeholder="2025-12-11"
+              onDateChange={(date) => handleInputChange('arrivalDate', date ? format(date, 'MM/dd/yyyy') : '')}
+              placeholder="12/11/2025"
             />
           </FormField>
           <FormField id="arrival-time" label="Arrival Time">
@@ -549,12 +575,26 @@ export function CreateTripModal({
         {/* Submit Button */}
         <div className="pt-4 mt-4 border-t">
           {submitError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {submitError}
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">
+                    Unable to Create Trip
+                  </h3>
+                  <div className="mt-2 text-sm text-red-700">
+                    {submitError}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           <Button
-            className="w-full bg-purple-900 hover:bg-purple-800 h-11"
+            className="w-full bg-purple-900 hover:bg-purple-800 hover:cursor-pointer h-11"
             onClick={handleSubmit}
             disabled={isSubmitting}
           >

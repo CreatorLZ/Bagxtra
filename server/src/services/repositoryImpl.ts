@@ -84,6 +84,27 @@ export class ShopperRequestRepository implements IShopperRequestRepository {
   async findOpenRequests(): Promise<IShopperRequest[]> {
     return await ShopperRequest.find({ status: 'open' }).populate('bagItems');
   }
+
+  async findByStatusAndCooldown(
+    status: string,
+    cooldownEnd: Date
+  ): Promise<IShopperRequest[]> {
+    return await ShopperRequest.find({
+      status,
+      cooldownEndsAt: { $lte: cooldownEnd },
+      cooldownProcessed: false,
+    }).populate('bagItems');
+  }
+
+  async findByStatusAndDeadline(
+    status: string,
+    deadline: Date
+  ): Promise<IShopperRequest[]> {
+    return await ShopperRequest.find({
+      status,
+      purchaseDeadline: { $lte: deadline },
+    }).populate('bagItems');
+  }
 }
 
 export class TripRepository implements ITripRepository {
