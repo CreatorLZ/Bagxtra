@@ -119,12 +119,17 @@ export class DeliveryService {
     }
 
     // Mark delivery as completed and set PIN verification timestamp
-    await this.matchRepo.update(matchId, {
+    const updatedMatch = await this.matchRepo.update(matchId, {
       status: MatchStatus.Completed,
       pinVerifiedAt: new Date(),
+      completedAt: new Date(),
     } as any);
 
-    return { verified: true, match };
+    if (!updatedMatch) {
+      throw new Error('Failed to update match status');
+    }
+
+    return { verified: true, match: updatedMatch };
   }
 
   async getDeliveryStatus(matchId: mongoose.Types.ObjectId): Promise<{
@@ -174,7 +179,10 @@ export class DeliveryService {
     }
 
     // Update match status to completed with proper typing
-    const updatePayload: Partial<IMatch> = { status: MatchStatus.Completed };
+    const updatePayload: Partial<IMatch> = {
+      status: MatchStatus.Completed,
+      deliveredToVendorAt: new Date()
+    };
     return await this.matchRepo.update(matchId, updatePayload);
   }
 

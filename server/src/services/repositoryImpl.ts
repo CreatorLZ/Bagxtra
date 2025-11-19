@@ -15,9 +15,9 @@ import {
 import mongoose from 'mongoose';
 
 export class BagItemRepository implements IBagItemRepository {
-  async create(bagItem: Partial<IBagItem>): Promise<IBagItem> {
+  async create(bagItem: Partial<IBagItem>, session?: mongoose.ClientSession | null): Promise<IBagItem> {
     const newBagItem = new BagItem(bagItem);
-    return await newBagItem.save();
+    return await newBagItem.save(session ? { session: session! } : {});
   }
 
   async findById(id: mongoose.Types.ObjectId): Promise<IBagItem | null> {
@@ -26,13 +26,17 @@ export class BagItemRepository implements IBagItemRepository {
 
   async update(
     id: mongoose.Types.ObjectId,
-    updates: Partial<IBagItem>
+    updates: Partial<IBagItem>,
+    session?: mongoose.ClientSession | null
   ): Promise<IBagItem | null> {
-    return await BagItem.findByIdAndUpdate(id, updates, {
+    const options: any = {
       new: true,
       runValidators: true,
       context: 'query',
-    });
+    };
+    if (session !== undefined) options.session = session;
+    // @ts-ignore - Mongoose types issue with session
+    return await BagItem.findOneAndUpdate({ _id: id }, updates, options);
   }
 
   async delete(id: mongoose.Types.ObjectId): Promise<boolean> {
@@ -56,9 +60,9 @@ export class BagItemRepository implements IBagItemRepository {
 }
 
 export class ShopperRequestRepository implements IShopperRequestRepository {
-  async create(request: Partial<IShopperRequest>): Promise<IShopperRequest> {
+  async create(request: Partial<IShopperRequest>, session?: mongoose.ClientSession | null): Promise<IShopperRequest> {
     const newRequest = new ShopperRequest(request);
-    return await newRequest.save();
+    return await newRequest.save(session ? { session: session! } : {});
   }
 
   async findById(id: mongoose.Types.ObjectId): Promise<IShopperRequest | null> {
@@ -67,12 +71,16 @@ export class ShopperRequestRepository implements IShopperRequestRepository {
 
   async update(
     id: mongoose.Types.ObjectId,
-    updates: Partial<IShopperRequest>
+    updates: Partial<IShopperRequest>,
+    session?: mongoose.ClientSession | null
   ): Promise<IShopperRequest | null> {
-    return await ShopperRequest.findByIdAndUpdate(id, updates, {
+    const options: any = {
       new: true,
       runValidators: true,
-    }).populate('bagItems');
+    };
+    if (session !== undefined) options.session = session;
+    // @ts-ignore - Mongoose types issue with session
+    return await ShopperRequest.findOneAndUpdate({ _id: id }, updates, options).populate('bagItems');
   }
 
   async findByShopper(
@@ -108,9 +116,9 @@ export class ShopperRequestRepository implements IShopperRequestRepository {
 }
 
 export class TripRepository implements ITripRepository {
-  async create(trip: Partial<ITrip>): Promise<ITrip> {
+  async create(trip: Partial<ITrip>, session?: mongoose.ClientSession | null): Promise<ITrip> {
     const newTrip = new Trip(trip);
-    return await newTrip.save();
+    return await newTrip.save(session ? { session: session! } : {});
   }
 
   async findById(id: mongoose.Types.ObjectId): Promise<ITrip | null> {
@@ -119,12 +127,16 @@ export class TripRepository implements ITripRepository {
 
   async update(
     id: mongoose.Types.ObjectId,
-    updates: TripUpdateData
+    updates: TripUpdateData,
+    session?: mongoose.ClientSession | null
   ): Promise<ITrip | null> {
-    return await Trip.findByIdAndUpdate(id, updates, {
+    const options: any = {
       new: true,
       runValidators: true,
-    });
+    };
+    if (session !== undefined) options.session = session;
+    // @ts-ignore - Mongoose types issue with session
+    return await Trip.findOneAndUpdate({ _id: id }, updates, options);
   }
 
   async findByTraveler(travelerId: mongoose.Types.ObjectId): Promise<ITrip[]> {
@@ -141,9 +153,9 @@ export class TripRepository implements ITripRepository {
 }
 
 export class MatchRepository implements IMatchRepository {
-  async create(match: Partial<IMatch>): Promise<IMatch> {
+  async create(match: Partial<IMatch>, session?: mongoose.ClientSession | null): Promise<IMatch> {
     const newMatch = new Match(match);
-    return await newMatch.save();
+    return await newMatch.save(session ? { session: session! } : {});
   }
 
   async findById(id: mongoose.Types.ObjectId): Promise<IMatch | null> {
@@ -152,12 +164,16 @@ export class MatchRepository implements IMatchRepository {
 
   async update(
     id: mongoose.Types.ObjectId,
-    updates: Partial<IMatch>
+    updates: Partial<IMatch>,
+    session?: mongoose.ClientSession | null
   ): Promise<IMatch | null> {
-    return await Match.findByIdAndUpdate(id, updates, {
+    const options: any = {
       new: true,
       runValidators: true,
-    }).populate('assignedItems');
+    };
+    if (session !== undefined) options.session = session;
+    // @ts-ignore - Mongoose types issue with session
+    return await Match.findOneAndUpdate({ _id: id }, updates, options).populate('assignedItems');
   }
 
   async findByRequest(requestId: mongoose.Types.ObjectId): Promise<IMatch[]> {
@@ -174,9 +190,9 @@ export class MatchRepository implements IMatchRepository {
 }
 
 export class ProofRepository implements IProofRepository {
-  async create(proof: Partial<IProof>): Promise<IProof> {
+  async create(proof: Partial<IProof>, session?: mongoose.ClientSession | null): Promise<IProof> {
     const newProof = new Proof(proof);
-    return await newProof.save();
+    return await newProof.save(session ? { session: session! } : {});
   }
 
   async findById(id: mongoose.Types.ObjectId): Promise<IProof | null> {
@@ -185,9 +201,13 @@ export class ProofRepository implements IProofRepository {
 
   async update(
     id: mongoose.Types.ObjectId,
-    updates: Partial<IProof>
+    updates: Partial<IProof>,
+    session?: mongoose.ClientSession | null
   ): Promise<IProof | null> {
-    return await Proof.findByIdAndUpdate(id, updates, { new: true });
+    const options: any = { new: true };
+    if (session !== undefined) options.session = session;
+    // @ts-ignore - Mongoose types issue with session
+    return await Proof.findOneAndUpdate({ _id: id }, updates, options);
   }
 
   async findByUploader(uploaderId: mongoose.Types.ObjectId): Promise<IProof[]> {
@@ -210,11 +230,15 @@ export class UserRepository implements IUserRepository {
 
   async update(
     id: mongoose.Types.ObjectId,
-    updates: Partial<IUser>
+    updates: Partial<IUser>,
+    session?: mongoose.ClientSession | null
   ): Promise<IUser | null> {
-    return await User.findByIdAndUpdate(id, updates, {
+    const options: any = {
       new: true,
       runValidators: true,
-    });
+    };
+    if (session !== undefined) options.session = session;
+    // @ts-ignore - Mongoose types issue with session
+    return await User.findOneAndUpdate({ _id: id }, updates, options);
   }
 }

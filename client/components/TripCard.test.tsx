@@ -50,6 +50,18 @@ describe('parseDateTimeToUTC', () => {
     expect(result.getFullYear()).toBe(2024);
   });
 
+  it('normalizes 2-digit year with windowing: 00-49 to 2000-2049', () => {
+    const { parseDateTimeToUTC } = require('../lib/utils/dateUtils');
+    expect(parseDateTimeToUTC('01/01/00', '00:00').getFullYear()).toBe(2000);
+    expect(parseDateTimeToUTC('01/01/49', '00:00').getFullYear()).toBe(2049);
+  });
+
+  it('normalizes 2-digit year with windowing: 50-99 to 1950-1999', () => {
+    const { parseDateTimeToUTC } = require('../lib/utils/dateUtils');
+    expect(parseDateTimeToUTC('01/01/50', '00:00').getFullYear()).toBe(1950);
+    expect(parseDateTimeToUTC('01/01/99', '00:00').getFullYear()).toBe(1999);
+  });
+
   it('throws on invalid date format', () => {
     const { parseDateTimeToUTC } = require('../lib/utils/dateUtils');
     expect(() => parseDateTimeToUTC('abc/def/ghi', '10:00')).toThrow('Invalid date format');

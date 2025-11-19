@@ -25,6 +25,8 @@ export interface EscrowStatus {
 }
 
 export class PaymentService {
+  private readonly MOCK_ESCROW_AMOUNT = 150.00;
+
   constructor(
     private shopperRequestRepo: IShopperRequestRepository
   ) {}
@@ -85,7 +87,7 @@ export class PaymentService {
 
     // SIMULATION: Calculate distribution
     // In production, this would be based on actual held amount
-    const totalAmount = 150.00; // Mock amount from business rules
+    const totalAmount = this.MOCK_ESCROW_AMOUNT; // Mock amount from business rules
     const platformFee = totalAmount * 0.10; // 10% platform fee
     const vendorFee = totalAmount * 0.05;   // 5% vendor fee
     const travelerAmount = totalAmount - platformFee - vendorFee;
@@ -145,16 +147,16 @@ export class PaymentService {
     if (request.status === 'on_hold') {
       return {
         held: true,
-        amount: 150.00, // Mock amount
-        heldAt: request.cooldownEndsAt,
+        amount: this.MOCK_ESCROW_AMOUNT, // Mock amount
+        heldAt: request.updatedAt,
       };
     }
 
     if (request.status === 'completed') {
       return {
         held: false,
-        amount: 150.00,
-        heldAt: request.cooldownEndsAt,
+        amount: this.MOCK_ESCROW_AMOUNT,
+        heldAt: request.updatedAt,
         releasedAt: new Date(), // Mock release time
         releaseType: 'completion',
       };
@@ -163,8 +165,8 @@ export class PaymentService {
     if (request.status === 'cancelled') {
       return {
         held: false,
-        amount: 150.00,
-        heldAt: request.cooldownEndsAt,
+        amount: this.MOCK_ESCROW_AMOUNT,
+        heldAt: request.updatedAt,
         releasedAt: new Date(),
         releaseType: 'refund',
         releaseReason: request.cancellationReason || 'Request cancelled',

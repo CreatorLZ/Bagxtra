@@ -38,11 +38,12 @@ export class BagService {
   }
 
   async createBagItem(
-    bagItemData: z.infer<typeof createBagItemSchema>
+    bagItemData: z.infer<typeof createBagItemSchema>,
+    session?: mongoose.ClientSession | null
   ): Promise<IBagItem> {
     const validatedData = createBagItemSchema.parse(bagItemData);
     const mappedData = this.mapToBagItem(validatedData);
-    return await this.bagItemRepo.create(mappedData);
+    return await this.bagItemRepo.create(mappedData, session);
   }
 
   async updateBagItem(

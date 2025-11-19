@@ -7,7 +7,6 @@ export const SHOPPER_REQUEST_STATUSES = [
   'matched',
   'on_hold',
   'purchase_pending',
-  'pending_purchase',
   'purchased',
   'in_transit',
   'delivered',

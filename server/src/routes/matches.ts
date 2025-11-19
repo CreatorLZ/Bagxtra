@@ -9,6 +9,7 @@ import {
   ShopperRequestRepository,
   TripRepository,
   BagItemRepository,
+  UserRepository,
 } from '../services/repositoryImpl.js';
 
 // Validation schemas
@@ -31,11 +32,13 @@ const matchRepo = new MatchRepository();
 const shopperRequestRepo = new ShopperRequestRepository();
 const tripRepo = new TripRepository();
 const bagItemRepo = new BagItemRepository();
+const userRepo = new UserRepository();
 const bookingService = new BookingService(
   matchRepo,
   shopperRequestRepo,
   tripRepo,
-  bagItemRepo
+  bagItemRepo,
+  userRepo
 );
 
 const router = Router();

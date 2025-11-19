@@ -96,7 +96,7 @@ interface IShopperRequest {
 
 type ShopperRequestStatus =
   | 'draft' | 'open' | 'matched' | 'on_hold'
-  | 'purchase_pending' | 'pending_purchase' | 'purchased'
+  | 'purchase_pending' | 'purchased'
   | 'in_transit' | 'delivered' | 'completed'
   | 'disputed' | 'cancelled';
 

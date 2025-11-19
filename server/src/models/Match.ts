@@ -15,11 +15,13 @@ export interface IMatch extends Document {
   matchScore: number;
   assignedItems: mongoose.Types.ObjectId[];
   status: MatchStatus;
+  purchasePhaseStarted?: boolean;
   deliveryPin?: string;
   deliveryPinExpiresAt?: Date;
   deliveryPinGeneratedAt?: Date;
   pinVerifiedAt?: Date;
   deliveredToVendorAt?: Date;
+  completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +55,10 @@ const matchSchema = new Schema<IMatch>(
         ref: 'BagItem',
       },
     ],
+    purchasePhaseStarted: {
+      type: Boolean,
+      default: false,
+    },
     deliveryPin: {
       type: String,
     },
@@ -66,6 +72,9 @@ const matchSchema = new Schema<IMatch>(
       type: Date,
     },
     deliveredToVendorAt: {
+      type: Date,
+    },
+    completedAt: {
       type: Date,
     },
     status: {

@@ -14,7 +14,15 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  console.error(`[Error] ${req.method} ${req.path}:`, err);
+  if (process.env['NODE_ENV'] !== 'production') {
+    console.error(`[Error] ${req.method} ${req.path}: ${err.message}\n${err.stack?.substring(0, 1000)}`);
+  }
+
+  // Check if headers have already been sent
+  if (res.headersSent) {
+    console.warn(`Headers already sent for ${req.method} ${req.path}, delegating to default error handler`);
+    return next(err);
+  }
 
   // 1. Handle Zod Validation Errors
   if (err instanceof ZodError) {

@@ -50,8 +50,8 @@ export class TripService {
   ): Promise<ITrip> {
     const validatedData = createTripSchema.parse(tripData) as Required<z.infer<typeof createTripSchema>>;
 
-    const departureDate = parseDateTimeToUTC(validatedData['departureDate'] as unknown as string, validatedData['departureTime'] as unknown as string, validatedData['timezone'] as unknown as string);
-    const arrivalDate = parseDateTimeToUTC(validatedData['arrivalDate'] as unknown as string, validatedData['arrivalTime'] as unknown as string, validatedData['timezone'] as unknown as string);
+    const departureDate = parseDateTimeToUTC(validatedData.departureDate, validatedData.departureTime, validatedData.timezone);
+    const arrivalDate = parseDateTimeToUTC(validatedData.arrivalDate, validatedData.arrivalTime, validatedData.timezone);
 
     if (departureDate > arrivalDate) {
       throw new ValidationError(
@@ -79,18 +79,18 @@ export class TripService {
 
     const createData = {
       travelerId,
-      fromCountry: validatedData['fromCountry'] as unknown as string,
-      toCountry: validatedData['toCountry'] as unknown as string,
+      fromCountry: validatedData.fromCountry,
+      toCountry: validatedData.toCountry,
       departureDate,
-      departureTime: validatedData['departureTime'] as unknown as string,
+      departureTime: validatedData.departureTime,
       arrivalDate,
-      arrivalTime: validatedData['arrivalTime'] as unknown as string,
-      timezone: validatedData['timezone'] as unknown as string,
-      availableCarryOnKg: validatedData['availableCarryOnKg'] as unknown as number,
-      availableCheckedKg: validatedData['availableCheckedKg'] as unknown as number,
-      ticketPhoto: (validatedData['ticketPhoto'] as unknown as string) || null,
-      canCarryFragile: validatedData['canCarryFragile'] as unknown as boolean,
-      canHandleSpecialDelivery: validatedData['canHandleSpecialDelivery'] as unknown as boolean,
+      arrivalTime: validatedData.arrivalTime,
+      timezone: validatedData.timezone,
+      availableCarryOnKg: validatedData.availableCarryOnKg,
+      availableCheckedKg: validatedData.availableCheckedKg,
+      ticketPhoto: validatedData.ticketPhoto || null,
+      canCarryFragile: validatedData.canCarryFragile,
+      canHandleSpecialDelivery: validatedData.canHandleSpecialDelivery,
       status: 'pending' as TripStatus,
     };
 
@@ -118,30 +118,30 @@ export class TripService {
     // Build update data with proper types
     const updateData: TripUpdateData = {};
 
-    if (validatedUpdates['fromCountry'] !== undefined) updateData.fromCountry = validatedUpdates['fromCountry'] as unknown as string;
-    if (validatedUpdates['toCountry'] !== undefined) updateData.toCountry = validatedUpdates['toCountry'] as unknown as string;
-    if (validatedUpdates['timezone'] !== undefined) updateData.timezone = validatedUpdates['timezone'] as unknown as string;
-    if (validatedUpdates['availableCarryOnKg'] !== undefined) updateData.availableCarryOnKg = validatedUpdates['availableCarryOnKg'] as unknown as number;
-    if (validatedUpdates['availableCheckedKg'] !== undefined) updateData.availableCheckedKg = validatedUpdates['availableCheckedKg'] as unknown as number;
-    if (validatedUpdates['ticketPhoto'] !== undefined) updateData.ticketPhoto = validatedUpdates['ticketPhoto'] as unknown as string;
-    if (validatedUpdates['canCarryFragile'] !== undefined) updateData.canCarryFragile = validatedUpdates['canCarryFragile'] as unknown as boolean;
-    if (validatedUpdates['canHandleSpecialDelivery'] !== undefined) updateData.canHandleSpecialDelivery = validatedUpdates['canHandleSpecialDelivery'] as unknown as boolean;
+    if (validatedUpdates.fromCountry !== undefined) updateData.fromCountry = validatedUpdates.fromCountry;
+    if (validatedUpdates.toCountry !== undefined) updateData.toCountry = validatedUpdates.toCountry;
+    if (validatedUpdates.timezone !== undefined) updateData.timezone = validatedUpdates.timezone;
+    if (validatedUpdates.availableCarryOnKg !== undefined) updateData.availableCarryOnKg = validatedUpdates.availableCarryOnKg;
+    if (validatedUpdates.availableCheckedKg !== undefined) updateData.availableCheckedKg = validatedUpdates.availableCheckedKg;
+    if (validatedUpdates.ticketPhoto !== undefined) updateData.ticketPhoto = validatedUpdates.ticketPhoto;
+    if (validatedUpdates.canCarryFragile !== undefined) updateData.canCarryFragile = validatedUpdates.canCarryFragile;
+    if (validatedUpdates.canHandleSpecialDelivery !== undefined) updateData.canHandleSpecialDelivery = validatedUpdates.canHandleSpecialDelivery;
 
     // Handle departure date/time
-    if (validatedUpdates['departureDate'] !== undefined) {
-      const depTime = (validatedUpdates['departureTime'] as unknown as string) ?? trip.departureTime;
-      const tz = (validatedUpdates['timezone'] as unknown as string) ?? trip.timezone;
-      updateData.departureDate = parseDateTimeToUTC(validatedUpdates['departureDate'] as unknown as string, depTime, tz);
+    if (validatedUpdates.departureDate !== undefined) {
+      const depTime = validatedUpdates.departureTime ?? trip.departureTime;
+      const tz = validatedUpdates.timezone ?? trip.timezone;
+      updateData.departureDate = parseDateTimeToUTC(validatedUpdates.departureDate, depTime, tz);
     }
-    if (validatedUpdates['departureTime'] !== undefined) updateData.departureTime = validatedUpdates['departureTime'] as unknown as string;
+    if (validatedUpdates.departureTime !== undefined) updateData.departureTime = validatedUpdates.departureTime;
 
     // Handle arrival date/time
-    if (validatedUpdates['arrivalDate'] !== undefined) {
-      const arrTime = (validatedUpdates['arrivalTime'] as unknown as string) ?? trip.arrivalTime;
-      const tz = (validatedUpdates['timezone'] as unknown as string) ?? trip.timezone;
-      updateData.arrivalDate = parseDateTimeToUTC(validatedUpdates['arrivalDate'] as unknown as string, arrTime, tz);
+    if (validatedUpdates.arrivalDate !== undefined) {
+      const arrTime = validatedUpdates.arrivalTime ?? trip.arrivalTime;
+      const tz = validatedUpdates.timezone ?? trip.timezone;
+      updateData.arrivalDate = parseDateTimeToUTC(validatedUpdates.arrivalDate, arrTime, tz);
     }
-    if (validatedUpdates['arrivalTime'] !== undefined) updateData.arrivalTime = validatedUpdates['arrivalTime'] as unknown as string;
+    if (validatedUpdates.arrivalTime !== undefined) updateData.arrivalTime = validatedUpdates.arrivalTime;
 
     // Validate merged dates and times
     const resultingDeparture = updateData.departureDate ?? trip.departureDate;
@@ -170,13 +170,16 @@ export class TripService {
   }
 
 
-  async activateTrip(tripId: mongoose.Types.ObjectId, travelerId: mongoose.Types.ObjectId): Promise<ITrip | null> {
+  async activateTrip(tripId: mongoose.Types.ObjectId, travelerId: mongoose.Types.ObjectId, manual?: boolean): Promise<ITrip | null> {
     const trip = await this.tripRepo.findById(tripId);
     if (!trip) throw new NotFoundError('Trip not found');
     if (!trip.travelerId.equals(travelerId)) throw new ForbiddenError('Unauthorized');
     if (trip.status !== 'pending') throw new BadRequestError('Trip is not pending');
 
-    return await this.tripRepo.update(tripId, { status: 'active' as TripStatus, activatedAt: new Date() });
+    const updateData: any = { status: 'active' as TripStatus, activatedAt: new Date() };
+    if (manual) updateData.manuallyActivated = true;
+
+    return await this.tripRepo.update(tripId, updateData);
   }
 
   async getTrip(tripId: mongoose.Types.ObjectId): Promise<ITrip | null> {
@@ -271,21 +274,7 @@ export class TripService {
     tripId: mongoose.Types.ObjectId,
     travelerId: mongoose.Types.ObjectId
   ): Promise<ITrip | null> {
-    const trip = await this.tripRepo.findById(tripId);
-    if (!trip) {
-      throw new NotFoundError('Trip not found');
-    }
-    if (!trip.travelerId.equals(travelerId)) {
-      throw new ForbiddenError('Unauthorized');
-    }
-    if (trip.status !== 'pending') {
-      throw new BadRequestError('Trip not pending');
-    }
-    return this.tripRepo.update(tripId, {
-      status: 'active' as TripStatus,
-      activatedAt: new Date(),
-      manuallyActivated: true
-    });
+    return this.activateTrip(tripId, travelerId, true);
   }
 
   async markArrived(

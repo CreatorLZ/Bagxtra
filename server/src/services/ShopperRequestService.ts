@@ -49,52 +49,80 @@ export class ShopperRequestService {
     shopperId: mongoose.Types.ObjectId,
     requestData: z.infer<typeof createShopperRequestSchema>
   ): Promise<IShopperRequest> {
-    const validatedData = createShopperRequestSchema.parse(requestData);
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // Validate shopper exists and is a shopper
-    const shopper = await this.userRepo.findById(shopperId);
-    if (!shopper) {
-      throw new Error('Shopper not found');
+    try {
+      const validatedData = createShopperRequestSchema.parse(requestData);
+
+      // Validate shopper exists and is a shopper
+      const shopper = await this.userRepo.findById(shopperId);
+      if (!shopper) {
+        throw new Error('Shopper not found');
+      }
+      if (shopper.role !== 'shopper') {
+        throw new Error('User is not a shopper');
+      }
+
+      // Create bag items first
+      const bagItemIds: mongoose.Types.ObjectId[] = [];
+      for (const itemData of validatedData.bagItems) {
+        const bagItem = await this.bagService.createBagItem(itemData, session);
+        bagItemIds.push(bagItem._id);
+      }
+
+      // Calculate pricing
+      const bagItems = await this.bagItemRepo.findByIds(
+        bagItemIds.map(id => id.toString())
+      );
+
+      // Validate all requested bag items were found
+      const requestedIds = bagItemIds.map(id => id.toString());
+      const returnedIds = bagItems.map(item => item._id.toString());
+      if (bagItems.length !== bagItemIds.length) {
+        const missingIds = requestedIds.filter(id => !returnedIds.includes(id));
+        throw new Error(`Some bag items were not found: ${missingIds.join(', ')}`);
+      }
+
+      const priceSummary = await this.calculatePriceSummary(bagItems);
+
+      // Create shopper request
+      const requestDataToCreate = {
+        shopperId,
+        bagItems: bagItemIds,
+        destinationCountry: validatedData.destinationCountry,
+        status: 'draft' as const,
+        priceSummary,
+        paymentStatus: 'pending' as const,
+      };
+
+      const shopperRequest = await this.shopperRequestRepo.create(requestDataToCreate, session);
+
+      await session.commitTransaction();
+      return shopperRequest;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
-    if (shopper.role !== 'shopper') {
-      throw new Error('User is not a shopper');
-    }
-
-    // Create bag items first
-    const bagItemIds: mongoose.Types.ObjectId[] = [];
-    for (const itemData of validatedData.bagItems) {
-      const bagItem = await this.bagService.createBagItem(itemData);
-      bagItemIds.push(bagItem._id);
-    }
-
-    // Calculate pricing
-    const bagItems = await this.bagItemRepo.findByIds(
-      bagItemIds.map(id => id.toString())
-    );
-    const priceSummary = await this.calculatePriceSummary(bagItems);
-
-    // Create shopper request
-    const requestDataToCreate = {
-      shopperId,
-      bagItems: bagItemIds,
-      destinationCountry: validatedData.destinationCountry,
-      status: 'draft' as const,
-      priceSummary,
-      paymentStatus: 'pending' as const,
-    };
-
-    const shopperRequest = await this.shopperRequestRepo.create(requestDataToCreate);
-
-    return shopperRequest;
   }
 
   /**
-   * Get shopper request by ID
+   * Get shopper request by ID with ownership verification
    */
   async getShopperRequest(
-    requestId: mongoose.Types.ObjectId
+    requestId: mongoose.Types.ObjectId,
+    shopperId: mongoose.Types.ObjectId
   ): Promise<IShopperRequest | null> {
-    return await this.shopperRequestRepo.findById(requestId);
+    const request = await this.shopperRequestRepo.findById(requestId);
+    if (!request) {
+      return null;
+    }
+    if (!request.shopperId.equals(shopperId)) {
+      throw new Error('Unauthorized to access this request');
+    }
+    return request;
   }
 
   /**
@@ -154,7 +182,7 @@ export class ShopperRequestService {
     }
 
     // Cannot cancel if matched or in progress
-    if (['matched', 'pending_purchase', 'purchased', 'in_transit'].includes(request.status)) {
+    if (['matched', 'purchase_pending', 'purchased', 'in_transit'].includes(request.status)) {
       throw new Error('Cannot cancel request that is already in progress');
     }
 

@@ -8,10 +8,11 @@ import {
 } from '../services/repositoryImpl.js';
 import { z } from 'zod';
 import mongoose from 'mongoose';
+import { randomUUID } from 'crypto';
 
 // Validation schemas
-const idSchema = z.object({
-  id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ID format'),
+const matchIdSchema = z.object({
+  matchId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ID format'),
 });
 
 const generatePinSchema = z.object({
@@ -20,6 +21,12 @@ const generatePinSchema = z.object({
 
 const verifyPinSchema = z.object({
   pin: z.string().length(5),
+});
+
+// Error sanitizer for secure logging
+const sanitizeError = (error: any) => ({
+  message: error?.message || 'Unknown error',
+  correlationId: randomUUID(),
 });
 
 // Initialize service
@@ -34,16 +41,9 @@ const router = Router();
  * @desc Generate delivery verification PIN (Traveler)
  * @access Private (Traveler only)
  */
-router.post('/:matchId/generate-pin', requireAuth, authorizeRoles('traveler'), validateParams(idSchema), async (req, res) => {
+router.post('/:matchId/generate-pin', requireAuth, authorizeRoles('traveler'), validateParams(matchIdSchema), async (req, res) => {
   try {
-    const { matchId } = req.params;
-    if (!matchId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Match ID is required'
-      });
-    }
-
+    const matchId = req.params['matchId'] as string;
     const { storeLocation } = generatePinSchema.parse(req.body);
 
     // Get traveler ID from auth middleware
@@ -80,7 +80,7 @@ router.post('/:matchId/generate-pin', requireAuth, authorizeRoles('traveler'), v
       },
     });
   } catch (error) {
-    console.error('Error generating delivery PIN:', error);
+    console.error('Error generating delivery PIN:', sanitizeError(error));
 
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -103,16 +103,9 @@ router.post('/:matchId/generate-pin', requireAuth, authorizeRoles('traveler'), v
  * @desc Verify delivery PIN (Shopper)
  * @access Private (Shopper only)
  */
-router.post('/:matchId/verify-pin', requireAuth, authorizeRoles('shopper'), validateParams(idSchema), async (req, res) => {
+router.post('/:matchId/verify-pin', requireAuth, authorizeRoles('shopper'), validateParams(matchIdSchema), async (req, res) => {
   try {
-    const { matchId } = req.params;
-    if (!matchId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Match ID is required'
-      });
-    }
-
+    const matchId = req.params['matchId'] as string;
     const { pin } = verifyPinSchema.parse(req.body);
 
     // Get shopper ID from auth middleware
@@ -152,11 +145,11 @@ router.post('/:matchId/verify-pin', requireAuth, authorizeRoles('shopper'), vali
       data: {
         matchId: result.match?._id,
         status: result.match?.status,
-        completedAt: new Date(),
+        completedAt: result.match?.completedAt,
       },
     });
   } catch (error) {
-    console.error('Error verifying delivery PIN:', error);
+    console.error('Error verifying delivery PIN:', sanitizeError(error));
 
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -179,23 +172,9 @@ router.post('/:matchId/verify-pin', requireAuth, authorizeRoles('shopper'), vali
  * @desc Get delivery status
  * @access Private (Traveler or Shopper)
  */
-router.get('/:matchId/status', requireAuth, authorizeRoles('traveler', 'shopper'), validateParams(idSchema), async (req, res) => {
+router.get('/:matchId/status', requireAuth, authorizeRoles('traveler', 'shopper'), validateParams(matchIdSchema), async (req, res) => {
   try {
-    const { matchId } = req.params;
-    if (!matchId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Match ID is required'
-      });
-    }
-
-    if (!mongoose.isValidObjectId(matchId)) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Invalid match ID'
-      });
-    }
-
+    const matchId = req.params['matchId'] as string;
     const matchObjectId = new mongoose.Types.ObjectId(matchId);
     const status = await deliveryService.getDeliveryStatus(matchObjectId);
 
@@ -204,7 +183,7 @@ router.get('/:matchId/status', requireAuth, authorizeRoles('traveler', 'shopper'
       data: status,
     });
   } catch (error) {
-    console.error('Error getting delivery status:', error);
+    console.error('Error getting delivery status:', sanitizeError(error));
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to get delivery status',
@@ -218,23 +197,9 @@ router.get('/:matchId/status', requireAuth, authorizeRoles('traveler', 'shopper'
  * @desc Mark item as delivered to vendor (Traveler)
  * @access Private (Traveler only)
  */
-router.post('/:matchId/deliver-to-vendor', requireAuth, authorizeRoles('traveler'), validateParams(idSchema), async (req, res) => {
+router.post('/:matchId/deliver-to-vendor', requireAuth, authorizeRoles('traveler'), validateParams(matchIdSchema), async (req, res) => {
   try {
-    const { matchId } = req.params;
-    if (!matchId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Match ID is required'
-      });
-    }
-
-    if (!mongoose.isValidObjectId(matchId)) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Invalid match ID'
-      });
-    }
-
+    const matchId = req.params['matchId'] as string;
     // Get traveler ID from auth middleware
     const travelerId = req.user?.id;
     if (!travelerId) {
@@ -270,11 +235,11 @@ router.post('/:matchId/deliver-to-vendor', requireAuth, authorizeRoles('traveler
       data: {
         matchId: updatedMatch._id,
         status: updatedMatch.status,
-        deliveredAt: new Date(),
+        deliveredAt: updatedMatch.deliveredToVendorAt,
       },
     });
   } catch (error) {
-    console.error('Error marking delivery to vendor:', error);
+    console.error('Error marking delivery to vendor:', sanitizeError(error));
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to mark delivery to vendor',
@@ -288,23 +253,9 @@ router.post('/:matchId/deliver-to-vendor', requireAuth, authorizeRoles('traveler
  * @desc Resend delivery verification PIN (Traveler)
  * @access Private (Traveler only)
  */
-router.post('/:matchId/resend-pin', requireAuth, authorizeRoles('traveler'), validateParams(idSchema), async (req, res) => {
+router.post('/:matchId/resend-pin', requireAuth, authorizeRoles('traveler'), validateParams(matchIdSchema), async (req, res) => {
   try {
-    const { matchId } = req.params;
-    if (!matchId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Match ID is required'
-      });
-    }
-
-    if (!mongoose.isValidObjectId(matchId)) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Invalid match ID'
-      });
-    }
-
+    const matchId = req.params['matchId'] as string;
     // Get traveler ID from auth middleware
     const travelerId = req.user?.id;
     if (!travelerId) {
@@ -336,7 +287,7 @@ router.post('/:matchId/resend-pin', requireAuth, authorizeRoles('traveler'), val
       },
     });
   } catch (error) {
-    console.error('Error resending delivery PIN:', error);
+    console.error('Error resending delivery PIN:', sanitizeError(error));
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to resend delivery PIN',

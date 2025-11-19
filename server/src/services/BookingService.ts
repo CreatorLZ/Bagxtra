@@ -5,6 +5,7 @@ import {
   IShopperRequestRepository,
   ITripRepository,
   IBagItemRepository,
+  IUserRepository,
 } from './repositories';
 import { BUSINESS_RULES } from '../config/businessRules';
 import { NotificationService } from './NotificationService';
@@ -31,6 +32,7 @@ export class BookingService {
     private shopperRequestRepo: IShopperRequestRepository,
     private tripRepo: ITripRepository,
     private bagItemRepo: IBagItemRepository,
+    private userRepo: IUserRepository,
     private notificationService?: NotificationService
   ) {}
 
@@ -72,7 +74,12 @@ export class BookingService {
     if (!request) {
       throw new Error('Shopper request not found');
     }
-    const requestItemIds = request.bagItems.map(item => item._id!.toString());
+    const requestItemIds = request.bagItems.map(item => {
+      if (!item._id) {
+        throw new Error('Bag item is missing an ID');
+      }
+      return item._id.toString();
+    });
     const invalidItems = validatedData.assignedItems.filter(
       id => !requestItemIds.includes(id)
     );
@@ -80,6 +87,21 @@ export class BookingService {
       throw new Error(
         `Assigned items ${invalidItems.join(', ')} do not belong to this request`
       );
+    }
+
+    // Check for duplicate assigned items in other matches
+    const existingMatches = await this.matchRepo.findByRequest(match.requestId);
+    const activeMatches = existingMatches.filter(
+      m => m.status === MatchStatus.Claimed || m.status === MatchStatus.Approved
+    );
+    const claimedItems = activeMatches.flatMap(
+      m => m.assignedItems.map(id => id.toString())
+    );
+    const duplicates = validatedData.assignedItems.filter(
+      id => claimedItems.includes(id)
+    );
+    if (duplicates.length > 0) {
+      throw new Error(`Items ${duplicates.join(', ')} are already claimed by another match`);
     }
 
     // Update match status and assigned items
@@ -143,11 +165,14 @@ export class BookingService {
 
     // Send notifications
     if (this.notificationService) {
+      const shopper = await this.userRepo.findById(request.shopperId);
+      const userLocale = shopper?.locale || 'en-US';
       await this.notificationService.sendBookingConfirmation(
         request.shopperId,
         match.travelerId,
         matchId,
-        cooldownEndsAt
+        cooldownEndsAt,
+        userLocale
       );
     }
 
@@ -193,82 +218,124 @@ export class BookingService {
     const requestUpdate: Partial<IShopperRequest> = {
       status: 'open', // Make available for other matches
       cooldownProcessed: false,
-    };
-
-    // Handle unsetting date fields separately
-    await this.shopperRequestRepo.update(request._id, {
-      ...requestUpdate,
       cooldownEndsAt: null as any,
       purchaseDeadline: null as any,
-    });
+    };
 
     if (validatedData.reason) {
       requestUpdate.cancellationReason = validatedData.reason;
     }
 
-    await this.shopperRequestRepo.update(match.requestId, requestUpdate);
+    await this.shopperRequestRepo.update(request._id, requestUpdate);
     return await this.matchRepo.update(matchId, matchUpdate);
   }
 
   /**
    * Process expired cooldowns (called by cron job)
    */
-  async processExpiredCooldowns(): Promise<{ processed: number }> {
+  async processExpiredCooldowns(): Promise<{ processed: number; errors: number }> {
     const now = new Date();
     let processed = 0;
+    let errors = 0;
 
     // Find requests where cooldown has expired
     const expiredCooldowns = await this.shopperRequestRepo.findByStatusAndCooldown('on_hold', now);
 
     for (const request of expiredCooldowns) {
-      // Update request status
-      await this.shopperRequestRepo.update(request._id, {
-        status: 'purchase_pending',
-        cooldownProcessed: true,
-      });
+      // Concurrency check: re-fetch to ensure not already processed
+      const currentRequest = await this.shopperRequestRepo.findById(request._id);
+      if (!currentRequest || currentRequest.cooldownProcessed) {
+        continue; // Already processed by another instance
+      }
 
-      // Find and update related matches
-      const matches = await this.matchRepo.findByRequest(request._id);
-      for (const match of matches) {
-        if (match.status === MatchStatus.Approved) {
-          // Keep approved matches active for purchase phase
-          processed++;
-        }
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          // Update request status
+          await this.shopperRequestRepo.update(request._id, {
+            status: 'purchase_pending',
+            cooldownProcessed: true,
+          }, session);
+
+          // Find and update related matches
+          const matches = await this.matchRepo.findByRequest(request._id);
+          for (const match of matches) {
+            if (match.status === MatchStatus.Approved) {
+              // Mark purchase phase as started
+              await this.matchRepo.update(match._id as mongoose.Types.ObjectId, {
+                purchasePhaseStarted: true,
+              }, session);
+
+              // Notify traveler that purchase window has started
+              if (this.notificationService) {
+                await this.notificationService.sendPurchaseDeadlineReminder(
+                  match.travelerId,
+                  match._id as mongoose.Types.ObjectId,
+                  BUSINESS_RULES.cooldowns.travelerPurchaseWindowHours
+                );
+              }
+            }
+          }
+        });
+        processed++;
+      } catch (error) {
+        console.error(`Error processing expired cooldown for request ${request._id}:`, error);
+        errors++;
+      } finally {
+        await session.endSession();
       }
     }
 
-    return { processed };
+    return { processed, errors };
   }
 
   /**
    * Process missed purchase deadlines (called by cron job)
    */
-  async processMissedPurchaseDeadlines(): Promise<{ cancelled: number }> {
+  async processMissedPurchaseDeadlines(): Promise<{ cancelled: number; errors: number }> {
     const now = new Date();
     let cancelled = 0;
+    let errors = 0;
 
     // Find requests where purchase deadline has passed
     const missedDeadlines = await this.shopperRequestRepo.findByStatusAndDeadline('purchase_pending', now);
 
     for (const request of missedDeadlines) {
-      // Cancel request and related matches
-      await this.shopperRequestRepo.update(request._id, {
-        status: 'cancelled',
-        cancellationReason: 'Purchase deadline missed by traveler',
-      });
+      // Concurrency check: re-fetch to ensure not already processed
+      const currentRequest = await this.shopperRequestRepo.findById(request._id);
+      if (!currentRequest || currentRequest.status !== 'purchase_pending') {
+        continue; // Already processed by another instance
+      }
 
-      const matches = await this.matchRepo.findByRequest(request._id);
-      for (const match of matches) {
-        if (match.status === MatchStatus.Approved) {
-          await this.matchRepo.update(match._id as mongoose.Types.ObjectId, {
-            status: MatchStatus.Rejected,
-          });
-          cancelled++;
-        }
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          // Cancel request
+          await this.shopperRequestRepo.update(request._id, {
+            status: 'cancelled',
+            cancellationReason: 'Purchase deadline missed by traveler',
+          }, session);
+
+          // Cancel related matches
+          const matches = await this.matchRepo.findByRequest(request._id);
+          for (const match of matches) {
+            if (match.status === MatchStatus.Approved) {
+              await this.matchRepo.update(match._id as mongoose.Types.ObjectId, {
+                status: MatchStatus.Rejected,
+              }, session);
+            }
+          }
+        });
+        cancelled++;
+      } catch (error) {
+        console.error(`Error processing missed purchase deadline for request ${request._id}:`, error);
+        errors++;
+      } finally {
+        await session.endSession();
       }
     }
 
-    return { cancelled };
+    return { cancelled, errors };
   }
 
   private async checkCapacity(
@@ -280,7 +347,30 @@ export class BookingService {
       return { canAssign: false, reason: 'Trip not found' };
     }
 
-    // Calculate total weight of assigned items
+    // Fetch existing matches for the trip with status Claim or Approved
+    const existingMatches = await this.matchRepo.findByTrip(tripId);
+    const activeMatches = existingMatches.filter(
+      match => match.status === MatchStatus.Claimed || match.status === MatchStatus.Approved
+    );
+
+    // Collect assigned item IDs from existing matches
+    const assignedItemIdsFromMatches = activeMatches.flatMap(
+      match => match.assignedItems.map(id => id.toString())
+    );
+
+    // Filter out any overlapping item IDs (though unlikely)
+    const existingItemIds = assignedItemIdsFromMatches.filter(
+      id => !assignedItemIds.includes(id)
+    );
+
+    // Load existing items and compute their total weight
+    const existingItems = await this.bagItemRepo.findByIds(existingItemIds);
+    const existingWeight = existingItems.reduce(
+      (sum, item) => sum + item.weightKg * item.quantity,
+      0
+    );
+
+    // Calculate total weight of newly assigned items
     const assignedItemObjectIds = assignedItemIds.map(
       id => new mongoose.Types.ObjectId(id)
     );
@@ -290,10 +380,13 @@ export class BookingService {
     if (items.length !== assignedItemIds.length) {
       throw new Error('Some assigned items not found');
     }
-    const totalWeight = items.reduce(
+    const newWeight = items.reduce(
       (sum, item) => sum + item.weightKg * item.quantity,
       0
     );
+
+    // Total weight including existing
+    const totalWeight = newWeight + existingWeight;
 
     // Check if fits in available capacity
     const fitsCarryOn = totalWeight <= trip.availableCarryOnKg;

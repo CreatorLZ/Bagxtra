@@ -15,10 +15,14 @@ export function parseDateTimeToUTC(dateStr: string, timeStr: string, timezone?: 
     throw new Error(`Invalid date format: expected MM/dd/yy, got "${dateStr}"`);
   }
   const [month, day, yearShort] = dateParts.map(Number) as [number, number, number];
-  if (month < 1 || month > 12 || day < 1 || day > 31 || yearShort < 0 || yearShort > 99) {
+  if (month < 1 || month > 12 || yearShort < 0 || yearShort > 99) {
     throw new Error(`Invalid date: month/day/year out of range in "${dateStr}"`);
   }
-  const year = 2000 + yearShort; // Normalize 2-digit to 2000+
+  const year = yearShort <= 49 ? 2000 + yearShort : 1900 + yearShort; // Windowing: 00-49 -> 2000-2049, 50-99 -> 1950-1999
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    throw new Error(`Invalid date: month/day/year out of range in "${dateStr}"`);
+  }
 
   // Validate timeStr (HH:mm)
   const timeParts = timeStr.split(':');
@@ -39,7 +43,7 @@ export function parseDateTimeToUTC(dateStr: string, timeStr: string, timezone?: 
   }
 
   // Parse and convert to UTC
-  const dateTimeStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const dateTimeStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
   
 
 return fromZonedTime(dateTimeStr, tz);}

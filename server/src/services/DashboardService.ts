@@ -219,7 +219,7 @@ export class DashboardService {
 
     // Order status counts
     const ordersPending = requests.filter(req => req.status === 'open').length;
-    const ordersShipped = requests.filter(req => ['matched', 'pending_purchase', 'purchased', 'in_transit'].includes(req.status)).length;
+    const ordersShipped = requests.filter(req => ['matched', 'purchase_pending', 'purchased', 'in_transit'].includes(req.status)).length;
     const ordersDelivered = requests.filter(req => req.status === 'delivered').length;
 
     // Order tracking analytics

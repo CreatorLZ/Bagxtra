@@ -172,8 +172,28 @@ export const getShopperRequest = async (req: Request, res: Response) => {
       });
     }
 
-    const requestId = new mongoose.Types.ObjectId(id);
-    const request = await shopperRequestService.getShopperRequest(requestId);
+    // Get shopper ID from auth middleware
+    const shopperId = req.user?.id;
+    if (!shopperId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+    }
+
+    let requestObjectId: mongoose.Types.ObjectId;
+    let shopperObjectId: mongoose.Types.ObjectId;
+    try {
+      requestObjectId = new mongoose.Types.ObjectId(id);
+      shopperObjectId = new mongoose.Types.ObjectId(shopperId);
+    } catch {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Invalid ID'
+      });
+    }
+
+    const request = await shopperRequestService.getShopperRequest(requestObjectId, shopperObjectId);
 
     if (!request) {
       return res.status(404).json({
@@ -197,6 +217,13 @@ export const getShopperRequest = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized to access this request') {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You can only view your own requests',
+      });
+    }
+
     console.error('Error fetching shopper request:', error);
     res.status(500).json({
       error: 'Internal server error',

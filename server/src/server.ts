@@ -122,6 +122,7 @@ import {
   ShopperRequestRepository,
   TripRepository,
   BagItemRepository,
+  UserRepository,
 } from './services/repositoryImpl.js';
 
 // API routes
@@ -198,12 +199,14 @@ const matchRepo = new MatchRepository();
 const shopperRequestRepo = new ShopperRequestRepository();
 const tripRepo = new TripRepository();
 const bagItemRepo = new BagItemRepository();
+const userRepo = new UserRepository();
 const notificationService = new NotificationService();
 const bookingService = new BookingService(
   matchRepo,
   shopperRequestRepo,
   tripRepo,
   bagItemRepo,
+  userRepo,
   notificationService
 );
 

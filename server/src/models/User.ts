@@ -24,6 +24,7 @@ export interface IUser extends Document {
   role: UserRole;
   phone?: string;
   country?: string;
+  locale?: string;
   profileImage?: string;
   rating?: number;
   maxRating?: number;
@@ -75,6 +76,11 @@ const userSchema = new Schema<IUser, IUserModel>(
       trim: true,
       maxlength: 100,
     },
+    locale: {
+      type: String,
+      default: 'en-US',
+      trim: true,
+    },
     profileImage: {
       type: String,
       trim: true,
@@ -113,6 +119,9 @@ userSchema.pre('save', function (next) {
   }
   if (this.country) {
     this.country = this.country.trim();
+  }
+  if (this.locale) {
+    this.locale = this.locale.trim();
   }
   if (this.profileImage) {
     this.profileImage = this.profileImage.trim();

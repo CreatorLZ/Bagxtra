@@ -17,7 +17,7 @@ export class NotificationService {
   async sendNotification(notification: NotificationData): Promise<boolean> {
     const { userId, type, title, message, actionUrl, metadata } = notification;
 
-    console.log(`📧 ${type.toUpperCase()} NOTIFICATION for user ${userId}:`);
+    console.log(`📧 ${type.toUpperCase()} NOTIFICATION:`);
     console.log(`   Title: ${title}`);
     console.log(`   Message: ${message}`);
     if (actionUrl) console.log(`   Action: ${actionUrl}`);
@@ -38,9 +38,13 @@ export class NotificationService {
     shopperId: mongoose.Types.ObjectId,
     travelerId: mongoose.Types.ObjectId,
     matchId: mongoose.Types.ObjectId,
-    cooldownEndsAt: Date
+    cooldownEndsAt: Date,
+    userLocale: string = 'en-US'
   ): Promise<void> {
-    const cooldownTime = cooldownEndsAt.toLocaleString();
+    const cooldownTime = cooldownEndsAt.toLocaleString(userLocale, {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
 
     // Notify shopper
     await this.sendNotification({
@@ -125,9 +129,9 @@ export class NotificationService {
       userId: travelerId,
       type: 'email',
       title: 'Delivery PIN Generated',
-      message: `PIN: ${pin} (Expires: ${expiresAt.toLocaleString()}). Provide to shopper for pickup.`,
+      message: `A PIN has been generated for delivery verification and will be provided to the shopper at pickup. (Expires: ${expiresAt.toISOString()}).`,
       actionUrl: `/dashboard/deliveries/${matchId}`,
-      metadata: { matchId, pin, expiresAt, type: 'pin_generated' }
+      metadata: { matchId, expiresAt, type: 'pin_generated' }
     });
 
     // Notify shopper

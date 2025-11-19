@@ -32,6 +32,7 @@ import { TimePicker } from '@/components/TimePicker';
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { format, parse } from 'date-fns';
 import { useAuth } from '@clerk/nextjs';
+import { useQueryClient } from '@tanstack/react-query';
 
 
 // Assuming this FormField component is defined or imported globally if needed,
@@ -129,6 +130,7 @@ export function CreateTripModal({
   onOpenChange,
 }: CreateTripModalProps) {
   const { getToken } = useAuth();
+  const queryClient = useQueryClient();
   const [view, setView] = useState<'form' | 'success'>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
@@ -188,6 +190,17 @@ export function CreateTripModal({
       localStorage.setItem('tripDraft', JSON.stringify({ ...formData, timestamp: Date.now() }));
     }
   }, [formData, isOpen]);
+
+  // Safeguard to reset isSubmitting if it hangs
+  useEffect(() => {
+    if (isSubmitting) {
+      const resetTimer = setTimeout(() => {
+        setIsSubmitting(false);
+        setSubmitError('Request timed out. Please try again.');
+      }, 30000);
+      return () => clearTimeout(resetTimer);
+    }
+  }, [isSubmitting]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -261,17 +274,33 @@ export function CreateTripModal({
   };
 
   const handleSubmit = async () => {
+    console.log('isSubmitting at handleSubmit start:', isSubmitting);
+    if (isSubmitting) return; // Prevent multiple submissions
+
+    console.log('handleSubmit started');
     setIsSubmitting(true);
+    console.log('setIsSubmitting set to true');
     setSubmitError('');
+    console.log('setSubmitError cleared');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
+      console.log('About to validate');
       // Validate form
       const validation = validateForm(formData);
+      console.log('Validation done, isValid:', validation.isValid, 'errors:', validation.errors);
       if (!validation.isValid) {
+        console.log('Validation failed, setting field errors');
         setFieldErrors(validation.errors);
+        console.log('setFieldErrors called, errors set to:', validation.errors);
         setIsSubmitting(false);
+        console.log('setIsSubmitting set to false');
         return;
       }
+
+      console.log('Validation passed');
 
       // Get user's timezone
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -293,12 +322,31 @@ export function CreateTripModal({
       };
 
       // Get Clerk token for authentication
-      const token = await getToken();
-      if (!token) {
-        throw new Error('Authentication required. Please sign in to create a trip.');
+      const tokenPromise = getToken();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Token retrieval timed out')), 10000)
+      );
+
+      let token: string | null;
+      try {
+        token = await Promise.race([tokenPromise, timeoutPromise]);
+      } catch (error) {
+        console.error('getToken error:', error);
+        setSubmitError('Authentication failed. Please sign in again.');
+        setIsSubmitting(false);
+        return;
       }
 
+      if (!token) {
+        setSubmitError('Authentication required. Please sign in.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('Token obtained');
+
       // Make API call
+      console.log('Making API call');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/trips`, {
         method: 'POST',
@@ -307,9 +355,14 @@ export function CreateTripModal({
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(tripData),
+        signal: controller.signal,
       });
 
       const result = await response.json();
+
+      console.log('API response received');
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         // Handle structured error responses
@@ -336,7 +389,9 @@ export function CreateTripModal({
         }
       }
 
-      // Success
+      // Success - invalidate trips cache to refetch with new data
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+
       setView('success');
 
       // Reset form data after successful submission
@@ -357,10 +412,15 @@ export function CreateTripModal({
       localStorage.removeItem('tripDraft');
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      setSubmitError(errorMessage);
+      if (error instanceof Error && error.name === 'AbortError') {
+        setSubmitError('Request timed out. Please check your connection and try again.');
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+        setSubmitError(errorMessage);
+      }
       console.error('Trip creation error:', error);
     } finally {
+      console.log('Finally: resetting isSubmitting');
       setIsSubmitting(false);
     }
   };
@@ -416,16 +476,26 @@ export function CreateTripModal({
         <div className="grid grid-cols-2 gap-4">
           <FormField id="departure-date" label="Departure Date">
             <DatePicker
-              date={formData.departureDate ? new Date(formData.departureDate) : undefined}
+              date={parseDate(formData.departureDate) || undefined}
               onDateChange={(date) => handleInputChange('departureDate', date ? format(date, 'MM/dd/yyyy') : '')}
               placeholder="12/11/2025"
             />
+            {fieldErrors.departureDate && (
+              <p id="departure-date-error" className="text-red-500 text-sm mt-1" role="alert">
+                {fieldErrors.departureDate}
+              </p>
+            )}
           </FormField>
           <FormField id="departure-time" label="Departure Time">
             <TimePicker
               value={formData.departureTime}
               onChange={(time) => handleInputChange('departureTime', time)}
             />
+            {fieldErrors.departureTime && (
+              <p id="departure-time-error" className="text-red-500 text-sm mt-1" role="alert">
+                {fieldErrors.departureTime}
+              </p>
+            )}
           </FormField>
         </div>
 
@@ -456,16 +526,26 @@ export function CreateTripModal({
         <div className="grid grid-cols-2 gap-4">
           <FormField id="arrival-date" label="Arrival Date">
             <DatePicker
-              date={formData.arrivalDate ? new Date(formData.arrivalDate) : undefined}
+              date={parseDate(formData.arrivalDate) || undefined}
               onDateChange={(date) => handleInputChange('arrivalDate', date ? format(date, 'MM/dd/yyyy') : '')}
               placeholder="12/11/2025"
             />
+            {fieldErrors.arrivalDate && (
+              <p id="arrival-date-error" className="text-red-500 text-sm mt-1" role="alert">
+                {fieldErrors.arrivalDate}
+              </p>
+            )}
           </FormField>
           <FormField id="arrival-time" label="Arrival Time">
             <TimePicker
               value={formData.arrivalTime}
               onChange={(time) => handleInputChange('arrivalTime', time)}
             />
+            {fieldErrors.arrivalTime && (
+              <p id="arrival-time-error" className="text-red-500 text-sm mt-1" role="alert">
+                {fieldErrors.arrivalTime}
+              </p>
+            )}
           </FormField>
         </div>
 
@@ -561,8 +641,8 @@ export function CreateTripModal({
           />
         </div>
 
-        {/* 7. Ticket photo (Optional) */}
-        <FormField id="ticket-photo" label="Ticket photo (Optional)" className="min-h-[10rem]">
+        {/* 7. Ticket photo */}
+        <FormField id="ticket-photo" label="Ticket photo" className="min-h-[10rem]">
           <PhotoUpload
             endpoint="ticketUploader"
             currentPhoto={formData.ticketPhoto}
@@ -570,6 +650,11 @@ export function CreateTripModal({
             placeholder="Upload ticket photo"
             className="w-full h-full"
           />
+          {fieldErrors.ticketPhoto && (
+            <p id="ticket-photo-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.ticketPhoto}
+            </p>
+          )}
         </FormField>
 
         {/* Submit Button */}
@@ -595,7 +680,7 @@ export function CreateTripModal({
           )}
           <Button
             className="w-full bg-purple-900 hover:bg-purple-800 hover:cursor-pointer h-11"
-            onClick={handleSubmit}
+            onClick={() => { console.log('Button clicked'); handleSubmit(); }}
             disabled={isSubmitting}
           >
             {isSubmitting ? (

@@ -233,6 +233,16 @@ export class MatchingService {
     const bagTotals = await this.calculateBagTotals(bagItems);
     const issues: string[] = [];
 
+    // Check lead time requirements
+    const leadTimeValidation = validateTripLeadTime(trip.departureDate, {
+      itemCount: bagItems.length,
+      totalValue: bagTotals.totalValue,
+      hasSpecialDelivery: bagTotals.hasSpecialDelivery,
+    });
+    if (!leadTimeValidation.valid) {
+      issues.push('Insufficient lead time for trip');
+    }
+
     // Check fragile capability
     if (bagTotals.isFragile && !trip.canCarryFragile) {
       issues.push('Trip cannot handle fragile items');

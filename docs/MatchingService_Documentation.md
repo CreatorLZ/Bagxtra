@@ -112,7 +112,7 @@ if (!fitsCarryOn && !fitsChecked) {
 ## **5. Detailed Compatibility Scoring Algorithm**
 
 ### **Scoring Framework**
-Each compatible trip receives a score from 0-100 based on 7 weighted factors:
+Each compatible trip receives a score from 0-100 based on 6 weighted factors:
 
 | Factor | Maximum Points | Calculation Method |
 |--------|----------------|-------------------|
@@ -302,13 +302,16 @@ return matches.slice(0, limit)
 - ✅ Fits checked baggage (+15)
 - ✅ 4.0-star rating (+8)
 - ✅ Handles fragile (+10)
+- ✅ Priority service (+12)
 - ❌ Outside time window (0)
 
-### **Poor Match (35 points)**
+### **Poor Match (50 points)**
 - ✅ Exact route match (+30)
 - ✅ Fits checked baggage (+15)
-- ❌ 2.5-star rating (+5)
+- ✅ 2.5-star rating (+5)
 - ❌ Cannot handle fragile (0)
+
+**Note**: Traveler ratings are normalized to a 10-point scale (rating / maxRating * 10). A 2.5-star rating therefore receives +5 points.
 
 ---
 
