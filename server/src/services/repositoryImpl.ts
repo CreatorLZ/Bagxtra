@@ -144,11 +144,15 @@ export class TripRepository implements ITripRepository {
   }
 
   async findOpenTrips(): Promise<ITrip[]> {
-    return await Trip.find({ status: 'open' });
+    return await Trip.find({ status: 'active' });
   }
 
   async findByRoute(fromCountry: string, toCountry: string): Promise<ITrip[]> {
-    return await Trip.find({ fromCountry, toCountry, status: 'open' });
+    return await Trip.find({
+      fromCountry,
+      toCountry,
+      status: { $in: ['pending', 'active'] }
+    });
   }
 }
 
@@ -182,6 +186,10 @@ export class MatchRepository implements IMatchRepository {
 
   async findByTrip(tripId: mongoose.Types.ObjectId): Promise<IMatch[]> {
     return await Match.find({ tripId }).populate('assignedItems');
+  }
+
+  async findByRequestAndTrip(requestId: mongoose.Types.ObjectId, tripId: mongoose.Types.ObjectId): Promise<IMatch | null> {
+    return await Match.findOne({ requestId, tripId }).populate('assignedItems');
   }
 
   async findPendingMatches(): Promise<IMatch[]> {

@@ -8,7 +8,8 @@ import { z } from 'zod';
 const matchCriteriaSchema = z.object({
   fromCountry: z.string().min(1),
   toCountry: z.string().min(1),
-  maxArrivalWindowHours: z.number().positive().optional(),
+  deliveryStartDate: z.date().optional(),
+  deliveryEndDate: z.date().optional(),
   minMatchScore: z.number().min(0).max(100).optional(),
 });
 
@@ -135,20 +136,16 @@ export class MatchingService {
       rationale.push('Perfect route match');
     }
 
-    // Arrival window proximity (if maxArrivalWindowHours specified)
-    // Arrival window proximity (if maxArrivalWindowHours specified)
-    if (criteria.maxArrivalWindowHours) {
-      const now = new Date();
-      const arrivalTime = new Date(trip.arrivalDate);
-      const hoursUntilArrival =
-        (arrivalTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    // Arrival window proximity (if delivery dates specified)
+    if (criteria.deliveryStartDate && criteria.deliveryEndDate) {
+      const tripArrivalDate = new Date(trip.arrivalDate);
 
       if (
-        hoursUntilArrival >= 0 &&
-        hoursUntilArrival <= criteria.maxArrivalWindowHours
+        tripArrivalDate >= criteria.deliveryStartDate &&
+        tripArrivalDate <= criteria.deliveryEndDate
       ) {
         score += 20;
-        rationale.push('Within arrival window');
+        rationale.push('Within delivery date range');
       }
     }
     // Capacity fit

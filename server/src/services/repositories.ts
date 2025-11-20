@@ -80,3 +80,4 @@ export interface IUserRepository {
     session?: mongoose.ClientSession | null
   ): Promise<IUser | null>;
 }
+

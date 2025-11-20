@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { useOrderStore } from '@/stores/orderStore';
+import { useShopperRequestMatches } from '@/hooks/useShopperRequestMatches';
+import { useAuth } from '@clerk/nextjs';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -42,7 +45,10 @@ import {
   Star, // New
   CheckCircle, // New
 } from 'lucide-react';
-import Image from 'next/image';
+import { PhotoUpload } from '@/components/PhotoUpload';
+import { DatePicker } from '@/components/DatePicker';
+import NextImage from 'next/image';
+import { format, parse } from 'date-fns';
 
 // --- Mock Data (from previous step, still needed) ---
 const categories = [
@@ -175,16 +181,78 @@ function RadioOption({
   );
 }
 
+// Helper functions for date/time parsing
+const parseDate = (dateStr: string): Date | null => {
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return null;
+  const month = parseInt(parts[0], 10);
+  const day = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return null;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+};
+
 // Traveler Card Component
 function TravelerCard({
-  traveler,
+  match,
+  onBookTraveler,
+  isBooking,
 }: {
-  traveler: (typeof travelers)[0];
+  match: {
+    _id: string;
+    matchScore: number;
+    travelerName: string;
+    travelerAvatar: string | null;
+    travelerRating: number;
+    flightDetails: {
+      from: string;
+      to: string;
+      departure: string;
+      arrival: string;
+      duration: string;
+      airline: string;
+    };
+    capacityFit: {
+      fitsCarryOn: boolean;
+      availableCarryOnKg: number;
+      availableCheckedKg: number;
+    };
+    rationale: string[];
+  };
+  onBookTraveler: (matchId: string) => void;
+  isBooking: boolean;
 }) {
-  const getMatchColor = (match: number) => {
-    if (match >= 90) return 'text-purple-900';
-    if (match >= 70) return 'text-purple-900';
+  const getMatchColor = (matchScore: number) => {
+    if (matchScore >= 90) return 'text-purple-900';
+    if (matchScore >= 70) return 'text-purple-900';
     return 'text-red-600';
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return 'TBD';
+    }
   };
 
   return (
@@ -192,25 +260,24 @@ function TravelerCard({
       {/* Top Section: Profile + Book Button */}
       <div className="flex justify-between items-center border-b border-b-gray-200 pb-2.5">
         <div className="flex flex-col items-left gap-3">
-          <Image
-            src={traveler.avatar}
-            alt={traveler.name}
+          <NextImage
+            src={match.travelerAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop'}
+            alt={match.travelerName}
             width={80}
-            height={10}
-            className="rounded-lg bg-gray-200 h-24"
+            height={80}
+            className="rounded-lg bg-gray-200 h-24 w-24 object-cover"
           />
           <div className="text-left">
             <h3 className="font-semibold text-gray-900 flex items-center justify-center gap-1 font-sans">
-              {traveler.name}
-              {/* <CheckCircle className="h-4 w-4 text-green-500" /> */}
-              <img src="/verified.png" alt="check" className='h-4 w-4' />
+              {match.travelerName}
+              <img src="/verified.png" alt="verified" className='h-4 w-4' />
             </h3>
             <div className="flex gap-0.5 justify-start">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
                   className={`h-4 w-4 ${
-                    i < traveler.rating
+                    i < Math.floor(match.travelerRating)
                       ? 'text-yellow-400 fill-yellow-400'
                       : 'text-gray-300'
                   }`}
@@ -221,9 +288,11 @@ function TravelerCard({
         </div>
         <Button
           variant="outline"
-          className="text-purple-900 border-purple-900 hover:bg-purple-50 hover:text-purple-800 cursor-pointer"
+          className="text-purple-900 border-purple-900 hover:bg-purple-50 hover:text-purple-800 cursor-pointer disabled:opacity-50"
+          onClick={() => onBookTraveler(match._id)}
+          disabled={isBooking}
         >
-          Book Traveler
+          {isBooking ? 'Booking...' : 'Book Traveler'}
         </Button>
       </div>
 
@@ -231,30 +300,40 @@ function TravelerCard({
       <div className="flex justify-between items-center text-sm">
         <div className="text-left">
           <div className="text-lg font-bold text-gray-900">
-            {traveler.origin}
+            {match.flightDetails.from}
           </div>
-          <div className="text-gray-600 flex ">{traveler.originDate} <span className='pl-3'>--------</span></div>
-          <div className="text-gray-600">{traveler.originTime}</div>
+          <div className="text-gray-600 flex">{formatDate(match.flightDetails.departure)} <span className='pl-3'>--------</span></div>
+          <div className="text-gray-600">{formatTime(match.flightDetails.departure)}</div>
         </div>
         <div className="text-center text-gray-500">
           <Plane className="mx-auto" />
-          <div className="mt-1">{traveler.duration}</div>
+          <div className="mt-1">{match.flightDetails.duration}</div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-bold text-gray-900">{traveler.dest}</div>
-          <div className="text-gray-600 flex"><span className='pr-3'>--------</span>{traveler.destDate}</div>
-          <div className="text-gray-600">{traveler.destTime}</div>
+          <div className="text-lg font-bold text-gray-900">{match.flightDetails.to}</div>
+          <div className="text-gray-600 flex"><span className='pr-3'>--------</span>{formatDate(match.flightDetails.arrival)}</div>
+          <div className="text-gray-600">{formatTime(match.flightDetails.arrival)}</div>
         </div>
       </div>
 
-      {/* Bottom Section: Match % */}
-      <div className="flex justify-center">
+      {/* Bottom Section: Match Score & Capacity Info */}
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          {match.capacityFit.fitsCarryOn ? 'Carry-on friendly' : 'Checked baggage'}
+        </div>
         <div
-          className={`text-center font-semibold px-3 py-1 rounded-none border-b border-b-purple-900 ${getMatchColor(traveler.match)}`}
+          className={`text-center font-semibold px-3 py-1 rounded-none border-b border-b-purple-900 ${getMatchColor(match.matchScore)}`}
         >
-          {traveler.match}% Match
+          {match.matchScore}% Match
         </div>
       </div>
+
+      {/* Rationale */}
+      {match.rationale && match.rationale.length > 0 && (
+        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+          {match.rationale[0]}
+        </div>
+      )}
     </div>
   );
 }
@@ -274,6 +353,12 @@ export function PlaceOrderModal({
     'details' | 'stores' | 'delivery' | 'travelers' | 'success'
   >('details');
 
+  // State for the current request ID (set when order is submitted)
+  const [requestId, setRequestId] = useState<string | null>(null);
+
+  // Form validation state
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   // Use Zustand store for form state
   const {
     formData,
@@ -283,11 +368,98 @@ export function PlaceOrderModal({
     resetForm,
     submitOrder,
     isSubmitting,
+    validateForm: validateStoreForm,
   } = useOrderStore();
+
+  // API hook for fetching matches
+  const { data: matchesData, isLoading: isLoadingMatches, error: matchesError } = useShopperRequestMatches(requestId);
+
+  // Auth hook for API calls
+  const { getToken } = useAuth();
 
 
   const handleQuantityChange = (amount: number) => {
     setQuantity(Math.max(1, formData.quantity + amount));
+  };
+
+  // Input change and blur handlers for validation
+  const handleInputChange = (field: string, value: string) => {
+    if (field in formData.productDetails) {
+      updateProductDetails({ [field]: value });
+    } else if (field in formData.deliveryDetails) {
+      updateDeliveryDetails({ [field]: value });
+    }
+    // Clear error on change
+    setFieldErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const handleBlur = (field: string) => {
+    // Use store validation and update field errors
+    const isValid = validateStoreForm();
+    // For now, we'll handle field-level validation in the store
+    // TODO: Extract field-level errors from store validation
+  };
+
+  // Enhanced validation function for API submission
+  const validateFormForSubmission = () => {
+    const errors: Record<string, string> = {};
+
+    // Product Details Validation
+    if (!formData.productDetails.name?.trim()) errors.name = 'Product name is required';
+    if (!formData.productDetails.price?.trim()) errors.price = 'Product price is required';
+
+    // Price validation
+    if (formData.productDetails.price) {
+      const price = parseFloat(formData.productDetails.price);
+      if (isNaN(price) || price <= 0) {
+        errors.price = 'Price must be a positive number';
+      }
+    }
+
+    // Weight validation (like CreateTripModal)
+    if (formData.productDetails.weight) {
+      const weight = parseFloat(formData.productDetails.weight);
+      if (isNaN(weight) || weight <= 0 || weight > 50) {
+        errors.weight = 'Weight must be between 0.1 and 50 kg';
+      }
+    } else {
+      errors.weight = 'Weight is required';
+    }
+
+    // URL validation (required)
+    if (!formData.productDetails.url?.trim()) {
+      errors.url = 'Product URL is required';
+    } else {
+      try {
+        new URL(formData.productDetails.url);
+      } catch {
+        errors.url = 'Please enter a valid URL';
+      }
+    }
+
+    // Delivery Details Validation
+    if (!formData.deliveryDetails.buyingFrom?.trim()) errors.buyingFrom = 'Buying location is required';
+    if (!formData.deliveryDetails.deliveringTo?.trim()) errors.deliveringTo = 'Delivery destination is required';
+
+    return { isValid: Object.keys(errors).length === 0, errors };
+  };
+
+  // Photo handling functions
+  const handlePhotoUpdate = (index: number, url: string) => {
+    const currentPhotos = formData.productDetails.photos || [];
+    const newPhotos = [...currentPhotos];
+    newPhotos[index] = url;
+
+    // Filter out empty slots
+    const filteredPhotos = newPhotos.filter(url => url && url.trim() !== '');
+
+    updateProductDetails({ photos: filteredPhotos });
+  };
+
+  const handlePhotoRemove = (index: number) => {
+    const currentPhotos = formData.productDetails.photos || [];
+    const newPhotos = currentPhotos.filter((_, i) => i !== index);
+    updateProductDetails({ photos: newPhotos });
   };
 
   // Render the "Product Details" form
@@ -344,16 +516,26 @@ export function PlaceOrderModal({
               placeholder='www.amazon.com'
               className='h-11 pr-24'
               value={formData.productDetails.url || ''}
-              onChange={(e) => updateProductDetails({ url: e.target.value })}
+              onChange={(e) => handleInputChange('url', e.target.value)}
+              onBlur={() => handleBlur('url')}
+              disabled={isSubmitting}
+              aria-describedby={fieldErrors.url ? 'url-error' : undefined}
+              aria-required="true"
             />
             <button
               type='button'
               onClick={() => setView('stores')}
               className='absolute right-2 top-1/2 -translate-y-1/2 text-sm font-semibold text-purple-700 hover:text-purple-800 cursor-pointer'
+              disabled={isSubmitting}
             >
               Browse Stores
             </button>
           </div>
+          {fieldErrors.url && (
+            <p id="url-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.url}
+            </p>
+          )}
         </FormField>
 
         {/* Product Name */}
@@ -363,8 +545,17 @@ export function PlaceOrderModal({
             placeholder='Derma-cos skin-solve'
             className='h-11'
             value={formData.productDetails.name}
-            onChange={(e) => updateProductDetails({ name: e.target.value })}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            onBlur={() => handleBlur('name')}
+            disabled={isSubmitting}
+            aria-describedby={fieldErrors.name ? 'name-error' : undefined}
+            aria-required="true"
           />
+          {fieldErrors.name && (
+            <p id="name-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.name}
+            </p>
+          )}
         </FormField>
 
         {/* Product Colour */}
@@ -380,13 +571,29 @@ export function PlaceOrderModal({
 
         {/* Product Weight */}
         <FormField id='weight' label='Enter Product Weight'>
-          <Input
-            id='weight'
-            placeholder='e.g., 2kg or 0.5lbs'
-            className='h-11'
-            value={formData.productDetails.weight || ''}
-            onChange={(e) => updateProductDetails({ weight: e.target.value })}
-          />
+          <div className="relative">
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              id="weight"
+              placeholder="e.g., 2.5"
+              title="Enter weight in kilograms"
+              className="h-11 pl-3 pr-10 border rounded-md w-full"
+              value={formData.productDetails.weight || ''}
+              onChange={(e) => handleInputChange('weight', e.target.value)}
+              onBlur={() => handleBlur('weight')}
+              disabled={isSubmitting}
+              aria-describedby={fieldErrors.weight ? 'weight-error' : undefined}
+              aria-required="true"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">KG</span>
+          </div>
+          {fieldErrors.weight && (
+            <p id="weight-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.weight}
+            </p>
+          )}
         </FormField>
 
         {/* Product Price */}
@@ -397,9 +604,17 @@ export function PlaceOrderModal({
               placeholder='$250'
               className='h-11'
               value={formData.productDetails.price}
-              onChange={(e) => updateProductDetails({ price: e.target.value })}
+              onChange={(e) => handleInputChange('price', e.target.value)}
+              onBlur={() => handleBlur('price')}
+              disabled={isSubmitting}
+              aria-describedby={fieldErrors.price ? 'price-error' : undefined}
+              aria-required="true"
             />
-            <Select value={formData.productDetails.currency} onValueChange={(value) => updateProductDetails({ currency: value })}>
+            <Select
+              value={formData.productDetails.currency}
+              onValueChange={(value) => updateProductDetails({ currency: value })}
+              disabled={isSubmitting}
+            >
               <SelectTrigger className='w-[100px] h-11'>
                 <SelectValue />
               </SelectTrigger>
@@ -410,22 +625,30 @@ export function PlaceOrderModal({
               </SelectContent>
             </Select>
           </div>
+          {fieldErrors.price && (
+            <p id="price-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.price}
+            </p>
+          )}
         </FormField>
 
         {/* Product Photos */}
         <FormField
           id='photos'
-          label='Add Product Photos (Max. size of 3mb each)'
+          label='Add Product Photos (Max. 3 photos, 4MB each)'
         >
           <div className='grid grid-cols-3 gap-3'>
-            {[1, 2, 3].map(i => (
-              <button
-                key={i}
-                type='button'
-                className='aspect-square w-full flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-gray-400'
-              >
-                <Plus className='h-8 w-8' />
-              </button>
+            {[0, 1, 2].map((index) => (
+              <PhotoUpload
+                key={index}
+                endpoint="productUploader"
+                currentPhoto={formData.productDetails.photos?.[index]}
+                onPhotoUpdate={(url: string) => handlePhotoUpdate(index, url)}
+                placeholder={`Photo ${index + 1}`}
+                className="aspect-square"
+                showRemoveButton={true}
+                onRemove={() => handlePhotoRemove(index)}
+              />
             ))}
           </div>
         </FormField>
@@ -536,7 +759,7 @@ export function PlaceOrderModal({
             >
               <div className="flex items-center gap-3">
                 <div className="w-32 h-10 rounded-none flex items-center justify-center overflow-hidden">
-                  <Image
+                  <NextImage
                     src={store.logo}
                     alt={store.name}
                     width={60}
@@ -597,6 +820,29 @@ export function PlaceOrderModal({
           </Label>
         </div>
 
+        {/* Buying From */}
+        <FormField id="buying-from" label="Buying From">
+          <div className="relative">
+            <Input
+              id="buying-from"
+              placeholder="New York, USA"
+              className="h-11 pl-10"
+              value={formData.deliveryDetails.buyingFrom || ''}
+              onChange={(e) => handleInputChange('buyingFrom', e.target.value)}
+              onBlur={() => handleBlur('buyingFrom')}
+              disabled={isSubmitting}
+              aria-describedby={fieldErrors.buyingFrom ? 'buying-from-error' : undefined}
+              aria-required="true"
+            />
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          </div>
+          {fieldErrors.buyingFrom && (
+            <p id="buying-from-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.buyingFrom}
+            </p>
+          )}
+        </FormField>
+
         {/* Delivering To */}
         <FormField id="delivering-to" label="Delivering To">
           <div className="relative">
@@ -605,25 +851,43 @@ export function PlaceOrderModal({
               placeholder="Lagos, Nigeria"
               className="h-11 pl-10"
               value={formData.deliveryDetails.deliveringTo}
-              onChange={(e) => updateDeliveryDetails({ deliveringTo: e.target.value })}
+              onChange={(e) => handleInputChange('deliveringTo', e.target.value)}
+              onBlur={() => handleBlur('deliveringTo')}
+              disabled={isSubmitting}
+              aria-describedby={fieldErrors.deliveringTo ? 'delivering-to-error' : undefined}
+              aria-required="true"
             />
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           </div>
+          {fieldErrors.deliveringTo && (
+            <p id="delivering-to-error" className="text-red-500 text-sm mt-1" role="alert">
+              {fieldErrors.deliveringTo}
+            </p>
+          )}
         </FormField>
 
         {/* Delivery Date Range */}
-        <FormField id="date-range" label="Delivery Date Range">
-          <div className="relative">
-            <Input
-              id="date-range"
-              placeholder="15th May, 2025 - 20th May, 2025"
-              className="h-11 pl-10"
-              value={formData.deliveryDetails.dateRange}
-              onChange={(e) => updateDeliveryDetails({ dateRange: e.target.value })}
+        <div className="grid grid-cols-2 gap-4">
+          <FormField id="delivery-start-date" label="Earliest Delivery Date">
+            <DatePicker
+              date={parseDate(formData.deliveryDetails.deliveryStartDate || '') || undefined}
+              onDateChange={(date) => updateDeliveryDetails({
+                deliveryStartDate: date ? format(date, 'MM/dd/yyyy') : ''
+              })}
+              placeholder="Select start date"
             />
-            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-          </div>
-        </FormField>
+          </FormField>
+
+          <FormField id="delivery-end-date" label="Latest Delivery Date">
+            <DatePicker
+              date={parseDate(formData.deliveryDetails.deliveryEndDate || '') || undefined}
+              onDateChange={(date) => updateDeliveryDetails({
+                deliveryEndDate: date ? format(date, 'MM/dd/yyyy') : ''
+              })}
+              placeholder="Select end date"
+            />
+          </FormField>
+        </div>
 
         {/* Additional Phone Number */}
         <FormField id="phone" label="Additional Phone Number">
@@ -696,9 +960,17 @@ export function PlaceOrderModal({
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               className="w-full sm:flex-1 bg-purple-900 hover:bg-purple-800"
-              onClick={() => setView('travelers')}
+              onClick={handleFindTravelers}
+              disabled={isSubmitting}
             >
-              Find Traveler
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating Order...
+                </>
+              ) : (
+                'Find Traveler'
+              )}
             </Button>
             <Button
               variant="outline"
@@ -713,42 +985,216 @@ export function PlaceOrderModal({
     </>
   );
 
+  // Booking state
+  const [bookingMatchId, setBookingMatchId] = useState<string | null>(null);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+
+  // Handle submitting order and finding travelers
+  const handleFindTravelers = async () => {
+    if (isSubmitting) return;
+
+    setBookingError(null);
+
+    // Validate form using our enhanced validation
+    const validation = validateFormForSubmission();
+    if (!validation.isValid) {
+      setFieldErrors(validation.errors);
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        setBookingError('Authentication required. Please log in again.');
+        return;
+      }
+
+      // Create shopper request
+      const createResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fromCountry: formData.deliveryDetails.buyingFrom.trim(),
+          destinationCountry: formData.deliveryDetails.deliveringTo.trim(),
+          deliveryStartDate: formData.deliveryDetails.deliveryStartDate || undefined,
+          deliveryEndDate: formData.deliveryDetails.deliveryEndDate || undefined,
+          bagItems: [{
+            productName: formData.productDetails.name.trim(),
+            productLink: formData.productDetails.url!.trim(), // Required
+            price: parseFloat(formData.productDetails.price),
+            currency: formData.productDetails.currency,
+            weightKg: parseFloat(formData.productDetails.weight!),
+            // dimensions removed
+            quantity: formData.quantity,
+            isFragile: formData.productDetails.fragile,
+            photos: formData.productDetails.photos || [],
+            requiresSpecialDelivery: false,
+            specialDeliveryCategory: undefined
+          }]
+        })
+      });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        if (errorData.details) {
+          // Handle validation errors
+          const validationMessages = errorData.details.map((detail: any) =>
+            `${detail.field}: ${detail.message}`
+          );
+          setBookingError(`Please fix the following errors:\n${validationMessages.join('\n')}`);
+        } else {
+          setBookingError(errorData.message || 'Failed to create request');
+        }
+        return;
+      }
+
+      const createData = await createResponse.json();
+      const requestId = createData.data.id;
+
+      // Publish the request (this triggers automatic matching)
+      const publishResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/${requestId}/publish`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!publishResponse.ok) {
+        const errorData = await publishResponse.json();
+        throw new Error(errorData.message || 'Failed to publish request');
+      }
+
+      // Set the request ID to trigger matches loading
+      setRequestId(requestId);
+
+      // Navigate to travelers view
+      setView('travelers');
+    } catch (error) {
+      console.error('Order submission error:', error);
+      if (error instanceof Error) {
+        setBookingError(error.message);
+      } else {
+        setBookingError('Network error occurred. Please check your connection and try again.');
+      }
+    }
+  };
+
+  // Handle booking a traveler
+  const handleBookTraveler = async (matchId: string) => {
+    try {
+      setBookingMatchId(matchId);
+      setBookingError(null);
+
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/matches/${matchId}/approve`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to book traveler');
+      }
+
+      // Success - show success view
+      setView('success');
+    } catch (error) {
+      console.error('Booking error:', error);
+      setBookingError(error instanceof Error ? error.message : 'Failed to book traveler');
+    } finally {
+      setBookingMatchId(null);
+    }
+  };
+
   // New "Find Traveler" view (Step 3)
-  const renderTravelerView = () => (
-    <>
-      <DialogHeader className="sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="p-1 rounded-full hover:bg-gray-100"
-              onClick={() => setView('delivery')} // Goes back to delivery
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-            <DialogTitle className="text-lg font-semibold text-gray-900">
-              Find Traveller
-            </DialogTitle>
+  const renderTravelerView = () => {
+    const matches = matchesData?.data || [];
+
+    return (
+      <>
+        <DialogHeader className="sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="p-1 rounded-full hover:bg-gray-100"
+                onClick={() => setView('delivery')} // Goes back to delivery
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <DialogTitle className="text-lg font-semibold text-gray-900">
+                Find Traveller
+              </DialogTitle>
+            </div>
+            <span className="text-sm font-medium text-gray-500">Step 3/3</span>
           </div>
-          <span className="text-sm font-medium text-gray-500">Step 3/3</span>
-        </div>
-      </DialogHeader>
+        </DialogHeader>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl bg-gray-50">
-        <p className="text-sm text-gray-500 border-b border-b-gray-200 pb-2.5 mb-8 text-center">
-          Travelers have up to 24 hours after arrival to drop off items at our
-          approved stores for you to pick up.
-        </p>
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl bg-gray-50">
+          <p className="text-sm text-gray-500 border-b border-b-gray-200 pb-2.5 mb-8 text-center">
+            Travelers have up to 24 hours after arrival to drop off items at our
+            approved stores for you to pick up.
+          </p>
 
-        {/* Traveler List */}
-        <div className="space-y-4">
-          {travelers.map((traveler) => (
-            <TravelerCard key={traveler.id} traveler={traveler} />
-          ))}
+          {/* Error Display */}
+          {bookingError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-800 text-sm">{bookingError}</p>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {isLoadingMatches && (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900"></div>
+              <span className="ml-2 text-gray-600">Finding travelers...</span>
+            </div>
+          )}
+
+          {/* Error State */}
+          {matchesError && !isLoadingMatches && (
+            <div className="text-center py-8">
+              <p className="text-red-600 mb-2">Failed to load travelers</p>
+              <p className="text-gray-500 text-sm">{matchesError.message}</p>
+            </div>
+          )}
+
+          {/* No Matches */}
+          {!isLoadingMatches && !matchesError && matches.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-600 mb-2">No travelers found for your request</p>
+              <p className="text-gray-500 text-sm">Try adjusting your delivery preferences or check back later</p>
+            </div>
+          )}
+
+          {/* Traveler List */}
+          {!isLoadingMatches && !matchesError && matches.length > 0 && (
+            <div className="space-y-4">
+              {matches.map((match) => (
+                <TravelerCard
+                  key={match._id}
+                  match={match}
+                  onBookTraveler={handleBookTraveler}
+                  isBooking={bookingMatchId === match._id}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      </div>
-    </>
-  );
+      </>
+    );
+  };
 
   // Success view for proposal posting
   const renderSuccessView = () => (

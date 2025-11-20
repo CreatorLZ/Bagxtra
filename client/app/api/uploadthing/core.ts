@@ -45,6 +45,18 @@ export const ourFileRouter = {
       logUploadEvent("Document upload complete", file.key);
       return { url: file.ufsUrl };
     }),
+
+  // Product photo uploader for shopper requests
+  productUploader: f({
+    image: {
+      maxFileSize: "4MB",
+      maxFileCount: 3, // Allow up to 3 photos per product
+    },
+  })
+    .onUploadComplete(async ({ file }) => {
+      logUploadEvent("Product photo upload complete", file.key);
+      return { url: file.ufsUrl };
+    }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

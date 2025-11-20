@@ -10,11 +10,6 @@ const createBagItemSchema = z.object({
   price: z.number().positive(),
   currency: z.string().min(1).max(10),
   weightKg: z.number().positive(),
-  dimensions: z.object({
-    length: z.number().positive(),
-    width: z.number().positive(),
-    height: z.number().positive(),
-  }),
   quantity: z.number().int().positive(),
   isFragile: z.boolean(),
   photos: z.array(z.string().url()).optional(),

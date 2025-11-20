@@ -5,6 +5,7 @@ import {
   createShopperRequest,
   getMyShopperRequests,
   getShopperRequest,
+  getShopperRequestMatches,
   publishShopperRequest,
   cancelShopperRequest,
 } from '../controllers/shopperRequestController.js';
@@ -39,6 +40,13 @@ router.get('/my-requests', requireAuth, authorizeRoles('shopper'), getMyShopperR
  * @access Private (Shopper only - own requests)
  */
 router.get('/:id', requireAuth, authorizeRoles('shopper'), validateParams(idSchema), getShopperRequest);
+
+/**
+ * @route GET /api/shopper-requests/:id/matches
+ * @desc Get potential traveler matches for a shopper request
+ * @access Private (Shopper only - own requests)
+ */
+router.get('/:id/matches', requireAuth, authorizeRoles('shopper'), validateParams(idSchema), getShopperRequestMatches);
 
 /**
  * @route PUT /api/shopper-requests/:id/publish

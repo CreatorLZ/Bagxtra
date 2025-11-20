@@ -12,13 +12,15 @@ const productDetailsSchema = z.object({
   currency: z.string().min(1, 'Currency is required'),
   fragile: z.boolean(),
   additionalInfo: z.string().optional(),
-  photos: z.array(z.instanceof(File)).optional(),
+  photos: z.array(z.string().url()).max(3).optional(),
 });
 
 const deliveryDetailsSchema = z.object({
   pickup: z.boolean(),
+  buyingFrom: z.string().min(1, 'Buying location is required'),
   deliveringTo: z.string().min(1, 'Delivery location is required'),
-  dateRange: z.string().min(1, 'Date range is required'),
+  deliveryStartDate: z.string().optional(),
+  deliveryEndDate: z.string().optional(),
   phone: z.string().optional(),
   phoneCountry: z.string().optional(),
   carryOn: z.boolean(),
@@ -69,8 +71,10 @@ const initialFormData: OrderFormData = {
   },
   deliveryDetails: {
     pickup: false,
+    buyingFrom: '',
     deliveringTo: '',
-    dateRange: '',
+    deliveryStartDate: '',
+    deliveryEndDate: '',
     phone: '',
     phoneCountry: 'NG',
     carryOn: true,

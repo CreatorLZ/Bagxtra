@@ -7,11 +7,6 @@ export interface IBagItem extends Document {
   price: number;
   currency: string;
   weightKg: number;
-  dimensions: {
-    length: number;
-    width: number;
-    height: number;
-  };
   quantity: number;
   isFragile: boolean;
   photos: string[];
@@ -47,23 +42,6 @@ const bagItemSchema = new Schema<IBagItem>(
       type: Number,
       required: true,
       min: 0,
-    },
-    dimensions: {
-      length: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-      width: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
-      height: {
-        type: Number,
-        required: true,
-        min: 0,
-      },
     },
     quantity: {
       type: Number,

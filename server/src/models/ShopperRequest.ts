@@ -35,7 +35,8 @@ export interface IShopperRequest extends Document {
   _id: mongoose.Types.ObjectId;
   shopperId: mongoose.Types.ObjectId;
   bagItems: (Types.ObjectId | IBagItem)[];
-  destinationCountry: string;
+  fromCountry: string;          // NEW: Where shopper wants to buy from
+  toCountry: string;            // RENAMED: destinationCountry → toCountry
   status: ShopperRequestStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -52,6 +53,9 @@ export interface IShopperRequest extends Document {
   cooldownEndsAt?: Date;
   purchaseDeadline?: Date;
   cooldownProcessed: boolean;
+  // Delivery date range preferences
+  deliveryStartDate?: Date;
+  deliveryEndDate?: Date;
 }
 
 const priceSummarySchema = new Schema<IPriceSummary>(
@@ -93,7 +97,12 @@ const shopperRequestSchema = new Schema<IShopperRequest>(
         ref: 'BagItem',
       },
     ],
-    destinationCountry: {
+    fromCountry: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    toCountry: {
       type: String,
       required: true,
       trim: true,
@@ -152,6 +161,12 @@ const shopperRequestSchema = new Schema<IShopperRequest>(
       default: false,
       required: true,
     },
+    deliveryStartDate: {
+      type: Date,
+    },
+    deliveryEndDate: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -159,7 +174,8 @@ const shopperRequestSchema = new Schema<IShopperRequest>(
 );
 
 // Indexes for performance
-shopperRequestSchema.index({ destinationCountry: 1 });
+shopperRequestSchema.index({ fromCountry: 1, toCountry: 1 });
+shopperRequestSchema.index({ toCountry: 1 });
 shopperRequestSchema.index({ status: 1 });
 
 export const ShopperRequest = mongoose.model<IShopperRequest>(

@@ -12,18 +12,16 @@ import mongoose from 'mongoose';
 import { z } from 'zod';
 
 const createShopperRequestSchema = z.object({
-  destinationCountry: z.string().min(1).max(100),
+  fromCountry: z.string().min(1).max(100),
+  toCountry: z.string().min(1).max(100),
+  deliveryStartDate: z.string().optional(),
+  deliveryEndDate: z.string().optional(),
   bagItems: z.array(z.object({
     productName: z.string().min(1).max(255),
     productLink: z.string().url(),
     price: z.number().positive(),
     currency: z.string().min(1).max(10),
     weightKg: z.number().positive(),
-    dimensions: z.object({
-      length: z.number().positive(),
-      width: z.number().positive(),
-      height: z.number().positive(),
-    }),
     quantity: z.number().int().positive(),
     isFragile: z.boolean(),
     photos: z.array(z.string().url()).optional(),
@@ -65,36 +63,34 @@ export class ShopperRequestService {
       }
 
       // Create bag items first
+      const bagItems: IBagItem[] = [];
       const bagItemIds: mongoose.Types.ObjectId[] = [];
       for (const itemData of validatedData.bagItems) {
         const bagItem = await this.bagService.createBagItem(itemData, session);
+        bagItems.push(bagItem);
         bagItemIds.push(bagItem._id);
-      }
-
-      // Calculate pricing
-      const bagItems = await this.bagItemRepo.findByIds(
-        bagItemIds.map(id => id.toString())
-      );
-
-      // Validate all requested bag items were found
-      const requestedIds = bagItemIds.map(id => id.toString());
-      const returnedIds = bagItems.map(item => item._id.toString());
-      if (bagItems.length !== bagItemIds.length) {
-        const missingIds = requestedIds.filter(id => !returnedIds.includes(id));
-        throw new Error(`Some bag items were not found: ${missingIds.join(', ')}`);
       }
 
       const priceSummary = await this.calculatePriceSummary(bagItems);
 
       // Create shopper request
-      const requestDataToCreate = {
+      const requestDataToCreate: any = {
         shopperId,
         bagItems: bagItemIds,
-        destinationCountry: validatedData.destinationCountry,
+        fromCountry: validatedData.fromCountry,
+        toCountry: validatedData.toCountry,
         status: 'draft' as const,
         priceSummary,
         paymentStatus: 'pending' as const,
       };
+
+      // Add delivery dates if provided
+      if (validatedData.deliveryStartDate) {
+        requestDataToCreate.deliveryStartDate = new Date(validatedData.deliveryStartDate);
+      }
+      if (validatedData.deliveryEndDate) {
+        requestDataToCreate.deliveryEndDate = new Date(validatedData.deliveryEndDate);
+      }
 
       const shopperRequest = await this.shopperRequestRepo.create(requestDataToCreate, session);
 
