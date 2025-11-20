@@ -342,11 +342,21 @@ function TravelerCard({
 interface PlaceOrderModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onOrderPlaced?: (order: Order) => void;
+}
+
+interface Order {
+  amount: string;
+  item: string;
+  details: string;
+  timing: string | null;
+  additionalInfo: string | null;
 }
 
 export function PlaceOrderModal({
   isOpen,
   onOpenChange,
+  onOrderPlaced,
 }: PlaceOrderModalProps) {
   // Updated view state to include 'travelers' and 'success'
   const [view, setView] = useState<
@@ -1240,6 +1250,16 @@ export function PlaceOrderModal({
         const errorData = await publishResponse.json();
         throw new Error(errorData.message || 'Failed to publish request');
       }
+
+      // Notify parent component with new order data for optimistic update
+      const newOrder = {
+        amount: `$${parseFloat(formData.productDetails.price || '0').toFixed(2)}`,
+        item: formData.productDetails.name,
+        details: 'Waiting for traveler approval',
+        timing: null,
+        additionalInfo: null
+      };
+      onOrderPlaced?.(newOrder);
 
       // Fetch the matches created by publish
       const matchesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/${requestId}/matches`, {

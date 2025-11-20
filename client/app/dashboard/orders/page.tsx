@@ -4,10 +4,11 @@ import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { Card } from '@/components/ui/card';
 // import { Button } from '@/components/ui/button'; // Not needed here anymore
 import { Plus, ShoppingBag } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { PlaceOrderModal } from '@/components/PlaceOrderModal'; // 1. Import the modal
 import { useRole } from '@/hooks/useRole';
 import { useOrders } from '@/hooks/dashboard/useOrders';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Order {
   amount: string;
@@ -31,24 +32,18 @@ export default function OrdersPage() {
   // 2. Add state to control the modal
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
+  // Optimistic updates for instant UI feedback
+  const [optimisticOrders, setOptimisticOrders] = useState<Order[]>([]);
+
   // Fetch real orders data
   const { data: ordersData, isLoading, error } = useOrders();
 
-  // Convert API response to the expected format
-  const getOrdersByStatus = (): Record<OrderStatus, Order[]> => {
-    if (!ordersData) {
-      return {
-        accepted: [],
-        pending: [],
-        incoming: [],
-        outgoing: [],
-        completed: [],
-        disputed: []
-      };
-    }
+  // Query client for invalidation
+  const queryClient = useQueryClient();
 
-    // Map API response to component format
-    return {
+  // Convert API response to the expected format with optimistic updates
+  const getOrdersByStatus = useMemo((): Record<OrderStatus, Order[]> => {
+    const serverOrders = ordersData ? {
       accepted: ordersData.accepted.map(order => ({
         amount: order.amount,
         item: order.item,
@@ -91,8 +86,21 @@ export default function OrdersPage() {
         timing: order.timing,
         additionalInfo: order.additionalInfo
       }))
+    } : {
+      accepted: [],
+      pending: [],
+      incoming: [],
+      outgoing: [],
+      completed: [],
+      disputed: []
     };
-  };
+
+    // Merge optimistic orders with server data
+    return {
+      ...serverOrders,
+      pending: [...(serverOrders.pending || []), ...optimisticOrders]
+    };
+  }, [ordersData, optimisticOrders]);
 
   // Show loading state
   if (isLoading) {
@@ -129,7 +137,7 @@ export default function OrdersPage() {
   }
 
 
-  const ordersByStatus = getOrdersByStatus();
+  const ordersByStatus = getOrdersByStatus;
 
   // Role-specific tabs
   const getTabs = () => {
@@ -295,6 +303,17 @@ export default function OrdersPage() {
       <PlaceOrderModal
         isOpen={isOrderModalOpen}
         onOpenChange={setIsOrderModalOpen}
+        onOrderPlaced={(newOrder: Order) => {
+          // Add to optimistic state immediately for instant UI feedback
+          setOptimisticOrders(prev => [...prev, newOrder]);
+
+          // Invalidate cache in background to sync with server
+          queryClient.invalidateQueries({
+            queryKey: ['orders'],
+            refetchType: 'active',
+            type: 'all'
+          });
+        }}
       />
     </DashboardLayout>
   );

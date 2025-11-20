@@ -160,7 +160,7 @@ export class MatchingService {
     // Traveler rating
     const traveler = await this.userRepo.findById(trip.travelerId);
     if (traveler && typeof traveler.rating === 'number') {
-      const maxRating = traveler.maxRating || 5;
+      const maxRating = 5;
       const normalizedScore = (traveler.rating / maxRating) * 10;
       score += normalizedScore;
       rationale.push(`Traveler rating: ${traveler.rating}/${maxRating}`);
