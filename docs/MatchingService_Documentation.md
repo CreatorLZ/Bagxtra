@@ -47,6 +47,21 @@ trip.toCountry === shopperRequest.toCountry
 
 **Important**: This is an EXACT match - "New York, USA" must match "New York, USA" exactly. No fuzzy matching or nearby locations.
 
+### **Step 2.5: Trip Status Filtering**
+The system includes trips that are available for booking:
+
+```javascript
+// Include trips in these statuses:
+trip.status === 'pending' || trip.status === 'active'
+```
+
+**Business Logic**: Trips can be booked at any stage before departure:
+- **'pending'**: Trip created but not yet activated by cron job
+- **'active'**: Trip activated and ready for immediate booking
+- **Excluded**: 'completed', 'cancelled' trips
+
+This ensures shoppers can book trips early while maintaining system flexibility.
+
 ---
 
 ## **3. Lead Time Validation**

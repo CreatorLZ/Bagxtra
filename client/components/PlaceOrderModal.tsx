@@ -353,6 +353,13 @@ export function PlaceOrderModal({
     'details' | 'stores' | 'delivery' | 'travelers' | 'success'
   >('details');
 
+  // State for potential matches (before booking)
+  const [potentialMatches, setPotentialMatches] = useState<any[]>([]);
+  const [isFindingMatches, setIsFindingMatches] = useState(false);
+
+  // Track which booking flow was used
+  const [bookingFlow, setBookingFlow] = useState<'direct' | 'marketplace' | null>(null);
+
   // State for the current request ID (set when order is submitted)
   const [requestId, setRequestId] = useState<string | null>(null);
 
@@ -371,8 +378,14 @@ export function PlaceOrderModal({
     validateForm: validateStoreForm,
   } = useOrderStore();
 
-  // API hook for fetching matches
-  const { data: matchesData, isLoading: isLoadingMatches, error: matchesError } = useShopperRequestMatches(requestId);
+  // Enhanced reset function
+  const handleReset = () => {
+    resetForm();
+    setBookingFlow(null);
+    setPotentialMatches([]);
+    setRequestId(null);
+    setFieldErrors({});
+  };
 
   // Auth hook for API calls
   const { getToken } = useAuth();
@@ -961,12 +974,12 @@ export function PlaceOrderModal({
             <Button
               className="w-full sm:flex-1 bg-purple-900 hover:bg-purple-800"
               onClick={handleFindTravelers}
-              disabled={isSubmitting}
+              disabled={isFindingMatches}
             >
-              {isSubmitting ? (
+              {isFindingMatches ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating Order...
+                  Finding Travelers...
                 </>
               ) : (
                 'Find Traveler'
@@ -975,9 +988,17 @@ export function PlaceOrderModal({
             <Button
               variant="outline"
               className="w-full sm:flex-1 border-purple-900 text-purple-900 hover:bg-purple-50"
-              onClick={() => setView('success')}
+              onClick={handleGetProposals}
+              disabled={isSubmitting}
             >
-              Get proposal from travellers
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating Marketplace Order...
+                </>
+              ) : (
+                'Get proposals from travellers'
+              )}
             </Button>
           </div>
         </div>
@@ -989,8 +1010,88 @@ export function PlaceOrderModal({
   const [bookingMatchId, setBookingMatchId] = useState<string | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
-  // Handle submitting order and finding travelers
+  // Handle finding travelers without creating database records
   const handleFindTravelers = async () => {
+    if (isFindingMatches) return;
+
+    setBookingError(null);
+
+    // Validate form using our enhanced validation
+    const validation = validateFormForSubmission();
+    if (!validation.isValid) {
+      setFieldErrors(validation.errors);
+      return;
+    }
+
+    try {
+      setIsFindingMatches(true);
+      const token = await getToken();
+      if (!token) {
+        setBookingError('Authentication required. Please log in again.');
+        return;
+      }
+
+      // Find potential matches without creating database records
+      const matchesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/find-matches`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fromCountry: formData.deliveryDetails.buyingFrom.trim(),
+          toCountry: formData.deliveryDetails.deliveringTo.trim(),
+          deliveryStartDate: formData.deliveryDetails.deliveryStartDate || undefined,
+          deliveryEndDate: formData.deliveryDetails.deliveryEndDate || undefined,
+          bagItems: [{
+            productName: formData.productDetails.name.trim(),
+            productLink: formData.productDetails.url?.trim() || undefined,
+            price: parseFloat(formData.productDetails.price),
+            currency: formData.productDetails.currency,
+            weightKg: parseFloat(formData.productDetails.weight!),
+            quantity: formData.quantity,
+            isFragile: formData.productDetails.fragile,
+            photos: formData.productDetails.photos || [],
+            requiresSpecialDelivery: false,
+            specialDeliveryCategory: undefined
+          }]
+        })
+      });
+
+      if (!matchesResponse.ok) {
+        const errorData = await matchesResponse.json();
+        if (errorData.details) {
+          // Handle validation errors
+          const validationMessages = errorData.details.map((detail: any) =>
+            `${detail.field}: ${detail.message}`
+          );
+          setBookingError(`Please fix the following errors:\n${validationMessages.join('\n')}`);
+        } else {
+          setBookingError(errorData.message || 'Failed to find matches');
+        }
+        return;
+      }
+
+      const matchesData = await matchesResponse.json();
+      setPotentialMatches(matchesData.data || []);
+
+      // Set booking flow and navigate to travelers view
+      setBookingFlow('direct');
+      setView('travelers');
+    } catch (error) {
+      console.error('Matching error:', error);
+      if (error instanceof Error) {
+        setBookingError(error.message);
+      } else {
+        setBookingError('Network error occurred. Please check your connection and try again.');
+      }
+    } finally {
+      setIsFindingMatches(false);
+    }
+  };
+
+  // Handle getting proposals from travelers (marketplace)
+  const handleGetProposals = async () => {
     if (isSubmitting) return;
 
     setBookingError(null);
@@ -1009,7 +1110,7 @@ export function PlaceOrderModal({
         return;
       }
 
-      // Create shopper request
+      // Create shopper request with marketplace status
       const createResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests`, {
         method: 'POST',
         headers: {
@@ -1023,11 +1124,10 @@ export function PlaceOrderModal({
           deliveryEndDate: formData.deliveryDetails.deliveryEndDate || undefined,
           bagItems: [{
             productName: formData.productDetails.name.trim(),
-            productLink: formData.productDetails.url!.trim(), // Required
+            productLink: formData.productDetails.url?.trim() || undefined,
             price: parseFloat(formData.productDetails.price),
             currency: formData.productDetails.currency,
             weightKg: parseFloat(formData.productDetails.weight!),
-            // dimensions removed
             quantity: formData.quantity,
             isFragile: formData.productDetails.fragile,
             photos: formData.productDetails.photos || [],
@@ -1040,13 +1140,12 @@ export function PlaceOrderModal({
       if (!createResponse.ok) {
         const errorData = await createResponse.json();
         if (errorData.details) {
-          // Handle validation errors
           const validationMessages = errorData.details.map((detail: any) =>
             `${detail.field}: ${detail.message}`
           );
           setBookingError(`Please fix the following errors:\n${validationMessages.join('\n')}`);
         } else {
-          setBookingError(errorData.message || 'Failed to create request');
+          setBookingError(errorData.message || 'Failed to create marketplace request');
         }
         return;
       }
@@ -1054,7 +1153,81 @@ export function PlaceOrderModal({
       const createData = await createResponse.json();
       const requestId = createData.data.id;
 
-      // Publish the request (this triggers automatic matching)
+      // Publish the request with marketplace status (no automatic matching)
+      const publishResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/${requestId}/publish`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'marketplace' }) // Specify marketplace status
+      });
+
+      if (!publishResponse.ok) {
+        const errorData = await publishResponse.json();
+        throw new Error(errorData.message || 'Failed to publish marketplace request');
+      }
+
+      // Set booking flow and show success view
+      setBookingFlow('marketplace');
+      setView('success');
+    } catch (error) {
+      console.error('Marketplace creation error:', error);
+      if (error instanceof Error) {
+        setBookingError(error.message);
+      } else {
+        setBookingError('Network error occurred. Please check your connection and try again.');
+      }
+    }
+  };
+
+  // Handle booking a traveler (creates order and sends booking request)
+  const handleBookTraveler = async (matchId: string) => {
+    try {
+      setBookingMatchId(matchId);
+      setBookingError(null);
+
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      // First, create the shopper request
+      const createResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fromCountry: formData.deliveryDetails.buyingFrom.trim(),
+          destinationCountry: formData.deliveryDetails.deliveringTo.trim(),
+          deliveryStartDate: formData.deliveryDetails.deliveryStartDate || undefined,
+          deliveryEndDate: formData.deliveryDetails.deliveryEndDate || undefined,
+          bagItems: [{
+            productName: formData.productDetails.name.trim(),
+            productLink: formData.productDetails.url?.trim() || undefined,
+            price: parseFloat(formData.productDetails.price),
+            currency: formData.productDetails.currency,
+            weightKg: parseFloat(formData.productDetails.weight!),
+            quantity: formData.quantity,
+            isFragile: formData.productDetails.fragile,
+            photos: formData.productDetails.photos || [],
+            requiresSpecialDelivery: false,
+            specialDeliveryCategory: undefined
+          }]
+        })
+      });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        throw new Error(errorData.message || 'Failed to create request');
+      }
+
+      const createData = await createResponse.json();
+      const requestId = createData.data.id;
+
+      // Publish the request
       const publishResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/${requestId}/publish`, {
         method: 'PUT',
         headers: {
@@ -1068,46 +1241,53 @@ export function PlaceOrderModal({
         throw new Error(errorData.message || 'Failed to publish request');
       }
 
-      // Set the request ID to trigger matches loading
-      setRequestId(requestId);
-
-      // Navigate to travelers view
-      setView('travelers');
-    } catch (error) {
-      console.error('Order submission error:', error);
-      if (error instanceof Error) {
-        setBookingError(error.message);
-      } else {
-        setBookingError('Network error occurred. Please check your connection and try again.');
-      }
-    }
-  };
-
-  // Handle booking a traveler
-  const handleBookTraveler = async (matchId: string) => {
-    try {
-      setBookingMatchId(matchId);
-      setBookingError(null);
-
-      const token = await getToken();
-      if (!token) {
-        throw new Error('Authentication required');
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/matches/${matchId}/approve`, {
-        method: 'POST',
+      // Fetch the matches created by publish
+      const matchesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/${requestId}/matches`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to book traveler');
+      if (!matchesResponse.ok) {
+        const errorData = await matchesResponse.json();
+        throw new Error(errorData.message || 'Failed to fetch matches');
       }
 
-      // Success - show success view
+      const matchesData = await matchesResponse.json();
+      const matches = matchesData.data || [];
+
+      if (matches.length === 0) {
+        throw new Error('No matches found for this request');
+      }
+
+      // Find the match with the correct tripId
+      const selectedTripId = matchId.replace('temp_', ''); // Clean the ID
+      const selectedMatch = potentialMatches.find(m => m._id === matchId);
+
+      // Try multiple ways to find the correct match
+      const targetMatch = matches.find((m: any) => {
+        // Match by trip ID if available
+        if (m.tripId === selectedTripId) return true;
+
+        // Match by flight details
+        if (selectedMatch && m.flightDetails) {
+          return m.flightDetails.from === selectedMatch.flightDetails.from &&
+                 m.flightDetails.to === selectedMatch.flightDetails.to;
+        }
+
+        return false;
+      });
+
+      if (!targetMatch) {
+        throw new Error('Selected traveler match not found');
+      }
+
+      // Match found successfully - booking request sent
+      // Match stays "Pending" for traveler to accept/reject
+
+      // Set booking flow and show success view
+      setBookingFlow('direct');
       setView('success');
     } catch (error) {
       console.error('Booking error:', error);
@@ -1119,7 +1299,7 @@ export function PlaceOrderModal({
 
   // New "Find Traveler" view (Step 3)
   const renderTravelerView = () => {
-    const matches = matchesData?.data || [];
+    const matches = potentialMatches;
 
     return (
       <>
@@ -1155,7 +1335,7 @@ export function PlaceOrderModal({
           )}
 
           {/* Loading State */}
-          {isLoadingMatches && (
+          {isFindingMatches && (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900"></div>
               <span className="ml-2 text-gray-600">Finding travelers...</span>
@@ -1163,15 +1343,15 @@ export function PlaceOrderModal({
           )}
 
           {/* Error State */}
-          {matchesError && !isLoadingMatches && (
+          {bookingError && !isFindingMatches && (
             <div className="text-center py-8">
               <p className="text-red-600 mb-2">Failed to load travelers</p>
-              <p className="text-gray-500 text-sm">{matchesError.message}</p>
+              <p className="text-gray-500 text-sm">{bookingError}</p>
             </div>
           )}
 
           {/* No Matches */}
-          {!isLoadingMatches && !matchesError && matches.length === 0 && (
+          {!isFindingMatches && !bookingError && matches.length === 0 && (
             <div className="text-center py-8">
               <p className="text-gray-600 mb-2">No travelers found for your request</p>
               <p className="text-gray-500 text-sm">Try adjusting your delivery preferences or check back later</p>
@@ -1179,7 +1359,7 @@ export function PlaceOrderModal({
           )}
 
           {/* Traveler List */}
-          {!isLoadingMatches && !matchesError && matches.length > 0 && (
+          {!isFindingMatches && !bookingError && matches.length > 0 && (
             <div className="space-y-4">
               {matches.map((match) => (
                 <TravelerCard
@@ -1196,41 +1376,72 @@ export function PlaceOrderModal({
     );
   };
 
-  // Success view for proposal posting
-  const renderSuccessView = () => (
-    <div className="flex flex-col items-center justify-center p-8 text-center h-full bg-white">
-      <CheckCircle className="h-16 w-16 text-purple-900 mb-4" />
-      <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
-        Offer Posted
-      </DialogTitle>
-      <p className="text-sm text-gray-600 mb-6">
-        Travelers who are interested will send a proposal message and you can choose from them
-      </p>
+  // Success view - different content based on booking flow
+  const renderSuccessView = () => {
+    if (bookingFlow === 'marketplace') {
+      // Marketplace success - offer posted
+      return (
+        <div className="flex flex-col items-center justify-center p-8 text-center h-full bg-white">
+          <CheckCircle className="h-16 w-16 text-purple-900 mb-4" />
+          <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
+            Offer Posted
+          </DialogTitle>
+          <p className="text-sm text-gray-600 mb-6">
+            Travelers who are interested will send a proposal message and you can choose from them
+          </p>
 
-      {/* Action Buttons */}
-      <div className="space-y-3 w-full max-w-xs">
-        <Button
-          className="w-full bg-purple-900 hover:bg-purple-800 h-11"
-          onClick={() => {
-            resetForm();
-            onOpenChange(false);
-          }} // Reset and close the modal
-        >
-          Close
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full border-purple-900 text-purple-900 hover:bg-purple-50 h-11"
-          onClick={() => {
-            resetForm();
-            setView('details');
-          }} // Reset and start new order
-        >
-          Start New Order
-        </Button>
-      </div>
-    </div>
-  );
+          {/* Action Buttons */}
+          <div className="space-y-3 w-full max-w-xs">
+            <Button
+              className="w-full bg-purple-900 hover:bg-purple-800 h-11"
+              onClick={() => {
+                handleReset();
+                onOpenChange(false);
+              }}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      );
+    } else {
+      // Direct booking success - request sent to traveler
+      return (
+        <div className="flex flex-col items-center justify-center p-8 text-center h-full bg-white">
+          <CheckCircle className="h-16 w-16 text-purple-900 mb-4" />
+          <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
+            Request has been sent to traveler
+          </DialogTitle>
+          <p className="text-sm text-gray-600 mb-6">
+            We will send a notification once traveler accepts, after which payment can be made
+          </p>
+
+          {/* Action Buttons */}
+          <div className="space-y-3 w-full max-w-xs">
+            <Button
+              className="w-full bg-purple-900 hover:bg-purple-800 h-11"
+              onClick={() => {
+                handleReset();
+                setView('details');
+              }}
+            >
+              Create New Order
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full border-purple-900 text-purple-900 hover:bg-purple-50 h-11"
+              onClick={() => {
+                handleReset();
+                onOpenChange(false);
+              }}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      );
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

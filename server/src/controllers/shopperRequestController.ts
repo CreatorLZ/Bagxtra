@@ -277,6 +277,7 @@ export const getShopperRequest = async (req: Request, res: Response) => {
 export const publishShopperRequest = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { status } = req.body; // Optional status override (e.g., 'marketplace')
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
@@ -308,7 +309,8 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
 
     const updatedRequest = await shopperRequestService.publishShopperRequest(
       requestObjectId,
-      shopperObjectId
+      shopperObjectId,
+      status // Pass the status if provided
     );
 
     if (!updatedRequest) {
@@ -368,6 +370,110 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to publish shopper request',
+    });
+  }
+  return;
+};
+
+/**
+ * Find potential matches without creating database records
+ * POST /api/shopper-requests/find-matches
+ */
+export const findPotentialMatches = async (req: Request, res: Response) => {
+  try {
+    const requestData = z.object({
+      fromCountry: z.string().min(1).max(100),
+      toCountry: z.string().min(1).max(100),
+      deliveryStartDate: z.string().optional(),
+      deliveryEndDate: z.string().optional(),
+      bagItems: z.array(z.object({
+        productName: z.string().min(1).max(255),
+        productLink: z.string().url().optional(),
+        price: z.number().positive(),
+        currency: z.string().min(1).max(10),
+        weightKg: z.number().positive(),
+        quantity: z.number().int().positive(),
+        isFragile: z.boolean(),
+        photos: z.array(z.string().url()).optional(),
+        requiresSpecialDelivery: z.boolean().optional(),
+        specialDeliveryCategory: z.string().optional(),
+      })).min(1),
+    }).parse(req.body);
+
+    // Convert plain bag items to format expected by matching service
+    const convertedBagItems = requestData.bagItems.map(item => ({
+      weightKg: item.weightKg,
+      quantity: item.quantity,
+      price: item.price,
+      isFragile: item.isFragile,
+      requiresSpecialDelivery: item.requiresSpecialDelivery || false,
+      specialDeliveryCategory: item.specialDeliveryCategory || undefined,
+    })) as any; // Type assertion for matching service compatibility
+
+    // Run matching algorithm without creating database records
+    const matches = await matchingService.findMatches(convertedBagItems, {
+      fromCountry: requestData.fromCountry,
+      toCountry: requestData.toCountry,
+      deliveryStartDate: requestData.deliveryStartDate ? new Date(requestData.deliveryStartDate) : undefined,
+      deliveryEndDate: requestData.deliveryEndDate ? new Date(requestData.deliveryEndDate) : undefined,
+    });
+
+    // Format response with traveler and trip details (similar to getShopperRequestMatches)
+    const formattedMatches = await Promise.all(
+      matches.map(async (match: any) => {
+        const trip = await tripRepo.findById(match.trip._id);
+        const traveler = await userRepo.findById(match.trip.travelerId);
+
+        if (!trip || !traveler) {
+          return null;
+        }
+
+        return {
+          _id: `temp_${match.trip._id}`, // Temporary ID for frontend
+          matchScore: match.score,
+          travelerName: traveler.fullName,
+          travelerAvatar: traveler.profileImage || null,
+          travelerRating: traveler.rating || 0,
+          flightDetails: {
+            from: trip.fromCountry,
+            to: trip.toCountry,
+            departure: trip.departureDate,
+            arrival: trip.arrivalDate,
+            duration: '2h 10m', // TODO: Calculate from dates
+            airline: 'Delta', // TODO: Add to trip model
+          },
+          capacityFit: {
+            fitsCarryOn: match.capacityFit.fitsCarryOn || false,
+            availableCarryOnKg: trip.availableCarryOnKg,
+            availableCheckedKg: trip.availableCheckedKg,
+          },
+          rationale: match.rationale || [],
+        };
+      })
+    );
+
+    // Filter out null matches and sort by score
+    const validMatches = formattedMatches.filter((match: any) => match !== null);
+    validMatches.sort((a: any, b: any) => (b?.matchScore || 0) - (a?.matchScore || 0));
+
+    res.status(200).json({
+      success: true,
+      data: validMatches,
+    });
+  } catch (error) {
+    console.error('Error finding potential matches:', error);
+
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Invalid input data',
+        details: error.issues,
+      });
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to find matches',
     });
   }
   return;

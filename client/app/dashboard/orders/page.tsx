@@ -7,6 +7,7 @@ import { Plus, ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
 import { PlaceOrderModal } from '@/components/PlaceOrderModal'; // 1. Import the modal
 import { useRole } from '@/hooks/useRole';
+import { useOrders } from '@/hooks/dashboard/useOrders';
 
 interface Order {
   amount: string;
@@ -30,221 +31,103 @@ export default function OrdersPage() {
   // 2. Add state to control the modal
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
-  // Role-specific mock orders data
+  // Fetch real orders data
+  const { data: ordersData, isLoading, error } = useOrders();
+
+  // Convert API response to the expected format
   const getOrdersByStatus = (): Record<OrderStatus, Order[]> => {
-    if (role === 'traveler') {
+    if (!ordersData) {
       return {
-        accepted: [
-          {
-            amount: '$300.00',
-            item: "Zara's new shoe",
-            details: 'Waiting for Shoppers payment',
-            timing: null,
-            additionalInfo: null,
-          },
-        ],
-        outgoing: [
-          {
-            amount: '$120.50',
-            item: "Zara's new shoe, wed...",
-            details: 'Delivery by 12:45 Today',
-            timing: null,
-            additionalInfo: 'Tracking: TRK123456',
-          },
-          {
-            amount: '$75.25',
-            item: "Zara's new shoe",
-            details: 'Delivery by 12:45 Today',
-            timing: null,
-            additionalInfo: 'Tracking: TRK789012',
-          },
-          {
-            amount: '$30.00',
-            item: "Zara's new shoe, wed...",
-            details: 'En route to destination country',
-            timing: null,
-            additionalInfo: 'Tracking: TRK345678',
-          },
-          {
-            amount: '$95.75',
-            item: "Zara's new shoe",
-            details: 'Delivery by 12:45 Today',
-            timing: null,
-            additionalInfo: null,
-          },
-        ],
-        pending: [
-          {
-            amount: '$60.99',
-            item: "Zara's new shoe, wed...",
-            details: 'Accepted pending purchase',
-            timing: null,
-            additionalInfo: '1 item',
-          },
-        ],
-        completed: [
-          {
-            amount: '$150.00',
-            item: "Zara's new shoe, wed...",
-            details: 'Delivered 11/02/2025',
-            timing: null,
-            additionalInfo: 'Payment received',
-          },
-          {
-            amount: '$85.50',
-            item: "Zara's new shoe, wed...",
-            details: 'Delivered 11/02/2025',
-            timing: null,
-            additionalInfo: 'Payment processed',
-          },
-          {
-            amount: '$25.99',
-            item: "Zara's new shoe",
-            details: 'Delivered 11/02/2025',
-            timing: null,
-            additionalInfo: null,
-          },
-          {
-            amount: '$110.25',
-            item: "Zara's new shoe",
-            details: 'Delivered 11/02/2025',
-            timing: null,
-            additionalInfo: null,
-          },
-          {
-            amount: '$40.75',
-            item: "Zara's new shoe",
-            details: 'Delivered 11/02/2025',
-            timing: null,
-            additionalInfo: null,
-          },
-          {
-            amount: '$200.00',
-            item: "Zara's new shoe",
-            details: 'Delivered 11/02/2025',
-            timing: null,
-            additionalInfo: null,
-          },
-        ],
-        disputed: [
-          {
-            amount: '$55.49',
-            item: "Zara's new shoe, wed...",
-            details: 'Dispute opened on 10/25/2025',
-            timing: null,
-            additionalInfo: 'Under review',
-          },
-        ],
-        incoming: [], // Not used for travelers
+        accepted: [],
+        pending: [],
+        incoming: [],
+        outgoing: [],
+        completed: [],
+        disputed: []
       };
     }
 
-    // Default shopper orders
+    // Map API response to component format
     return {
-      accepted: [
-        {
-          amount: '$300.00',
-          item: "Zara's new shoe",
-          details: 'Waiting for Shoppers Payment',
-          timing: null,
-          additionalInfo: null,
-        },
-      ],
-      incoming: [
-        {
-          amount: '$120.50',
-          item: "Zara's new shoe",
-          details: 'Drop off in 23hrs 50mins',
-          timing: null,
-          additionalInfo: '? Tracking No',
-        },
-        {
-          amount: '$75.25',
-          item: "Zara's new shoe, wed...",
-          details: 'Delivery by 12:45 Today',
-          timing: null,
-          additionalInfo: '? Tracking No',
-        },
-        {
-          amount: '$30.00',
-          item: "Zara's new shoe, wed...",
-          details: 'Delivery by 12:45 Today',
-          timing: null,
-          additionalInfo: '? Tracking No',
-        },
-        {
-          amount: '$95.75',
-          item: "Zara's new shoe",
-          details: 'Delivery by 12:45 Today',
-          timing: null,
-          additionalInfo: null,
-        },
-      ],
-      pending: [
-        {
-          amount: '$60.99',
-          item: "Zara's new shoe, wed...",
-          details: 'Sent a delivery proposal',
-          timing: null,
-          additionalInfo: '2 items',
-        },
-      ],
-      completed: [
-        {
-          amount: '$150.00',
-          item: "Zara's new shoe, wed...",
-          details: 'Delivered 11/02/2025',
-          timing: null,
-          additionalInfo: '? items',
-        },
-        {
-          amount: '$85.50',
-          item: "Zara's new shoe, wed...",
-          details: 'Delivered 11/02/2025',
-          timing: null,
-          additionalInfo: '3 items',
-        },
-        {
-          amount: '$25.99',
-          item: "Zara's new shoe",
-          details: 'Delivered 11/02/2025',
-          timing: null,
-          additionalInfo: null,
-        },
-        {
-          amount: '$110.25',
-          item: "Zara's new shoe",
-          details: 'Delivered 11/02/2025',
-          timing: null,
-          additionalInfo: null,
-        },
-        {
-          amount: '$40.75',
-          item: "Zara's new shoe",
-          details: 'Delivered 11/02/2025',
-          timing: null,
-          additionalInfo: null,
-        },
-        {
-          amount: '$200.00',
-          item: "Zara's new shoe",
-          details: 'Delivered 11/02/2025',
-          timing: null,
-          additionalInfo: null,
-        },
-      ],
-      disputed: [
-        {
-          amount: '$55.49',
-          item: "Zara's new shoe, wed...",
-          details: 'Dispute opened on 10/25/2025',
-          timing: null,
-          additionalInfo: 'Under review',
-        },
-      ],
-      outgoing: [], // Not used for shoppers
+      accepted: ordersData.accepted.map(order => ({
+        amount: order.amount,
+        item: order.item,
+        details: order.details,
+        timing: order.timing,
+        additionalInfo: order.additionalInfo
+      })),
+      pending: ordersData.pending.map(order => ({
+        amount: order.amount,
+        item: order.item,
+        details: order.details,
+        timing: order.timing,
+        additionalInfo: order.additionalInfo
+      })),
+      incoming: ordersData.incoming.map(order => ({
+        amount: order.amount,
+        item: order.item,
+        details: order.details,
+        timing: order.timing,
+        additionalInfo: order.additionalInfo
+      })),
+      outgoing: ordersData.outgoing.map(order => ({
+        amount: order.amount,
+        item: order.item,
+        details: order.details,
+        timing: order.timing,
+        additionalInfo: order.additionalInfo
+      })),
+      completed: ordersData.completed.map(order => ({
+        amount: order.amount,
+        item: order.item,
+        details: order.details,
+        timing: order.timing,
+        additionalInfo: order.additionalInfo
+      })),
+      disputed: ordersData.disputed.map(order => ({
+        amount: order.amount,
+        item: order.item,
+        details: order.details,
+        timing: order.timing,
+        additionalInfo: order.additionalInfo
+      }))
     };
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className='space-y-6 pb-24'>
+          <div className='flex items-center justify-between mb-6'>
+            <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>Orders</h1>
+          </div>
+          <div className='flex justify-center py-12'>
+            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900'></div>
+            <span className='ml-2 text-gray-600'>Loading orders...</span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className='space-y-6 pb-24'>
+          <div className='flex items-center justify-between mb-6'>
+            <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>Orders</h1>
+          </div>
+          <div className='text-center py-12'>
+            <p className='text-red-600 mb-2'>Failed to load orders</p>
+            <p className='text-gray-500 text-sm'>Please try refreshing the page</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
 
   const ordersByStatus = getOrdersByStatus();
 
@@ -273,23 +156,10 @@ export default function OrdersPage() {
 
   const currentOrders = ordersByStatus[activeTab] || [];
 
-  // Group orders by month for display
-  const groupedOrders = currentOrders.reduce(
-    (acc: Record<string, Order[]>, order, index) => {
-      // For demo purposes, group first items under "April 2025" and rest under other months
-      let month = 'April 2025';
-      if (activeTab === 'accepted' && index === 0) month = 'April 2025';
-      else if (activeTab === 'incoming' && index < 3) month = 'April 2025';
-      else if (activeTab === 'completed' && index === 0) month = 'April 2025';
-      else if (activeTab === 'completed' && index > 0) month = 'January 2025';
-      else if (activeTab === 'accepted' && index > 0) month = 'March 2025';
-
-      if (!acc[month]) acc[month] = [];
-      acc[month].push(order);
-      return acc;
-    },
-    {}
-  );
+  // Group orders by a simple "Recent" category for now
+  const groupedOrders = currentOrders.length > 0 ? {
+    'Recent': currentOrders
+  } : {};
 
   const getIconColor = (status: string) => {
     switch (status) {
@@ -346,7 +216,7 @@ export default function OrdersPage() {
 
               {/* Orders in this month */}
               <div className='space-y-3'>
-                {orders.map((order, index) => (
+                {orders.map((order: Order, index: number) => (
                   <Card
                     key={`${order.amount}-${index}`}
                     className='p-4 shadow-none border-0 border-b border-gray-300 rounded-none cursor-pointer hover:shadow-sm hover:scale-105'
@@ -429,3 +299,4 @@ export default function OrdersPage() {
     </DashboardLayout>
   );
 }
+

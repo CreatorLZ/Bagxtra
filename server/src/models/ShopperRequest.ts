@@ -4,6 +4,7 @@ import { IBagItem } from './BagItem';
 export const SHOPPER_REQUEST_STATUSES = [
   'draft',
   'open',
+  'marketplace',
   'matched',
   'on_hold',
   'purchase_pending',

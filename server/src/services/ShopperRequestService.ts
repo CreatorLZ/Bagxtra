@@ -135,7 +135,8 @@ export class ShopperRequestService {
    */
   async publishShopperRequest(
     requestId: mongoose.Types.ObjectId,
-    shopperId: mongoose.Types.ObjectId
+    shopperId: mongoose.Types.ObjectId,
+    status?: 'open' | 'marketplace'
   ): Promise<IShopperRequest | null> {
     // Verify ownership
     const request = await this.shopperRequestRepo.findById(requestId);
@@ -156,7 +157,7 @@ export class ShopperRequestService {
     }
 
     return await this.shopperRequestRepo.update(requestId, {
-      status: 'open',
+      status: status || 'open',
     });
   }
 

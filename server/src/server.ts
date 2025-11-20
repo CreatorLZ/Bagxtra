@@ -113,6 +113,7 @@ import tripsRoutes from './routes/trips.js';
 import shopperRequestRoutes from './routes/shopperRequests.js';
 import matchesRoutes from './routes/matches.js';
 import deliveryRoutes from './routes/delivery.js';
+import ordersRoutes from './routes/orders.js';
 import { registerUser } from './controllers/authController.js';
 import { Trip } from './models/Trip.js';
 import { BookingService } from './services/BookingService.js';
@@ -155,6 +156,9 @@ app.use('/api/matches', matchesRoutes);
 
 // Delivery routes
 app.use('/api/delivery', deliveryRoutes);
+
+// Orders routes
+app.use('/api/orders', ordersRoutes);
 
 // Webhook routes (separate route to match Clerk docs)
 app.post(

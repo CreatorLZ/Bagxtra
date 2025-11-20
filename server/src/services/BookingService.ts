@@ -137,8 +137,8 @@ export class BookingService {
       throw new Error('Unauthorized to approve this match');
     }
 
-    if (match.status !== MatchStatus.Claimed) {
-      throw new Error('Match must be claimed before approval');
+    if (match.status !== MatchStatus.Pending && match.status !== MatchStatus.Claimed) {
+      throw new Error('Match must be pending or claimed before approval');
     }
 
     // Start cooldown period
@@ -148,9 +148,19 @@ export class BookingService {
     const purchaseDeadline = new Date(cooldownEndsAt);
     purchaseDeadline.setHours(purchaseDeadline.getHours() + BUSINESS_RULES.cooldowns.travelerPurchaseWindowHours);
 
+    // Auto-assign all items if match was pending (direct booking)
+    let assignedItems = match.assignedItems;
+    if (match.status === MatchStatus.Pending) {
+      // Assign all items from the request
+      assignedItems = request.bagItems
+        .map(item => item._id)
+        .filter(id => id !== undefined) as mongoose.Types.ObjectId[];
+    }
+
     // Update match and request
     const matchUpdate: Partial<IMatch> = {
       status: MatchStatus.Approved,
+      assignedItems,
     };
 
     const requestUpdate: Partial<IShopperRequest> = {

@@ -5,6 +5,7 @@ import {
   createShopperRequest,
   getMyShopperRequests,
   getShopperRequest,
+  findPotentialMatches,
   getShopperRequestMatches,
   publishShopperRequest,
   cancelShopperRequest,
@@ -40,6 +41,13 @@ router.get('/my-requests', requireAuth, authorizeRoles('shopper'), getMyShopperR
  * @access Private (Shopper only - own requests)
  */
 router.get('/:id', requireAuth, authorizeRoles('shopper'), validateParams(idSchema), getShopperRequest);
+
+/**
+ * @route POST /api/shopper-requests/find-matches
+ * @desc Find potential matches without creating database records
+ * @access Private (Shopper only)
+ */
+router.post('/find-matches', requireAuth, authorizeRoles('shopper'), findPotentialMatches);
 
 /**
  * @route GET /api/shopper-requests/:id/matches
