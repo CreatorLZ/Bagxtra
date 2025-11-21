@@ -2,10 +2,9 @@
 
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { Card } from '@/components/ui/card';
-// import { Button } from '@/components/ui/button'; // Not needed here anymore
 import { Plus, ShoppingBag } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import { PlaceOrderModal } from '@/components/PlaceOrderModal'; // 1. Import the modal
+import { useState, useMemo, useEffect } from 'react';
+import { PlaceOrderModal } from '@/components/PlaceOrderModal';
 import { useRole } from '@/hooks/useRole';
 import { useOrders } from '@/hooks/dashboard/useOrders';
 import { useQueryClient } from '@tanstack/react-query';
@@ -29,63 +28,112 @@ type OrderStatus =
 export default function OrdersPage() {
   const { role } = useRole();
   const [activeTab, setActiveTab] = useState<OrderStatus>('accepted');
-  // 2. Add state to control the modal
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
-  // Optimistic updates for instant UI feedback
+  // Track the last count of pending orders to detect when new server data arrives
+  const [lastPendingCount, setLastPendingCount] = useState(0);
+  
+  // Optimistic updates
   const [optimisticOrders, setOptimisticOrders] = useState<Order[]>([]);
 
   // Fetch real orders data
-  const { data: ordersData, isLoading, error } = useOrders();
+  const { data: ordersData, isLoading, error, isFetching } = useOrders();
 
-  // Query client for invalidation
+  // Query client
   const queryClient = useQueryClient();
 
-  // Convert API response to the expected format with optimistic updates
+  // Clear optimistic updates when fresh server data arrives with new orders
+  useEffect(() => {
+    if (ordersData?.pending && !isFetching) {
+      const currentPendingCount = ordersData.pending.length;
+      
+      console.log('Orders effect triggered:', {
+        currentPendingCount,
+        lastPendingCount,
+        optimisticCount: optimisticOrders.length,
+        isFetching,
+        serverOrders: ordersData.pending
+      });
+      
+      // If we have optimistic orders and server now has data, clear optimistic
+      // We check if count increased OR if we simply have optimistic orders and server data exists
+      if (optimisticOrders.length > 0 && currentPendingCount > 0) {
+        // Check if any optimistic order matches a server order (by item name)
+        const hasMatchingServerOrder = optimisticOrders.some(opt =>
+          ordersData.pending.some(server => server.item === opt.item)
+        );
+        
+        if (hasMatchingServerOrder) {
+          console.log('Found matching server order, clearing optimistic updates');
+          setOptimisticOrders([]);
+        }
+      }
+      
+      setLastPendingCount(currentPendingCount);
+    }
+  }, [ordersData?.pending, isFetching, optimisticOrders.length]); // Monitor data, fetch status, and optimistic count
+
+  // Convert API response to the expected format with deduplication
   const getOrdersByStatus = useMemo((): Record<OrderStatus, Order[]> => {
+    // Helper to create unique key for deduplication
+    const getOrderKey = (order: Order) => `${order.item}-${order.amount}-${order.details}`;
+    
+    const deduplicateOrders = (orders: Order[]) => {
+      const seen = new Set<string>();
+      return orders.filter(order => {
+        const key = getOrderKey(order);
+        if (seen.has(key)) {
+          console.warn('Duplicate order detected and removed:', order);
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+    };
+
     const serverOrders = ordersData ? {
-      accepted: ordersData.accepted.map(order => ({
+      accepted: deduplicateOrders(ordersData.accepted.map(order => ({
         amount: order.amount,
         item: order.item,
         details: order.details,
         timing: order.timing,
         additionalInfo: order.additionalInfo
-      })),
-      pending: ordersData.pending.map(order => ({
+      }))),
+      pending: deduplicateOrders(ordersData.pending.map(order => ({
         amount: order.amount,
         item: order.item,
         details: order.details,
         timing: order.timing,
         additionalInfo: order.additionalInfo
-      })),
-      incoming: ordersData.incoming.map(order => ({
+      }))),
+      incoming: deduplicateOrders(ordersData.incoming.map(order => ({
         amount: order.amount,
         item: order.item,
         details: order.details,
         timing: order.timing,
         additionalInfo: order.additionalInfo
-      })),
-      outgoing: ordersData.outgoing.map(order => ({
+      }))),
+      outgoing: deduplicateOrders(ordersData.outgoing.map(order => ({
         amount: order.amount,
         item: order.item,
         details: order.details,
         timing: order.timing,
         additionalInfo: order.additionalInfo
-      })),
-      completed: ordersData.completed.map(order => ({
+      }))),
+      completed: deduplicateOrders(ordersData.completed.map(order => ({
         amount: order.amount,
         item: order.item,
         details: order.details,
         timing: order.timing,
         additionalInfo: order.additionalInfo
-      })),
-      disputed: ordersData.disputed.map(order => ({
+      }))),
+      disputed: deduplicateOrders(ordersData.disputed.map(order => ({
         amount: order.amount,
         item: order.item,
         details: order.details,
         timing: order.timing,
         additionalInfo: order.additionalInfo
-      }))
+      })))
     } : {
       accepted: [],
       pending: [],
@@ -95,10 +143,12 @@ export default function OrdersPage() {
       disputed: []
     };
 
-    // Merge optimistic orders with server data
+    // Add optimistic orders to pending ONLY (they will be auto-cleared when server data arrives)
+    const allPendingOrders = [...serverOrders.pending, ...optimisticOrders];
+    
     return {
       ...serverOrders,
-      pending: [...(serverOrders.pending || []), ...optimisticOrders]
+      pending: deduplicateOrders(allPendingOrders)
     };
   }, [ordersData, optimisticOrders]);
 
@@ -136,7 +186,6 @@ export default function OrdersPage() {
     );
   }
 
-
   const ordersByStatus = getOrdersByStatus;
 
   // Role-specific tabs
@@ -161,7 +210,6 @@ export default function OrdersPage() {
   };
 
   const tabs = getTabs();
-
   const currentOrders = ordersByStatus[activeTab] || [];
 
   // Group orders by a simple "Recent" category for now
@@ -226,7 +274,7 @@ export default function OrdersPage() {
               <div className='space-y-3'>
                 {orders.map((order: Order, index: number) => (
                   <Card
-                    key={`${order.amount}-${index}`}
+                    key={`${order.amount}-${order.item}-${index}`}
                     className='p-4 shadow-none border-0 border-b border-gray-300 rounded-none cursor-pointer hover:shadow-sm hover:scale-105'
                   >
                     <div className='flex items-center space-x-4'>
@@ -258,11 +306,6 @@ export default function OrdersPage() {
 
                       {/* Right Info */}
                       <div className='text-right shrink-0'>
-                        {/* {order.additionalInfo && (
-                          <p className='text-sm text-gray-600 mb-1'>
-                            {order.additionalInfo}
-                          </p>
-                        )} */}
                         <p className='text-sm font-space-grotesk bg-gray-100 rounded-lg p-2 text-gray-500'>
                           {order.amount}
                         </p>
@@ -290,7 +333,6 @@ export default function OrdersPage() {
         {/* Floating Action Button - Only show for shoppers */}
         {role === 'shopper' && (
           <button
-            // 3. Update the onClick handler
             onClick={() => setIsOrderModalOpen(true)}
             className='fixed bottom-24 right-8 w-14 h-14 bg-purple-800 hover:bg-purple-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-colors'
           >
@@ -299,23 +341,21 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* 4. Render the modal */}
       <PlaceOrderModal
         isOpen={isOrderModalOpen}
         onOpenChange={setIsOrderModalOpen}
         onOrderPlaced={(newOrder: Order) => {
-          // Add to optimistic state immediately for instant UI feedback
+          console.log('Order placed, adding optimistic update:', newOrder);
+          
+          // Add to optimistic state immediately
           setOptimisticOrders(prev => [...prev, newOrder]);
-
-          // Invalidate cache in background to sync with server
-          queryClient.invalidateQueries({
-            queryKey: ['orders'],
-            refetchType: 'active',
-            type: 'all'
+          
+          // Trigger a refetch in the background
+          queryClient.invalidateQueries({ 
+            queryKey: ['orders']
           });
         }}
       />
     </DashboardLayout>
   );
 }
-

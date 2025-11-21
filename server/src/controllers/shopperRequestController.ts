@@ -332,26 +332,29 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
           deliveryEndDate: updatedRequest.deliveryEndDate ? new Date(updatedRequest.deliveryEndDate) : undefined,
         });
 
-        // Create Match records asynchronously
-        const matchPromises = matches.map(async (match: any) => {
-          // Check if match already exists to avoid duplicates
-          const existingMatches = await matchRepo.findByRequest(requestObjectId);
-          const existingMatch = existingMatches.find(m => m.tripId.equals(match.trip._id));
+        // FIXED: Sequential match creation to prevent race conditions and duplicates
+        for (const match of matches) {
+          try {
+            // Check if match already exists (now happens sequentially)
+            const existingMatches = await matchRepo.findByRequest(requestObjectId);
+            const existingMatch = existingMatches.find(m => m.tripId.equals(match.trip._id));
 
-          if (!existingMatch) {
-            await matchService.createMatch(
-              requestObjectId,
-              match.trip._id,
-              match.score,
-              [] // No assigned items initially
-            );
+            if (!existingMatch) {
+              await matchService.createMatch(
+                requestObjectId,
+                match.trip._id,
+                match.score,
+                [] // No assigned items initially
+              );
+              console.log(`Created match for trip ${match.trip._id} with score ${match.score}`);
+            } else {
+              console.log(`Match already exists for trip ${match.trip._id}, skipping`);
+            }
+          } catch (matchError) {
+            // Log individual match creation errors but continue with others
+            console.error(`Error creating match for trip ${match.trip._id}:`, matchError);
           }
-        });
-
-        // Execute match creation in background (don't await to avoid blocking response)
-        Promise.all(matchPromises).catch(error => {
-          console.error('Error creating matches for published request:', error);
-        });
+        }
       }
     } catch (error) {
       // Log error but don't fail the publish operation
@@ -544,26 +547,31 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
       deliveryEndDate: request.deliveryEndDate ? new Date(request.deliveryEndDate) : undefined,
     });
 
-    // Create Match records if they don't exist
-    const matchPromises = matches.map(async (match: any) => {
-      // Check if match already exists by finding all matches for this request and filtering
-      const existingMatches = await matchRepo.findByRequest(requestObjectId);
-      const existingMatch = existingMatches.find(m => m.tripId.equals(match.trip._id));
+    // FIXED: Sequential match creation to prevent race conditions and duplicates
+    const matchRecords = [];
+    for (const match of matches) {
+      try {
+        // Check if match already exists (now happens sequentially)
+        const existingMatches = await matchRepo.findByRequest(requestObjectId);
+        const existingMatch = existingMatches.find(m => m.tripId.equals(match.trip._id));
 
-      if (existingMatch) {
-        return existingMatch;
+        if (existingMatch) {
+          matchRecords.push(existingMatch);
+        } else {
+          // Create new match
+          const newMatch = await matchService.createMatch(
+            requestObjectId,
+            match.trip._id,
+            match.score,
+            [] // No assigned items initially
+          );
+          matchRecords.push(newMatch);
+        }
+      } catch (matchError) {
+        console.error(`Error processing match for trip ${match.trip._id}:`, matchError);
+        // Continue processing other matches
       }
-
-      // Create new match
-      return await matchService.createMatch(
-        requestObjectId,
-        match.trip._id,
-        match.score,
-        [] // No assigned items initially
-      );
-    });
-
-    const matchRecords = await Promise.all(matchPromises);
+    }
 
     // Format response with traveler and trip details
     const formattedMatches = await Promise.all(

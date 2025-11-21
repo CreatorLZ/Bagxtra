@@ -256,29 +256,6 @@ function TravelerCard({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatTime = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch {
-      return 'TBD';
-    }
-  };
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 space-y-4 shadow-sm">
@@ -327,8 +304,8 @@ function TravelerCard({
           <div className="text-lg font-bold text-gray-900">
             {match.flightDetails.from}
           </div>
-          <div className="text-gray-600 flex">{formatDate(match.flightDetails.departureDate)} <span className='pl-3'>--------</span></div>
-          <div className="text-gray-600">{formatTime(match.flightDetails.departureTime)}</div>
+          <div className="text-gray-600 flex">{match.flightDetails.departureDate} <span className='pl-3'>--------</span></div>
+          <div className="text-gray-600">{match.flightDetails.departureTime}</div>
         </div>
         <div className="text-center text-gray-500">
           <Plane className="mx-auto" />
@@ -336,8 +313,8 @@ function TravelerCard({
         </div>
         <div className="text-right">
           <div className="text-lg font-bold text-gray-900">{match.flightDetails.to}</div>
-          <div className="text-gray-600 flex"><span className='pr-3'>--------</span>{formatDate(match.flightDetails.arrivalDate)}</div>
-          <div className="text-gray-600">{formatTime(match.flightDetails.arrivalTime)}</div>
+          <div className="text-gray-600 flex"><span className='pr-3'>--------</span>{match.flightDetails.arrivalDate}</div>
+          <div className="text-gray-600">{match.flightDetails.arrivalTime}</div>
         </div>
       </div>
 
@@ -1278,7 +1255,7 @@ export function PlaceOrderModal({
 
       // Notify parent component with new order data for optimistic update
       const newOrder = {
-        amount: `$${parseFloat(formData.productDetails.price || '0').toFixed(2)}`,
+        amount: `$${(parseFloat(formData.productDetails.price || '0') * formData.quantity).toFixed(2)}`,
         item: formData.productDetails.name,
         details: 'Waiting for traveler approval',
         timing: null,
