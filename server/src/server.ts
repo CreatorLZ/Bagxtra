@@ -114,7 +114,7 @@ import shopperRequestRoutes from './routes/shopperRequests.js';
 import matchesRoutes from './routes/matches.js';
 import deliveryRoutes from './routes/delivery.js';
 import ordersRoutes from './routes/orders.js';
-import { registerUser } from './controllers/authController.js';
+import { handleWebhook } from './controllers/authController.js';
 import { Trip } from './models/Trip.js';
 import { BookingService } from './services/BookingService.js';
 import { NotificationService } from './services/NotificationService.js';
@@ -161,11 +161,7 @@ app.use('/api/delivery', deliveryRoutes);
 app.use('/api/orders', ordersRoutes);
 
 // Webhook routes (separate route to match Clerk docs)
-app.post(
-  '/api/webhooks',
-  express.raw({ type: 'application/json' }),
-  registerUser
-);
+app.post('/api/webhooks', handleWebhook);
 
 // Background job for trip status auto-transitions
 cron.schedule('*/30 * * * *', async () => {

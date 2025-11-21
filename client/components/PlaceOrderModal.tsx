@@ -49,6 +49,7 @@ import { PhotoUpload } from '@/components/PhotoUpload';
 import { DatePicker } from '@/components/DatePicker';
 import NextImage from 'next/image';
 import { format, parse } from 'date-fns';
+import { parseDateTimeToUTC } from '@/lib/utils/dateUtils';
 
 // --- Mock Data (from previous step, still needed) ---
 const categories = [
@@ -110,12 +111,12 @@ const travelers = [
     avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
     rating: 5,
     origin: 'LA',
-    originTime: '10:30 am',
+    originTime: '10:30',
     originDate: '12/12/25',
     dest: 'LAG',
-    destTime: '12:40 pm',
+    destTime: '12:40',
     destDate: '12/12/25',
-    duration: '2h10m',
+    timezone: 'America/Los_Angeles',
     match: 90,
   },
   {
@@ -124,12 +125,12 @@ const travelers = [
     avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
     rating: 5,
     origin: 'LA',
-    originTime: '10:30 am',
+    originTime: '10:30',
     originDate: '12/12/25',
     dest: 'LAG',
-    destTime: '12:40 pm',
+    destTime: '12:40',
     destDate: '12/12/25',
-    duration: '2h10m',
+    timezone: 'America/Los_Angeles',
     match: 70,
   },
 ];
@@ -210,9 +211,11 @@ function TravelerCard({
     flightDetails: {
       from: string;
       to: string;
-      departure: string;
-      arrival: string;
-      duration: string;
+      departureDate: string;
+      departureTime: string;
+      arrivalDate: string;
+      arrivalTime: string;
+      timezone: string;
       airline: string;
     };
     capacityFit: {
@@ -229,6 +232,28 @@ function TravelerCard({
     if (matchScore >= 90) return 'text-purple-900';
     if (matchScore >= 70) return 'text-purple-900';
     return 'text-red-600';
+  };
+
+  /**
+   * Calculates the actual flight duration based on departure and arrival date/time.
+   * @returns Duration in format "XhYm" (e.g., "2h30m")
+   */
+  const calculateDuration = (): string => {
+    try {
+      const depDateTime = parseDateTimeToUTC(match.flightDetails.departureDate, match.flightDetails.departureTime, match.flightDetails.timezone);
+      const arrDateTime = parseDateTimeToUTC(match.flightDetails.arrivalDate, match.flightDetails.arrivalTime, match.flightDetails.timezone);
+
+      const diffMs = arrDateTime.getTime() - depDateTime.getTime();
+      if (diffMs < 0) return 'Invalid duration';
+
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      return `${hours}h${minutes.toString().padStart(2, '0')}m`;
+    } catch (error) {
+      console.error('Error calculating duration:', error);
+      return 'Invalid duration';
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -302,17 +327,17 @@ function TravelerCard({
           <div className="text-lg font-bold text-gray-900">
             {match.flightDetails.from}
           </div>
-          <div className="text-gray-600 flex">{formatDate(match.flightDetails.departure)} <span className='pl-3'>--------</span></div>
-          <div className="text-gray-600">{formatTime(match.flightDetails.departure)}</div>
+          <div className="text-gray-600 flex">{formatDate(match.flightDetails.departureDate)} <span className='pl-3'>--------</span></div>
+          <div className="text-gray-600">{formatTime(match.flightDetails.departureTime)}</div>
         </div>
         <div className="text-center text-gray-500">
           <Plane className="mx-auto" />
-          <div className="mt-1">{match.flightDetails.duration}</div>
+          <div className="mt-1">{calculateDuration()}</div>
         </div>
         <div className="text-right">
           <div className="text-lg font-bold text-gray-900">{match.flightDetails.to}</div>
-          <div className="text-gray-600 flex"><span className='pr-3'>--------</span>{formatDate(match.flightDetails.arrival)}</div>
-          <div className="text-gray-600">{formatTime(match.flightDetails.arrival)}</div>
+          <div className="text-gray-600 flex"><span className='pr-3'>--------</span>{formatDate(match.flightDetails.arrivalDate)}</div>
+          <div className="text-gray-600">{formatTime(match.flightDetails.arrivalTime)}</div>
         </div>
       </div>
 

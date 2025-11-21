@@ -30,12 +30,6 @@ import { z } from 'zod';
 
 const router = Router();
 
-/**
- * @route POST /api/webhooks
- * @desc Handle Clerk webhooks for user events
- * @access Public (called by Clerk webhooks)
- */
-router.post('/webhooks', registerUser);
 
 /**
  * @route GET /api/auth/me

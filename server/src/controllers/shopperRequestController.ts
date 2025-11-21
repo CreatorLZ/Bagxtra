@@ -10,6 +10,7 @@ import { MatchingService } from '../services/MatchingService';
 import { MatchService } from '../services/MatchService';
 import mongoose from 'mongoose';
 import { z } from 'zod';
+import { format } from 'date-fns';
 
 const createRequestSchema = z.object({
   fromCountry: z.string().min(1).max(100),
@@ -437,9 +438,11 @@ export const findPotentialMatches = async (req: Request, res: Response) => {
           flightDetails: {
             from: trip.fromCountry,
             to: trip.toCountry,
-            departure: trip.departureDate,
-            arrival: trip.arrivalDate,
-            duration: '2h 10m', // TODO: Calculate from dates
+            departureDate: format(trip.departureDate, 'MM/dd/yy'),
+            departureTime: trip.departureTime,
+            arrivalDate: format(trip.arrivalDate, 'MM/dd/yy'),
+            arrivalTime: trip.arrivalTime,
+            timezone: trip.timezone,
             airline: 'Delta', // TODO: Add to trip model
           },
           capacityFit: {
@@ -584,9 +587,11 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
           flightDetails: {
             from: trip.fromCountry,
             to: trip.toCountry,
-            departure: trip.departureDate,
-            arrival: trip.arrivalDate,
-            duration: '2h 10m', // TODO: Calculate from dates
+            departureDate: format(trip.departureDate, 'MM/dd/yy'),
+            departureTime: trip.departureTime,
+            arrivalDate: format(trip.arrivalDate, 'MM/dd/yy'),
+            arrivalTime: trip.arrivalTime,
+            timezone: trip.timezone,
             airline: 'Delta', // TODO: Add to trip model
           },
           capacityFit: {

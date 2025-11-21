@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
-import { User, VALID_USER_ROLES } from '../models/User.js';
-import { RoleAuditLog } from '../models/RoleAuditLog.js';
+import { User, IUser, VALID_USER_ROLES } from '../models/User';
+import { RoleAuditLog } from '../models/RoleAuditLog';
 import { z } from 'zod';
 import { verifyWebhook } from '@clerk/express/webhooks';
 import {
   logAuthEvent,
   SecurityEventType,
-} from '../middleware/securityLogger.js';
-import { createErrorResponse } from '../errors.js';
+} from '../middleware/securityLogger';
+import { createErrorResponse } from '../errors';
 
 // Validation schemas
 const updateUserSchema = z.object({
@@ -38,9 +38,9 @@ const updateRoleSchema = z.object({
 });
 
 /**
- * Register a new user from Clerk webhook
+ * Handle Clerk webhooks for user events
  */
-export const registerUser = async (
+export const handleWebhook = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -54,78 +54,19 @@ export const registerUser = async (
     console.log(`🔍 Received webhook event: ${evt.type}`);
     console.log('🔍 Webhook data:', JSON.stringify(evt.data, null, 2));
 
-    // Check event type
-    if (evt.type !== 'user.created') {
-      console.log(`Ignoring webhook event: ${evt.type}`);
-      res.status(200).json({ message: 'Event ignored' });
-      return;
+    // Handle different event types
+    switch (evt.type) {
+      case 'user.created':
+        await handleUserCreated(evt.data, req, res);
+        break;
+      case 'user.updated':
+        await handleUserUpdated(evt.data, req, res);
+        break;
+      default:
+        console.log(`Ignoring webhook event: ${evt.type}`);
+        res.status(200).json({ message: 'Event ignored' });
+        return;
     }
-
-    // Extract and map data from Clerk's nested payload
-    const clerkData = evt.data;
-
-    // Extract role from Clerk's unsafeMetadata
-    const roleFromMetadata = clerkData.unsafe_metadata?.['role'];
-    let role: string;
-    if (
-      roleFromMetadata &&
-      VALID_USER_ROLES.includes(roleFromMetadata as any)
-    ) {
-      role = roleFromMetadata as string;
-    } else {
-      console.warn(
-        `Invalid or missing role in Clerk metadata for user ${clerkData.id}: ${roleFromMetadata}. Defaulting to 'shopper'.`
-      );
-      role = 'shopper';
-      // Log this as a potential issue for monitoring
-      logAuthEvent(SecurityEventType.ROLE_CHANGED)(req, res, () => {});
-    }
-
-    const userData = {
-      clerkId: clerkData.id,
-      fullName:
-        `${clerkData.first_name || ''} ${clerkData.last_name || ''}`.trim() ||
-        'Unknown User', // Fallback if names are missing
-      email: clerkData.email_addresses?.[0]?.email_address || '',
-      role,
-      phone: clerkData.phone_numbers?.[0]?.phone_number || undefined,
-      country: undefined, // Clerk doesn't provide this by default; set based on your needs
-      profileImage: clerkData.image_url || undefined,
-    };
-
-    // Validate the mapped data
-    const validatedData = registerUserSchema.parse(userData);
-
-    // Check if user already exists
-    const existingUser = await User.findByClerkId(validatedData.clerkId);
-    if (existingUser) {
-      res.status(409).json({
-        error: 'Conflict',
-        message: 'User already exists',
-      });
-      return;
-    }
-
-    // Create new user
-    const user = new User(validatedData);
-    await user.save();
-
-    console.log(`👤 User registered: ${user.email} (${user.role})`);
-
-    res.status(201).json({
-      message: 'User registered successfully',
-      user: {
-        id: user._id,
-        clerkId: user.clerkId,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        phone: user.phone,
-        country: user.country,
-        profileImage: user.profileImage,
-        createdAt: user.createdAt,
-      },
-    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res
@@ -141,16 +82,185 @@ export const registerUser = async (
       return;
     }
 
-    console.error('👤 Register user error:', error);
+    console.error('👤 Webhook handler error:', error);
     res
       .status(500)
       .json(
         createErrorResponse(
           'Internal Server Error',
-          'Failed to register user',
+          'Failed to process webhook',
           'INTERNAL_ERROR'
         )
       );
+  }
+};
+
+/**
+ * Handle user creation from Clerk webhook
+ */
+const handleUserCreated = async (
+  clerkData: any,
+  req: Request,
+  res: Response
+): Promise<void> => {
+  // Extract role from Clerk's unsafeMetadata
+  const roleFromMetadata = clerkData.unsafe_metadata?.['role'];
+  let role: string;
+  if (
+    roleFromMetadata &&
+    VALID_USER_ROLES.includes(roleFromMetadata as any)
+  ) {
+    role = roleFromMetadata as string;
+  } else {
+    console.warn(
+      `Invalid or missing role in Clerk metadata for user ${clerkData.id}: ${roleFromMetadata}. Defaulting to 'shopper'.`
+    );
+    role = 'shopper';
+    // Log this as a potential issue for monitoring
+    logAuthEvent(SecurityEventType.ROLE_CHANGED)(req, res, () => {});
+  }
+
+  const userData = {
+    clerkId: clerkData.id,
+    fullName:
+      `${clerkData.first_name || ''} ${clerkData.last_name || ''}`.trim() ||
+      'Unknown User', // Fallback if names are missing
+    email: clerkData.email_addresses?.[0]?.email_address || '',
+    role,
+    phone: clerkData.phone_numbers?.[0]?.phone_number || undefined,
+    country: undefined, // Clerk doesn't provide this by default; set based on your needs
+    profileImage: clerkData.image_url || undefined,
+  };
+
+  // Validate the mapped data
+  const validatedData = registerUserSchema.parse(userData);
+
+  // Check if user already exists
+  const existingUser = await User.findByClerkId(validatedData.clerkId);
+  if (existingUser) {
+    res.status(409).json({
+      error: 'Conflict',
+      message: 'User already exists',
+    });
+    return;
+  }
+
+  // Create new user
+  const user = new User(validatedData);
+  await user.save();
+
+  console.log(`👤 User registered: ${user.email} (${user.role})`);
+
+  // Log security event
+  logAuthEvent(SecurityEventType.USER_REGISTERED)(req, res, () => {});
+
+  res.status(201).json({
+    message: 'User registered successfully',
+    user: {
+      id: user._id,
+      clerkId: user.clerkId,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      country: user.country,
+      profileImage: user.profileImage,
+      createdAt: user.createdAt,
+    },
+  });
+};
+
+/**
+ * Handle user updates from Clerk webhook
+ */
+const handleUserUpdated = async (
+  clerkData: any,
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    // Find existing user by Clerk ID
+    const existingUser = await User.findByClerkId(clerkData.id);
+    if (!existingUser) {
+      console.warn(`User not found for Clerk ID: ${clerkData.id}`);
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'User does not exist in database',
+      });
+      return;
+    }
+
+    // Prepare update data - only update Clerk-managed fields
+    const updateData: Partial<IUser> = {};
+
+    // Update name if changed
+    const newFullName = `${clerkData.first_name || ''} ${clerkData.last_name || ''}`.trim();
+    if (newFullName && newFullName !== 'Unknown User' && newFullName !== existingUser.fullName) {
+      updateData.fullName = newFullName;
+    }
+
+    // Update email if changed
+    const newEmail = clerkData.email_addresses?.[0]?.email_address;
+    if (newEmail && newEmail !== existingUser.email) {
+      updateData.email = newEmail;
+    }
+
+    // Update phone if changed
+    const newPhone = clerkData.phone_numbers?.[0]?.phone_number;
+    if (newPhone !== undefined && newPhone !== existingUser.phone) {
+      updateData.phone = newPhone || undefined;
+    }
+
+    // Update profile image if changed
+    const newImageUrl = clerkData.image_url;
+    if (newImageUrl !== undefined && newImageUrl !== existingUser.profileImage) {
+      updateData.profileImage = newImageUrl || undefined;
+    }
+
+    // Only update if there are changes
+    if (Object.keys(updateData).length > 0) {
+      const updatedUser = await User.findByIdAndUpdate(
+        existingUser._id,
+        updateData,
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedUser) {
+        throw new Error('Failed to update user');
+      }
+
+      console.log(`👤 User profile updated for Clerk ID: ${clerkData.id}`);
+
+      // Log security event
+      logAuthEvent(SecurityEventType.USER_UPDATED)(req, res, () => {});
+
+      res.status(200).json({
+        message: 'User profile updated successfully',
+        user: {
+          id: updatedUser._id,
+          clerkId: updatedUser.clerkId,
+          fullName: updatedUser.fullName,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          phone: updatedUser.phone,
+          country: updatedUser.country,
+          profileImage: updatedUser.profileImage,
+          updatedAt: updatedUser.updatedAt,
+        },
+      });
+    } else {
+      console.log(`👤 No changes detected for user Clerk ID: ${clerkData.id}`);
+      res.status(200).json({ message: 'No changes to update' });
+    }
+  } catch (error) {
+    console.error('👤 Handle user updated error:', error);
+    res.status(500).json(
+      createErrorResponse(
+        'Internal Server Error',
+        'Failed to update user profile',
+        'INTERNAL_ERROR'
+      )
+    );
   }
 };
 

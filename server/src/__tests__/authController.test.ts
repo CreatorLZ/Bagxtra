@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import {
-  registerUser,
+  handleWebhook,
   getCurrentUser,
   updateUserProfile,
   getAllUsers,
@@ -20,7 +20,7 @@ describe('Auth Controller', () => {
     app.use(express.json());
 
     // Mock routes for testing
-    app.post('/auth/register', registerUser);
+    app.post('/auth/webhook', handleWebhook);
     app.get('/auth/me', getCurrentUser);
     app.put('/auth/profile', updateUserProfile);
     app.get('/auth/users', getAllUsers);
@@ -28,98 +28,209 @@ describe('Auth Controller', () => {
     app.put('/auth/role', updateOwnRole);
   });
 
-  describe('registerUser', () => {
-    it('should register a new user successfully', async () => {
-      const userData = {
-        clerkId: 'test-clerk-id',
-        fullName: 'Test User',
-        email: 'test@example.com',
-        role: 'shopper' as const,
-        phone: '+1234567890',
-        country: 'Test Country',
-        profileImage: 'https://example.com/image.jpg',
-      };
+  describe('handleWebhook', () => {
+    describe('user.created events', () => {
+      it('should register a new user successfully', async () => {
+        const userData = {
+          clerkId: 'test-clerk-id',
+          fullName: 'Test User',
+          email: 'test@example.com',
+          role: 'shopper' as const,
+          phone: '+1234567890',
+          country: 'Test Country',
+          profileImage: 'https://example.com/image.jpg',
+        };
 
-      // Mock Clerk webhook verification
-      const mockWebhookEvent = {
-        type: 'user.created',
-        data: {
-          id: userData.clerkId,
-          first_name: 'Test',
-          last_name: 'User',
-          email_addresses: [{ email_address: userData.email }],
-          phone_numbers: [{ phone_number: userData.phone }],
-          image_url: userData.profileImage,
-          unsafe_metadata: { role: userData.role },
-        },
-      };
+        // Mock Clerk webhook verification
+        const mockWebhookEvent = {
+          type: 'user.created',
+          data: {
+            id: userData.clerkId,
+            first_name: 'Test',
+            last_name: 'User',
+            email_addresses: [{ email_address: userData.email }],
+            phone_numbers: [{ phone_number: userData.phone }],
+            image_url: userData.profileImage,
+            unsafe_metadata: { role: userData.role },
+          },
+        };
 
-      // Mock verifyWebhook function
-      jest.mock('@clerk/express/webhooks', () => ({
-        verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
-      }));
+        // Mock verifyWebhook function
+        jest.mock('@clerk/express/webhooks', () => ({
+          verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
+        }));
 
-      const response = await request(app).post('/auth/register').send(userData);
+        const response = await request(app).post('/auth/webhook').send(userData);
 
-      expect(response.status).toBe(201);
-      expect(response.body.message).toBe('User registered successfully');
-      expect(response.body.user).toHaveProperty('id');
-      expect(response.body.user.email).toBe(userData.email);
-      expect(response.body.user.role).toBe(userData.role);
-    });
-
-    it('should return 409 if user already exists', async () => {
-      // First create a user
-      const existingUser = new User({
-        clerkId: 'existing-clerk-id',
-        fullName: 'Existing User',
-        email: 'existing@example.com',
-        role: 'shopper',
+        expect(response.status).toBe(201);
+        expect(response.body.message).toBe('User registered successfully');
+        expect(response.body.user).toHaveProperty('id');
+        expect(response.body.user.email).toBe(userData.email);
+        expect(response.body.user.role).toBe(userData.role);
       });
-      await existingUser.save();
 
-      // Mock webhook for existing user
-      const mockWebhookEvent = {
-        type: 'user.created',
-        data: {
-          id: 'existing-clerk-id',
-          first_name: 'Existing',
-          last_name: 'User',
-          email_addresses: [{ email_address: 'existing@example.com' }],
-          unsafe_metadata: { role: 'shopper' },
-        },
-      };
+      it('should return 409 if user already exists', async () => {
+        // First create a user
+        const existingUser = new User({
+          clerkId: 'existing-clerk-id',
+          fullName: 'Existing User',
+          email: 'existing@example.com',
+          role: 'shopper',
+        });
+        await existingUser.save();
 
-      jest.mock('@clerk/express/webhooks', () => ({
-        verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
-      }));
+        // Mock webhook for existing user
+        const mockWebhookEvent = {
+          type: 'user.created',
+          data: {
+            id: 'existing-clerk-id',
+            first_name: 'Existing',
+            last_name: 'User',
+            email_addresses: [{ email_address: 'existing@example.com' }],
+            unsafe_metadata: { role: 'shopper' },
+          },
+        };
 
-      const response = await request(app).post('/auth/register').send({});
+        jest.mock('@clerk/express/webhooks', () => ({
+          verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
+        }));
 
-      expect(response.status).toBe(409);
-      expect(response.body.message).toBe('User already exists');
+        const response = await request(app).post('/auth/webhook').send({});
+
+        expect(response.status).toBe(409);
+        expect(response.body.message).toBe('User already exists');
+      });
+
+      it('should default to shopper role if invalid role in metadata', async () => {
+        const mockWebhookEvent = {
+          type: 'user.created',
+          data: {
+            id: 'invalid-role-clerk-id',
+            first_name: 'Invalid',
+            last_name: 'Role',
+            email_addresses: [{ email_address: 'invalid@example.com' }],
+            unsafe_metadata: { role: 'invalid-role' },
+          },
+        };
+
+        jest.mock('@clerk/express/webhooks', () => ({
+          verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
+        }));
+
+        const response = await request(app).post('/auth/webhook').send({});
+
+        expect(response.status).toBe(201);
+        expect(response.body.user.role).toBe('shopper');
+      });
     });
 
-    it('should default to shopper role if invalid role in metadata', async () => {
-      const mockWebhookEvent = {
-        type: 'user.created',
-        data: {
-          id: 'invalid-role-clerk-id',
-          first_name: 'Invalid',
-          last_name: 'Role',
-          email_addresses: [{ email_address: 'invalid@example.com' }],
-          unsafe_metadata: { role: 'invalid-role' },
-        },
-      };
+    describe('user.updated events', () => {
+      it('should update user profile successfully', async () => {
+        // First create a user
+        const existingUser = new User({
+          clerkId: 'update-clerk-id',
+          fullName: 'Old Name',
+          email: 'old@example.com',
+          role: 'shopper',
+          phone: '+1234567890',
+        });
+        await existingUser.save();
 
-      jest.mock('@clerk/express/webhooks', () => ({
-        verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
-      }));
+        // Mock user.updated webhook
+        const mockWebhookEvent = {
+          type: 'user.updated',
+          data: {
+            id: 'update-clerk-id',
+            first_name: 'New',
+            last_name: 'Name',
+            email_addresses: [{ email_address: 'new@example.com' }],
+            phone_numbers: [{ phone_number: '+0987654321' }],
+            image_url: 'https://example.com/new-image.jpg',
+          },
+        };
 
-      const response = await request(app).post('/auth/register').send({});
+        jest.mock('@clerk/express/webhooks', () => ({
+          verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
+        }));
 
-      expect(response.status).toBe(201);
-      expect(response.body.user.role).toBe('shopper');
+        const response = await request(app).post('/auth/webhook').send({});
+
+        expect(response.status).toBe(200);
+        expect(response.body.message).toBe('User profile updated successfully');
+        expect(response.body.user.fullName).toBe('New Name');
+        expect(response.body.user.email).toBe('new@example.com');
+        expect(response.body.user.phone).toBe('+0987654321');
+        expect(response.body.user.profileImage).toBe('https://example.com/new-image.jpg');
+        // Role should remain unchanged
+        expect(response.body.user.role).toBe('shopper');
+      });
+
+      it('should return 404 for non-existent user', async () => {
+        const mockWebhookEvent = {
+          type: 'user.updated',
+          data: {
+            id: 'non-existent-clerk-id',
+            first_name: 'Non',
+            last_name: 'Existent',
+            email_addresses: [{ email_address: 'nonexistent@example.com' }],
+          },
+        };
+
+        jest.mock('@clerk/express/webhooks', () => ({
+          verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
+        }));
+
+        const response = await request(app).post('/auth/webhook').send({});
+
+        expect(response.status).toBe(404);
+        expect(response.body.message).toBe('User does not exist in database');
+      });
+
+      it('should return 200 with no changes when no fields are updated', async () => {
+        // Create user with same data that will be sent
+        const existingUser = new User({
+          clerkId: 'no-change-clerk-id',
+          fullName: 'Same Name',
+          email: 'same@example.com',
+          role: 'shopper',
+        });
+        await existingUser.save();
+
+        const mockWebhookEvent = {
+          type: 'user.updated',
+          data: {
+            id: 'no-change-clerk-id',
+            first_name: 'Same',
+            last_name: 'Name',
+            email_addresses: [{ email_address: 'same@example.com' }],
+          },
+        };
+
+        jest.mock('@clerk/express/webhooks', () => ({
+          verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
+        }));
+
+        const response = await request(app).post('/auth/webhook').send({});
+
+        expect(response.status).toBe(200);
+        expect(response.body.message).toBe('No changes to update');
+      });
+
+      it('should ignore unknown event types', async () => {
+        const mockWebhookEvent = {
+          type: 'user.deleted',
+          data: { id: 'some-id' },
+        };
+
+        jest.mock('@clerk/express/webhooks', () => ({
+          verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
+        }));
+
+        const response = await request(app).post('/auth/webhook').send({});
+
+        expect(response.status).toBe(200);
+        expect(response.body.message).toBe('Event ignored');
+      });
     });
   });
 
