@@ -4,6 +4,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogHeader,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,7 +18,7 @@ import {
   ExternalLink,
   ArrowRight
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useOrderDetails } from '@/hooks/dashboard/useOrderDetails';
 import { useRole } from '@/hooks/useRole';
 import {
@@ -72,16 +73,27 @@ interface OrderSummaryModalProps {
 
 export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummaryModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const { role } = useRole();
 
   // Fetch order details
   const { data: orderDetails, isLoading, error } = useOrderDetails(orderId || '');
+
+  // Reset image errors when order changes
+  useEffect(() => {
+    setImageErrors(new Set());
+  }, [orderId]);
 
   // Show loading state
   if (isLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md p-0 gap-0 bg-[#F8F9FA] h-[90vh] max-h-[800px] flex flex-col overflow-hidden rounded-3xl font-space-grotesk border-0 focus:outline-none">
+          {/* FIX: Added DialogTitle for accessibility */}
+          <DialogHeader className="sr-only">
+            <DialogTitle>Loading Order Details</DialogTitle>
+          </DialogHeader>
+          
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900"></div>
             <span className="ml-2 text-gray-600">Loading order details...</span>
@@ -96,6 +108,11 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md p-0 gap-0 bg-[#F8F9FA] h-[90vh] max-h-[800px] flex flex-col overflow-hidden rounded-3xl font-space-grotesk border-0 focus:outline-none">
+          {/* FIX: Added DialogTitle for accessibility */}
+          <DialogHeader className="sr-only">
+            <DialogTitle>Error Loading Order</DialogTitle>
+          </DialogHeader>
+
           <div className="flex items-center justify-center h-full p-6">
             <div className="text-center">
               <p className="text-red-600 mb-2">Failed to load order details</p>
@@ -118,9 +135,25 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
     return null;
   }
 
+  // Flatten all photos from all products for the carousel
+  const allPhotos = orderDetails.products.flatMap((product, productIndex) =>
+    (product.photos || []).map((photo, photoIndex) => ({
+      url: photo,
+      productIndex,
+      photoIndex,
+      product: product
+    }))
+  );
+
+  // Get the currently selected product based on selected photo
+  const selectedProduct = allPhotos[selectedImageIndex]?.product || orderDetails.products[0];
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 gap-0 bg-[#F8F9FA] h-[90vh] max-h-[95vh] md:h-[95vh] flex flex-col overflow-hidden rounded-3xl font-space-grotesk border-0 focus:outline-none">
+      <DialogContent className="sm:max-w-md p-0 gap-0 bg-[#F8F9FA] max-h-[95vh] flex flex-col overflow-hidden rounded-3xl font-space-grotesk border-0 focus:outline-none">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Order Summary</DialogTitle>
+        </DialogHeader>
 
         {/* --- Sticky Header --- */}
         <div className="flex items-center justify-between p-6 bg-[#F8F9FA] sticky top-0 z-10">
@@ -131,7 +164,7 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
             >
               <ChevronLeft className="h-5 w-5 text-gray-700" />
             </button>
-            <DialogTitle className="text-xl font-semibold text-gray-900">Order Summary</DialogTitle>
+            <h1 className="text-xl font-semibold text-gray-900">Order Summary</h1>
           </div>
 
           <DropdownMenu>
@@ -152,21 +185,22 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
         </div>
 
         {/* --- Scrollable Body --- */}
-        <div className="flex-1 overflow-y-auto px-6 pb-32 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4 min-h-0">
 
           {/* Image Preview */}
-          <div className="w-full h-64 rounded-2xl overflow-hidden border border-gray-200 bg-white">
-            {orderDetails.products[selectedImageIndex]?.photos?.[0] ? (
+          <div className="relative w-full h-64 rounded-2xl overflow-hidden border border-gray-200 bg-white">
+            {allPhotos[selectedImageIndex]?.url && !imageErrors.has(selectedImageIndex) ? (
               <NextImage
-                src={orderDetails.products[selectedImageIndex].photos[0]}
-                alt={orderDetails.products[selectedImageIndex].name}
+                src={allPhotos[selectedImageIndex].url}
+                alt={allPhotos[selectedImageIndex].product.name}
                 fill
                 className="object-cover"
+                onError={() => setImageErrors(prev => new Set(prev).add(selectedImageIndex))}
               />
             ) : (
               <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                 <span className="text-gray-500 text-lg font-medium">
-                  No image available
+                  {imageErrors.has(selectedImageIndex) ? 'Image failed to load' : 'No image available'}
                 </span>
               </div>
             )}
@@ -174,7 +208,7 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
 
           {/* 1. Images Carousel */}
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide pt-2 px-2">
-            {orderDetails.products.map((product, i) => (
+            {allPhotos.map((photo, i) => (
               <div
                 key={i}
                 onClick={() => setSelectedImageIndex(i)}
@@ -183,16 +217,19 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
                   selectedImageIndex === i ? 'border-purple-500 shadow-md' : 'border-gray-200'
                 }`}
               >
-                {product.photos?.[0] ? (
+                {photo.url && !imageErrors.has(i) ? (
                   <NextImage
-                    src={product.photos[0]}
-                    alt={product.name}
+                    src={photo.url}
+                    alt={photo.product.name}
                     fill
                     className="object-cover"
+                    onError={() => setImageErrors(prev => new Set(prev).add(i))}
                   />
                 ) : (
                   <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                    <span className="text-xs text-gray-600 font-medium">{i + 1}</span>
+                    <span className="text-xs text-gray-600 font-medium">
+                      {imageErrors.has(i) ? '!' : i + 1}
+                    </span>
                   </div>
                 )}
               </div>
@@ -202,15 +239,15 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
           {/* 2. Product Title & Price Card */}
           <Card className="p-5 border-none shadow-sm rounded-2xl bg-white">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {orderDetails.products[selectedImageIndex]?.name || 'Product'}
+              {selectedProduct?.name || 'Product'}
             </h3>
             <p className="text-gray-600 font-medium mb-4">
-              ${orderDetails.products[selectedImageIndex]?.price || 0} - ${orderDetails.products[selectedImageIndex]?.price || 0} x {orderDetails.products[selectedImageIndex]?.quantity || 1} {orderDetails.products[selectedImageIndex]?.quantity === 1 ? 'Unit' : 'Units'}
+              ${selectedProduct?.price?.toFixed(2) || '0.00'} - ${selectedProduct?.price?.toFixed(2) || '0.00'} x {selectedProduct?.quantity || 1} {(selectedProduct?.quantity || 1) === 1 ? 'Unit' : 'Units'}
             </p>
             <div className="bg-gray-50 px-3 py-2.5 rounded-lg text-sm text-gray-500 truncate flex items-center gap-2 border border-gray-100">
               <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50" />
               <span className="truncate text-blue-600 underline decoration-blue-200 underline-offset-2">
-                {orderDetails.products[selectedImageIndex]?.link || '#'}
+                {selectedProduct?.link || '#'}
               </span>
             </div>
           </Card>
@@ -219,11 +256,8 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
           <Card className="p-5 border-none shadow-sm rounded-2xl bg-white space-y-2">
             <h4 className="text-sm font-medium text-gray-400">Product Description</h4>
             <p className="text-sm text-gray-700 leading-relaxed">
-              {orderDetails.products[selectedImageIndex]?.additionalInfo ||
-               `Product: ${orderDetails.products[selectedImageIndex]?.name || 'N/A'}
-               Colour: ${orderDetails.products[selectedImageIndex]?.colour || 'N/A'}
-               Weight: ${orderDetails.products[selectedImageIndex]?.weight || 0}kg
-               Quantity: ${orderDetails.products[selectedImageIndex]?.quantity || 1}`}
+              {selectedProduct?.additionalInfo ||
+                `Product: ${selectedProduct?.name || 'N/A'}\nColour: ${selectedProduct?.colour || 'N/A'}\nWeight: ${selectedProduct?.weight || 0}kg\nQuantity: ${selectedProduct?.quantity || 1}`}
             </p>
           </Card>
 
@@ -293,10 +327,10 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
           </Card>
         </div>
 
-        {/* --- Bottom Fixed Action Button --- */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-white/0 pt-10">
+        {/* --- Bottom Action Button --- */}
+        <div className="flex-shrink-0 p-6 bg-white border-t border-gray-100">
           <Button className="w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-xl shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]">
-            Make Payment (${orderDetails.order.priceSummary.totalItemCost + orderDetails.order.priceSummary.deliveryFee + orderDetails.order.priceSummary.serviceFee + orderDetails.order.priceSummary.tax})
+            Make Payment (${orderDetails.products.reduce((total, product) => total + (product.price * product.quantity), 0).toFixed(2)})
           </Button>
         </div>
 

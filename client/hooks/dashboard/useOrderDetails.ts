@@ -9,12 +9,7 @@ export interface OrderDetailsResponse {
     status: string;
     matchScore: number;
     createdAt: string;
-    priceSummary: {
-      totalItemCost: number;
-      deliveryFee: number;
-      serviceFee: number;
-      tax: number;
-    };
+    priceSummary?: any; // Optional for now, will be properly defined later
   };
   shopper: {
     id: string;
