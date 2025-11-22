@@ -12,13 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   ChevronLeft,
   MapPin,
   CheckCircle,
@@ -26,7 +19,6 @@ import {
   Luggage,
   Loader2,
 } from 'lucide-react';
-import Image from 'next/image';
 import { DatePicker } from '@/components/DatePicker';
 import { TimePicker } from '@/components/TimePicker';
 import { PhotoUpload } from '@/components/PhotoUpload';
@@ -34,9 +26,7 @@ import { format, parse } from 'date-fns';
 import { useAuth } from '@clerk/nextjs';
 import { useQueryClient } from '@tanstack/react-query';
 
-
-// Assuming this FormField component is defined or imported globally if needed,
-// but included here for self-contained functionality.
+// FormField component
 function FormField({
   id,
   label,
@@ -60,6 +50,7 @@ function FormField({
     </div>
   );
 }
+
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 // Validation function for trip draft
@@ -81,6 +72,7 @@ const isValidDraft = (obj: any): obj is FormData & { timestamp: number } => {
   }
   return typeof obj.timestamp === 'number';
 };
+
 // Helper functions for date/time parsing
 const parseDate = (dateStr: string): Date | null => {
   const parts = dateStr.split('/');
@@ -107,7 +99,7 @@ const parseDateTime = (dateStr: string, timeStr: string): Date | null => {
   return date;
 };
 
-// --- Main Modal Component ---
+// Main Modal Component
 interface CreateTripModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -186,7 +178,7 @@ export function CreateTripModal({
 
   // Auto-save draft
   useEffect(() => {
-    if (isOpen && formData.departureCity) { // Only save if there's some data
+    if (isOpen && formData.departureCity) {
       localStorage.setItem('tripDraft', JSON.stringify({ ...formData, timestamp: Date.now() }));
     }
   }, [formData, isOpen]);
@@ -204,7 +196,6 @@ export function CreateTripModal({
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error on change
     setFieldErrors(prev => ({ ...prev, [field]: '' }));
   };
 
@@ -216,7 +207,6 @@ export function CreateTripModal({
   const validateForm = (data: FormData): { isValid: boolean; errors: Record<string, string> } => {
     const errors: Record<string, string> = {};
 
-    // Check required fields
     if (!data.departureCity) errors.departureCity = 'Departure city is required';
     if (!data.arrivalCity) errors.arrivalCity = 'Arrival city is required';
     if (!data.departureDate) errors.departureDate = 'Departure date is required';
@@ -226,19 +216,13 @@ export function CreateTripModal({
     if (!data.checkInSpace) errors.checkInSpace = 'Check-in space is required';
     if (!data.carryOnSpace) errors.carryOnSpace = 'Carry-on space is required';
 
-    // Validate dates
-    if (data.departureDate) {
-      if (!parseDate(data.departureDate)) {
-        errors.departureDate = 'Invalid departure date format (MM/dd/yyyy)';
-      }
+    if (data.departureDate && !parseDate(data.departureDate)) {
+      errors.departureDate = 'Invalid departure date format (MM/dd/yyyy)';
     }
-    if (data.arrivalDate) {
-      if (!parseDate(data.arrivalDate)) {
-        errors.arrivalDate = 'Invalid arrival date format (MM/dd/yyyy)';
-      }
+    if (data.arrivalDate && !parseDate(data.arrivalDate)) {
+      errors.arrivalDate = 'Invalid arrival date format (MM/dd/yyyy)';
     }
 
-    // Validate times
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (data.departureTime && !timeRegex.test(data.departureTime)) {
       errors.departureTime = 'Invalid departure time format. Use HH:mm (24-hour format)';
@@ -247,7 +231,6 @@ export function CreateTripModal({
       errors.arrivalTime = 'Invalid arrival time format. Use HH:mm (24-hour format)';
     }
 
-    // Validate that arrival is after departure
     if (data.departureDate && data.departureTime && data.arrivalDate && data.arrivalTime) {
       const depDateTime = parseDateTime(data.departureDate, data.departureTime);
       const arrDateTime = parseDateTime(data.arrivalDate, data.arrivalTime);
@@ -256,7 +239,6 @@ export function CreateTripModal({
       }
     }
 
-    // Validate spaces
     if (data.checkInSpace) {
       const num = parseFloat(data.checkInSpace);
       if (!isFinite(num) || num < 0.1 || num > 50) {
@@ -274,38 +256,24 @@ export function CreateTripModal({
   };
 
   const handleSubmit = async () => {
-    console.log('isSubmitting at handleSubmit start:', isSubmitting);
-    if (isSubmitting) return; // Prevent multiple submissions
+    if (isSubmitting) return;
 
-    console.log('handleSubmit started');
     setIsSubmitting(true);
-    console.log('setIsSubmitting set to true');
     setSubmitError('');
-    console.log('setSubmitError cleared');
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      console.log('About to validate');
-      // Validate form
       const validation = validateForm(formData);
-      console.log('Validation done, isValid:', validation.isValid, 'errors:', validation.errors);
       if (!validation.isValid) {
-        console.log('Validation failed, setting field errors');
         setFieldErrors(validation.errors);
-        console.log('setFieldErrors called, errors set to:', validation.errors);
         setIsSubmitting(false);
-        console.log('setIsSubmitting set to false');
         return;
       }
 
-      console.log('Validation passed');
-
-      // Get user's timezone
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-      // Prepare data for API
       const tripData = {
         fromCountry: formData.departureCity,
         toCountry: formData.arrivalCity,
@@ -321,7 +289,6 @@ export function CreateTripModal({
         canHandleSpecialDelivery,
       };
 
-      // Get Clerk token for authentication
       const tokenPromise = getToken();
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Token retrieval timed out')), 10000)
@@ -343,10 +310,6 @@ export function CreateTripModal({
         return;
       }
 
-      console.log('Token obtained');
-
-      // Make API call
-      console.log('Making API call');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/trips`, {
         method: 'POST',
@@ -359,13 +322,9 @@ export function CreateTripModal({
       });
 
       const result = await response.json();
-
-      console.log('API response received');
-
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        // Handle structured error responses
         if (result.code === 'INSUFFICIENT_LEAD_TIME') {
           throw new Error(`${result.message}. ${result.suggestion || ''}`.trim());
         } else if (result.code === 'INVALID_ROLE') {
@@ -377,24 +336,19 @@ export function CreateTripModal({
         } else if (result.code === 'INVALID_TIMEZONE') {
           throw new Error(`${result.message}. ${result.suggestion || ''}`.trim());
         } else if (result.code === 'VALIDATION_ERROR') {
-          // Handle Zod validation errors
           const firstError = result.details?.[0];
           if (firstError) {
             throw new Error(`Validation Error: ${firstError.message}`);
           }
           throw new Error('Please check your input and try again');
         } else {
-          // Generic error with fallback
           throw new Error(result.message || result.error || 'Failed to create trip. Please try again.');
         }
       }
 
-      // Success - invalidate trips cache to refetch with new data
       queryClient.invalidateQueries({ queryKey: ['trips'] });
-
       setView('success');
 
-      // Reset form data after successful submission
       setFormData({
         departureCity: '',
         departureDate: '',
@@ -408,7 +362,6 @@ export function CreateTripModal({
       });
       setCanCarryFragile(false);
       setCanHandleSpecialDelivery(false);
-      // Clear draft
       localStorage.removeItem('tripDraft');
 
     } catch (error) {
@@ -420,20 +373,18 @@ export function CreateTripModal({
       }
       console.error('Trip creation error:', error);
     } finally {
-      console.log('Finally: resetting isSubmitting');
       setIsSubmitting(false);
     }
   };
 
-  // Renders the main form for entering trip details (matching the screenshot)
   const renderFormView = () => (
     <>
       <DialogHeader className="sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl">
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="p-1 rounded-full hover:bg-gray-100"
-            onClick={() => onOpenChange(false)} // Close modal
+            className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+            onClick={() => onOpenChange(false)}
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
@@ -447,15 +398,14 @@ export function CreateTripModal({
         </p>
       </DialogHeader>
 
-      {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl">
-        {/* 1. Departure City */}
+        {/* Departure City */}
         <FormField id="departure-city" label="Enter Departure city">
           <div className="relative">
             <Input
               id="departure-city"
               placeholder="Los Angeles, USA"
-              className="h-11 pl-10"
+              className="h-11 pl-10 transition-colors focus:border-purple-500"
               value={formData.departureCity}
               onChange={(e) => handleInputChange('departureCity', e.target.value)}
               onBlur={() => handleBlur('departureCity')}
@@ -472,7 +422,7 @@ export function CreateTripModal({
           )}
         </FormField>
 
-        {/* 2. Departure Date & Time */}
+        {/* Departure Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <FormField id="departure-date" label="Departure Date">
             <DatePicker
@@ -499,13 +449,13 @@ export function CreateTripModal({
           </FormField>
         </div>
 
-        {/* 3. Arrival City */}
+        {/* Arrival City */}
         <FormField id="arrival-city" label="Arrival City">
           <div className="relative">
             <Input
               id="arrival-city"
               placeholder="Port Harcourt, Nigeria"
-              className="h-11 pl-10"
+              className="h-11 pl-10 transition-colors focus:border-purple-500"
               value={formData.arrivalCity}
               onChange={(e) => handleInputChange('arrivalCity', e.target.value)}
               onBlur={() => handleBlur('arrivalCity')}
@@ -522,7 +472,7 @@ export function CreateTripModal({
           )}
         </FormField>
 
-        {/* 4. Arrival Date & Time */}
+        {/* Arrival Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <FormField id="arrival-date" label="Arrival Date">
             <DatePicker
@@ -549,7 +499,7 @@ export function CreateTripModal({
           </FormField>
         </div>
 
-        {/* 5. Available Check-In Luggage Space */}
+        {/* Check-In Space */}
         <FormField
           id="check-in-space"
           label="Available luggage Space - Check In"
@@ -562,14 +512,11 @@ export function CreateTripModal({
               step="0.1"
               id="check-in-space"
               placeholder="e.g., 10.5"
-              title="Enter available weight in kilograms (e.g., 5 for 5kg)"
-              className="h-11 pl-3 pr-10 border rounded-md w-full"
+              className="h-11 pl-3 pr-10 border rounded-md w-full transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
               value={formData.checkInSpace}
               onChange={(e) => handleInputChange('checkInSpace', e.target.value)}
               onBlur={() => handleBlur('checkInSpace')}
               disabled={isSubmitting}
-              aria-describedby={fieldErrors.checkInSpace ? 'check-in-space-error' : undefined}
-              aria-required="true"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">KG</span>
           </div>
@@ -580,7 +527,7 @@ export function CreateTripModal({
           )}
         </FormField>
 
-        {/* 6. Available Carry-On Luggage Space */}
+        {/* Carry-On Space */}
         <FormField
           id="carry-on-space"
           label="Available luggage Space - Carry On"
@@ -593,14 +540,11 @@ export function CreateTripModal({
               step="0.1"
               id="carry-on-space"
               placeholder="e.g., 10.5"
-              title="Enter available weight in kilograms (e.g., 5 for 5kg)"
-              className="h-11 pl-3 pr-10 border rounded-md w-full"
+              className="h-11 pl-3 pr-10 border rounded-md w-full transition-colors focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
               value={formData.carryOnSpace}
               onChange={(e) => handleInputChange('carryOnSpace', e.target.value)}
               onBlur={() => handleBlur('carryOnSpace')}
               disabled={isSubmitting}
-              aria-describedby={fieldErrors.carryOnSpace ? 'carry-on-space-error' : undefined}
-              aria-required="true"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">KG</span>
           </div>
@@ -612,10 +556,10 @@ export function CreateTripModal({
         </FormField>
 
         {/* Fragile Items Switch */}
-        <div className='flex items-center justify-between'>
+        <div className='flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors'>
           <Label
             htmlFor='canCarryFragile'
-            className='text-sm font-medium text-gray-700'
+            className='text-sm font-medium text-gray-700 cursor-pointer'
           >
             Can carry fragile items?
           </Label>
@@ -627,10 +571,10 @@ export function CreateTripModal({
         </div>
 
         {/* Special Delivery Switch */}
-        <div className='flex items-center justify-between'>
+        <div className='flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors'>
           <Label
             htmlFor='canHandleSpecialDelivery'
-            className='text-sm font-medium text-gray-700'
+            className='text-sm font-medium text-gray-700 cursor-pointer'
           >
             Can handle special delivery?
           </Label>
@@ -641,7 +585,7 @@ export function CreateTripModal({
           />
         </div>
 
-        {/* 7. Ticket photo */}
+        {/* Ticket Photo */}
         <FormField id="ticket-photo" label="Ticket photo" className="min-h-[10rem]">
           <PhotoUpload
             endpoint="ticketUploader"
@@ -660,7 +604,7 @@ export function CreateTripModal({
         {/* Submit Button */}
         <div className="pt-4 mt-4 border-t">
           {submitError && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg animate-in fade-in slide-in-from-top-2">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -679,8 +623,8 @@ export function CreateTripModal({
             </div>
           )}
           <Button
-            className="w-full bg-purple-900 hover:bg-purple-800 hover:cursor-pointer h-11"
-            onClick={() => { console.log('Button clicked'); handleSubmit(); }}
+            className="w-full bg-purple-900 hover:bg-purple-800 hover:cursor-pointer h-11 transition-all active:scale-[0.98]"
+            onClick={handleSubmit}
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -697,10 +641,9 @@ export function CreateTripModal({
     </>
   );
 
-  // Renders the success message view
   const renderSuccessView = () => (
-    <div className="flex flex-col items-center justify-center p-8 text-center h-full bg-white">
-      <CheckCircle className="h-16 w-16 text-purple-900 mb-4" />
+    <div className="flex flex-col items-center justify-center p-8 text-center h-full bg-white animate-in fade-in zoom-in-95">
+      <CheckCircle className="h-16 w-16 text-purple-900 mb-4 animate-in zoom-in" />
       <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
         Trip Saved!
       </DialogTitle>
@@ -709,18 +652,17 @@ export function CreateTripModal({
         shoppers.
       </p>
 
-      {/* Action Buttons */}
       <div className="space-y-3 w-full max-w-xs">
         <Button
-          className="w-full bg-purple-900 hover:bg-purple-800 h-11"
-          onClick={() => onOpenChange(false)} // Close the modal
+          className="w-full bg-purple-900 hover:bg-purple-800 h-11 transition-all active:scale-[0.98]"
+          onClick={() => onOpenChange(false)}
         >
           Close
         </Button>
         <Button
           variant="outline"
-          className="w-full h-11 border-purple-900 text-purple-900 hover:bg-purple-50"
-          onClick={() => setView('form')} // Go back to the form to edit
+          className="w-full h-11 border-purple-900 text-purple-900 hover:bg-purple-50 transition-all active:scale-[0.98]"
+          onClick={() => setView('form')}
         >
           <Pencil className="h-4 w-4 mr-2" /> Edit Details
         </Button>
@@ -731,7 +673,6 @@ export function CreateTripModal({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
-        // Conditional styling for the success screen
         className={`sm:max-w-md lg:max-w-lg p-0 gap-0 flex ${
           view === 'form' ? 'flex-col max-h-[90vh] h-full' : 'max-h-[50vh]'
         } font-space-grotesk rounded-xl`}

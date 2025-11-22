@@ -632,25 +632,20 @@ export function PlaceOrderModal({
         </FormField>
 
         {/* Product Photos */}
-        <FormField
-          id='photos'
-          label={<>Add Product Photos <span className="text-gray-400">(Max size of 3MB each)</span></>} className='font-sm'
-        >
-          <div className='grid grid-cols-3 gap-3'>
-            {[0, 1, 2].map((index) => (
-              <PhotoUpload
-                key={index}
-                endpoint="productUploader"
-                currentPhoto={formData.productDetails.photos?.[index]}
-                onPhotoUpdate={(url: string) => handlePhotoUpdate(index, url)}
-                placeholder={`Photo ${index + 1}`}
-                className="aspect-square text-center font-xs"
-                showRemoveButton={true}
-                onRemove={() => handlePhotoRemove(index)}
-              />
-            ))}
-          </div>
-        </FormField>
+<FormField
+  id='photos'
+  label={<>Add Product Photos <span className="text-gray-400">(Max size of 3MB each)</span></>}
+  className='font-sm'
+>
+  <PhotoUpload
+    endpoint="productUploader"
+    multiple={true}
+    maxFiles={3}
+    currentPhotos={formData.productDetails.photos || []}
+    onPhotosUpdate={(urls) => updateProductDetails({ photos: urls })}
+    placeholder="Add photos"
+  />
+</FormField>
 
         {/* Add Quantity */}
         <FormField id='quantity' label='Add Quantity'>
