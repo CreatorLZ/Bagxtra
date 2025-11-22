@@ -103,37 +103,7 @@ const stores = [
   { name: 'Gucci', logo: '/gucci.png', url: 'https://www.gucci.com' },
 ];
 
-// New Mock Data for Travelers
-const travelers = [
-  {
-    id: 1,
-    name: 'Adeshina Adewale',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
-    rating: 5,
-    origin: 'LA',
-    originTime: '10:30',
-    originDate: '12/12/25',
-    dest: 'LAG',
-    destTime: '12:40',
-    destDate: '12/12/25',
-    timezone: 'America/Los_Angeles',
-    match: 90,
-  },
-  {
-    id: 2,
-    name: 'Adeshina Adewale',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
-    rating: 5,
-    origin: 'LA',
-    originTime: '10:30',
-    originDate: '12/12/25',
-    dest: 'LAG',
-    destTime: '12:40',
-    destDate: '12/12/25',
-    timezone: 'America/Los_Angeles',
-    match: 70,
-  },
-];
+
 
 // --- Helper Components ---
 function FormField({
@@ -143,7 +113,7 @@ function FormField({
   className = '',
 }: {
   id: string;
-  label: string;
+  label: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -348,6 +318,7 @@ interface PlaceOrderModalProps {
 }
 
 interface Order {
+  id: string;
   amount: string;
   item: string;
   details: string;
@@ -374,6 +345,9 @@ export function PlaceOrderModal({
 
   // State for the current request ID (set when order is submitted)
   const [requestId, setRequestId] = useState<string | null>(null);
+
+  // State for store search
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Form validation state
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -640,13 +614,13 @@ export function PlaceOrderModal({
               onValueChange={(value) => updateProductDetails({ currency: value })}
               disabled={isSubmitting}
             >
-              <SelectTrigger className='w-[100px] h-11'>
+              <SelectTrigger className='w-[100px] h-11 py-[21px]'>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value='USD'>USD</SelectItem>
-                <SelectItem value='EUR'>EUR</SelectItem>
-                <SelectItem value='GBP'>GBP</SelectItem>
+                {/* <SelectItem value='EUR'>EUR</SelectItem>
+                <SelectItem value='GBP'>GBP</SelectItem> */}
               </SelectContent>
             </Select>
           </div>
@@ -660,7 +634,7 @@ export function PlaceOrderModal({
         {/* Product Photos */}
         <FormField
           id='photos'
-          label='Add Product Photos (Max. 3 photos, 4MB each)'
+          label={<>Add Product Photos <span className="text-gray-400">(Max size of 3MB each)</span></>} className='font-sm'
         >
           <div className='grid grid-cols-3 gap-3'>
             {[0, 1, 2].map((index) => (
@@ -670,7 +644,7 @@ export function PlaceOrderModal({
                 currentPhoto={formData.productDetails.photos?.[index]}
                 onPhotoUpdate={(url: string) => handlePhotoUpdate(index, url)}
                 placeholder={`Photo ${index + 1}`}
-                className="aspect-square"
+                className="aspect-square text-center font-xs"
                 showRemoveButton={true}
                 onRemove={() => handlePhotoRemove(index)}
               />
@@ -769,12 +743,17 @@ export function PlaceOrderModal({
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <Input placeholder="Search for stores" className="h-11 pl-10" />
+          <Input
+            placeholder="Search for stores"
+            className="h-11 pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
         {/* Store List */}
         <div className="space-y-2">
-          {stores.map(store => (
+          {stores.filter(store => store.name.toLowerCase().includes(searchQuery.toLowerCase())).map(store => (
             <a
               key={store.name}
               href={store.url}
@@ -916,9 +895,9 @@ export function PlaceOrderModal({
 
         {/* Additional Phone Number */}
         <FormField id="phone" label="Additional Phone Number">
-          <div className="flex gap-2">
+          <div className="flex gap-2 ">
             <Select value={formData.deliveryDetails.phoneCountry} onValueChange={(value) => updateDeliveryDetails({ phoneCountry: value })}>
-              <SelectTrigger className="w-[100px] h-11">
+              <SelectTrigger className="w-[100px] h-11 py-[21px]">
                 <SelectValue placeholder="🇳🇬" />
               </SelectTrigger>
               <SelectContent>
@@ -1134,6 +1113,11 @@ export function PlaceOrderModal({
           destinationCountry: formData.deliveryDetails.deliveringTo.trim(),
           deliveryStartDate: formData.deliveryDetails.deliveryStartDate || undefined,
           deliveryEndDate: formData.deliveryDetails.deliveryEndDate || undefined,
+          pickup: formData.deliveryDetails.pickup || false,
+          carryOn: formData.deliveryDetails.carryOn || false,
+          storePickup: formData.deliveryDetails.storePickup || false,
+          phone: formData.deliveryDetails.phone || '',
+          phoneCountry: formData.deliveryDetails.phoneCountry || 'NG',
           bagItems: [{
             productName: formData.productDetails.name.trim(),
             productLink: formData.productDetails.url?.trim() || undefined,
@@ -1216,6 +1200,11 @@ export function PlaceOrderModal({
           destinationCountry: formData.deliveryDetails.deliveringTo.trim(),
           deliveryStartDate: formData.deliveryDetails.deliveryStartDate || undefined,
           deliveryEndDate: formData.deliveryDetails.deliveryEndDate || undefined,
+          pickup: formData.deliveryDetails.pickup || false,
+          carryOn: formData.deliveryDetails.carryOn || false,
+          storePickup: formData.deliveryDetails.storePickup || false,
+          phone: formData.deliveryDetails.phone || '',
+          phoneCountry: formData.deliveryDetails.phoneCountry || 'NG',
           bagItems: [{
             productName: formData.productDetails.name.trim(),
             productLink: formData.productDetails.url?.trim() || undefined,
@@ -1255,6 +1244,7 @@ export function PlaceOrderModal({
 
       // Notify parent component with new order data for optimistic update
       const newOrder = {
+        id: `temp_${Date.now()}`, // Temporary ID for optimistic updates
         amount: `$${(parseFloat(formData.productDetails.price || '0') * formData.quantity).toFixed(2)}`,
         item: formData.productDetails.name,
         details: 'Waiting for traveler approval',

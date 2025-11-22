@@ -17,6 +17,11 @@ const createRequestSchema = z.object({
   destinationCountry: z.string().min(1).max(100), // Changed to match client payload
   deliveryStartDate: z.string().optional(),
   deliveryEndDate: z.string().optional(),
+  pickup: z.boolean(),
+  phone: z.string().optional(),
+  phoneCountry: z.string().optional(),
+  carryOn: z.boolean(),
+  storePickup: z.boolean(),
   bagItems: z.array(z.object({
     productName: z.string().min(1).max(255),
     productLink: z.string().url(),
@@ -28,6 +33,8 @@ const createRequestSchema = z.object({
     photos: z.array(z.string().url()).optional(),
     requiresSpecialDelivery: z.boolean().optional(),
     specialDeliveryCategory: z.string().optional(),
+    colour: z.string().optional(),
+    additionalInfo: z.string().optional(),
   })).min(1),
 });
 
@@ -401,6 +408,8 @@ export const findPotentialMatches = async (req: Request, res: Response) => {
         photos: z.array(z.string().url()).optional(),
         requiresSpecialDelivery: z.boolean().optional(),
         specialDeliveryCategory: z.string().optional(),
+        colour: z.string().optional(),
+        additionalInfo: z.string().optional(),
       })).min(1),
     }).parse(req.body);
 

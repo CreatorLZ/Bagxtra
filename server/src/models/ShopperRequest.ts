@@ -57,6 +57,12 @@ export interface IShopperRequest extends Document {
   // Delivery date range preferences
   deliveryStartDate?: Date;
   deliveryEndDate?: Date;
+  // Delivery preferences
+  pickup: boolean;
+  phone?: string;
+  phoneCountry?: string;
+  carryOn: boolean;
+  storePickup: boolean;
 }
 
 const priceSummarySchema = new Schema<IPriceSummary>(
@@ -167,6 +173,29 @@ const shopperRequestSchema = new Schema<IShopperRequest>(
     },
     deliveryEndDate: {
       type: Date,
+    },
+    pickup: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    phoneCountry: {
+      type: String,
+      trim: true,
+    },
+    carryOn: {
+      type: Boolean,
+      required: true,
+      default: true,
+    },
+    storePickup: {
+      type: Boolean,
+      required: true,
+      default: true,
     },
   },
   {

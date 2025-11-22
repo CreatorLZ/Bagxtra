@@ -7,6 +7,7 @@ import { UserRepository } from '../services/repositoryImpl';
 const userRepo = new UserRepository();
 
 export interface OrderData {
+  id: string; // Match ID
   amount: string;
   item: string;
   details: string;
@@ -115,6 +116,7 @@ async function getShopperOrders(shopperId: string): Promise<OrdersResponse> {
       sum + (item.price * item.quantity), 0) || 0;
 
     const orderData: OrderData = {
+      id: (match as any)._id.toString(),
       amount: `$${totalAmount.toFixed(2)}`,
       item: request.bagItems?.[0]?.productName || 'Unknown Item',
       details: getShopperOrderDetails(match),
@@ -183,6 +185,7 @@ async function getTravelerOrders(travelerId: string): Promise<OrdersResponse> {
       sum + (item.price * item.quantity), 0) || 0;
 
     const orderData: OrderData = {
+      id: (match as any)._id.toString(),
       amount: `$${totalAmount.toFixed(2)}`,
       item: request.bagItems?.[0]?.productName || 'Unknown Item',
       details: getTravelerOrderDetails(match),
@@ -239,3 +242,151 @@ function getTravelerOrderDetails(match: any): string {
       return 'Processing';
   }
 }
+
+/**
+ * Get detailed order information
+ * GET /api/orders/:id
+ */
+export const getOrderDetails = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+    }
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Invalid order ID'
+      });
+    }
+
+    // Find the match
+    const match = await Match.findById(id)
+      .populate({
+        path: 'requestId',
+        populate: [
+          { path: 'shopperId', model: 'User' },
+          { path: 'bagItems', model: 'BagItem' }
+        ]
+      })
+      .populate('tripId')
+      .populate('travelerId') as any; // Type assertion for populated fields
+
+    if (!match) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Order not found',
+      });
+    }
+
+    // Check if user has access to this order (either shopper or traveler)
+    const request = match.requestId as any;
+    const isShopper = request.shopperId._id.toString() === userId;
+    const isTraveler = match.travelerId._id.toString() === userId;
+
+    if (!isShopper && !isTraveler) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not have access to this order',
+      });
+    }
+
+    const trip = match.tripId as any;
+    const traveler = match.travelerId as any;
+    const shopper = request.shopperId as any;
+
+    // Calculate duration
+    const calculateDuration = (): string => {
+      try {
+        const depDateTime = new Date(`${trip.departureDate.toISOString().split('T')[0]}T${trip.departureTime}`);
+        const arrDateTime = new Date(`${trip.arrivalDate.toISOString().split('T')[0]}T${trip.arrivalTime}`);
+        const diffMs = arrDateTime.getTime() - depDateTime.getTime();
+        if (diffMs < 0) return 'Invalid duration';
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        return `${hours}h${minutes.toString().padStart(2, '0')}m`;
+      } catch (error) {
+        return 'Invalid duration';
+      }
+    };
+
+    const response = {
+      order: {
+        id: match._id,
+        status: match.status,
+        matchScore: match.matchScore,
+        createdAt: match.createdAt,
+        priceSummary: request.priceSummary,
+      },
+      shopper: {
+        id: shopper._id,
+        name: shopper.fullName,
+        avatar: shopper.profileImage,
+        rating: shopper.rating || 0,
+        phone: shopper.phone,
+        country: shopper.country,
+      },
+      traveler: {
+        id: traveler._id,
+        name: traveler.fullName,
+        avatar: traveler.profileImage,
+        rating: traveler.rating || 0,
+        phone: traveler.phone,
+        country: traveler.country,
+      },
+      trip: {
+        fromCountry: trip.fromCountry,
+        toCountry: trip.toCountry,
+        departureDate: trip.departureDate.toISOString().split('T')[0],
+        departureTime: trip.departureTime,
+        arrivalDate: trip.arrivalDate.toISOString().split('T')[0],
+        arrivalTime: trip.arrivalTime,
+        timezone: trip.timezone,
+        availableCarryOnKg: trip.availableCarryOnKg,
+        availableCheckedKg: trip.availableCheckedKg,
+        duration: calculateDuration(),
+      },
+      products: request.bagItems.map((item: any) => ({
+        name: item.productName,
+        link: item.productLink,
+        price: item.price,
+        currency: item.currency,
+        weight: item.weightKg,
+        quantity: item.quantity,
+        isFragile: item.isFragile,
+        photos: item.photos || [],
+        colour: item.colour,
+        additionalInfo: item.additionalInfo,
+      })),
+      delivery: {
+        fromCountry: request.fromCountry,
+        toCountry: request.toCountry,
+        startDate: request.deliveryStartDate?.toISOString().split('T')[0],
+        endDate: request.deliveryEndDate?.toISOString().split('T')[0],
+        pickup: request.pickup,
+        carryOn: request.carryOn,
+        storePickup: request.storePickup,
+        phone: request.phone,
+        phoneCountry: request.phoneCountry,
+      },
+    };
+
+    res.status(200).json({
+      success: true,
+      data: response,
+    });
+  } catch (error) {
+    console.error('Error fetching order details:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch order details',
+    });
+  }
+  return;
+};

@@ -3,6 +3,11 @@ export interface CreateShopperRequestPayload {
   destinationCountry: string;
   deliveryStartDate?: string;
   deliveryEndDate?: string;
+  pickup: boolean;
+  phone?: string;
+  phoneCountry?: string;
+  carryOn: boolean;
+  storePickup: boolean;
   bagItems: BagItemPayload[];
 }
 
@@ -17,6 +22,8 @@ export interface BagItemPayload {
   photos?: string[];
   requiresSpecialDelivery?: boolean;
   specialDeliveryCategory?: string;
+  colour?: string;
+  additionalInfo?: string;
 }
 
 export interface Dimensions {

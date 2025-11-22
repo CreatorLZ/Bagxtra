@@ -1,7 +1,7 @@
 'use client';
 
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
-import { Plus, Plane } from 'lucide-react';
+import { Plus, Plane, PlaneTakeoff } from 'lucide-react';
 import { useState } from 'react';
 import { useRole } from '@/hooks/useRole';
 import { CreateTripModal } from '@/components/CreateTripModal';
@@ -218,10 +218,10 @@ export default function TripsPage() {
           ))}
 
           {currentTrips.length === 0 && (
-            <div className="text-center py-12">
-              <Plane className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No trips in this category
+            <div className="text-center py-12 font-space-grotesk">
+              <PlaneTakeoff className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                 You currently have no trips in this category
               </h3>
               <p className="text-gray-600">
                 Your trips will appear here when available.

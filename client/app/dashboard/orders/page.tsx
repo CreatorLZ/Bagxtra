@@ -5,11 +5,13 @@ import { Card } from '@/components/ui/card';
 import { Plus, ShoppingBag } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { PlaceOrderModal } from '@/components/PlaceOrderModal';
+import { OrderSummaryModal } from '@/components/OrderSummaryModal';
 import { useRole } from '@/hooks/useRole';
 import { useOrders } from '@/hooks/dashboard/useOrders';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface Order {
+  id: string;
   amount: string;
   item: string;
   details: string;
@@ -29,6 +31,8 @@ export default function OrdersPage() {
   const { role } = useRole();
   const [activeTab, setActiveTab] = useState<OrderStatus>('accepted');
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   // Track the last count of pending orders to detect when new server data arrives
   const [lastPendingCount, setLastPendingCount] = useState(0);
@@ -47,13 +51,13 @@ export default function OrdersPage() {
     if (ordersData?.pending && !isFetching) {
       const currentPendingCount = ordersData.pending.length;
       
-      console.log('Orders effect triggered:', {
-        currentPendingCount,
-        lastPendingCount,
-        optimisticCount: optimisticOrders.length,
-        isFetching,
-        serverOrders: ordersData.pending
-      });
+      // console.log('Orders effect triggered:', {
+      //   currentPendingCount,
+      //   lastPendingCount,
+      //   optimisticCount: optimisticOrders.length,
+      //   isFetching,
+      //   serverOrders: ordersData.pending
+      // });
       
       // If we have optimistic orders and server now has data, clear optimistic
       // We check if count increased OR if we simply have optimistic orders and server data exists
@@ -64,8 +68,8 @@ export default function OrdersPage() {
         );
         
         if (hasMatchingServerOrder) {
-          console.log('Found matching server order, clearing optimistic updates');
-          setOptimisticOrders([]);
+          // console.log('Found matching server order, clearing optimistic updates');
+          // setOptimisticOrders([]);
         }
       }
       
@@ -83,7 +87,7 @@ export default function OrdersPage() {
       return orders.filter(order => {
         const key = getOrderKey(order);
         if (seen.has(key)) {
-          console.warn('Duplicate order detected and removed:', order);
+          // console.warn('Duplicate order detected and removed:', order);
           return false;
         }
         seen.add(key);
@@ -93,6 +97,7 @@ export default function OrdersPage() {
 
     const serverOrders = ordersData ? {
       accepted: deduplicateOrders(ordersData.accepted.map(order => ({
+        id: order.id,
         amount: order.amount,
         item: order.item,
         details: order.details,
@@ -100,6 +105,7 @@ export default function OrdersPage() {
         additionalInfo: order.additionalInfo
       }))),
       pending: deduplicateOrders(ordersData.pending.map(order => ({
+        id: order.id,
         amount: order.amount,
         item: order.item,
         details: order.details,
@@ -107,6 +113,7 @@ export default function OrdersPage() {
         additionalInfo: order.additionalInfo
       }))),
       incoming: deduplicateOrders(ordersData.incoming.map(order => ({
+        id: order.id,
         amount: order.amount,
         item: order.item,
         details: order.details,
@@ -114,6 +121,7 @@ export default function OrdersPage() {
         additionalInfo: order.additionalInfo
       }))),
       outgoing: deduplicateOrders(ordersData.outgoing.map(order => ({
+        id: order.id,
         amount: order.amount,
         item: order.item,
         details: order.details,
@@ -121,6 +129,7 @@ export default function OrdersPage() {
         additionalInfo: order.additionalInfo
       }))),
       completed: deduplicateOrders(ordersData.completed.map(order => ({
+        id: order.id,
         amount: order.amount,
         item: order.item,
         details: order.details,
@@ -128,6 +137,7 @@ export default function OrdersPage() {
         additionalInfo: order.additionalInfo
       }))),
       disputed: deduplicateOrders(ordersData.disputed.map(order => ({
+        id: order.id,
         amount: order.amount,
         item: order.item,
         details: order.details,
@@ -275,6 +285,10 @@ export default function OrdersPage() {
                 {orders.map((order: Order, index: number) => (
                   <Card
                     key={`${order.amount}-${order.item}-${index}`}
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setIsSummaryOpen(true);
+                    }}
                     className='p-4 shadow-none border-0 border-b border-gray-300 rounded-none cursor-pointer hover:shadow-sm hover:scale-105'
                   >
                     <div className='flex items-center space-x-4'>
@@ -318,10 +332,11 @@ export default function OrdersPage() {
           ))}
 
           {currentOrders.length === 0 && (
-            <div className='text-center py-12'>
-              <ShoppingBag className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-              <h3 className='text-lg font-semibold text-gray-900 mb-2'>
-                No orders in this category
+            <div className='text-center py-12 flex flex-col items-center font-space-grotesk'>
+              {/* <ShoppingBag className='h-12 w-12 text-gray-400 mx-auto mb-4' /> */}
+              <img src="/twobags.png" alt="twinbags" className='h-12 w-12 md:h-24 md:w-24'/>
+              <h3 className='text-lg font-semibold text-gray-700 mb-2'>
+                You currently have no orders in this category
               </h3>
               <p className='text-gray-600'>
                 Orders will appear here when available
@@ -345,16 +360,22 @@ export default function OrdersPage() {
         isOpen={isOrderModalOpen}
         onOpenChange={setIsOrderModalOpen}
         onOrderPlaced={(newOrder: Order) => {
-          console.log('Order placed, adding optimistic update:', newOrder);
-          
+          // console.log('Order placed, adding optimistic update:', newOrder);
+
           // Add to optimistic state immediately
-          setOptimisticOrders(prev => [...prev, newOrder]);
-          
+          setOptimisticOrders(prev => [...prev, { ...newOrder, id: `temp_${Date.now()}` }]);
+
           // Trigger a refetch in the background
-          queryClient.invalidateQueries({ 
+          queryClient.invalidateQueries({
             queryKey: ['orders']
           });
         }}
+      />
+
+      <OrderSummaryModal
+        isOpen={isSummaryOpen}
+        onOpenChange={setIsSummaryOpen}
+        orderId={selectedOrder?.id}
       />
     </DashboardLayout>
   );

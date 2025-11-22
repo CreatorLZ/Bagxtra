@@ -12,6 +12,8 @@ export interface IBagItem extends Document {
   photos: string[];
   requiresSpecialDelivery: boolean;
   specialDeliveryCategory?: string;
+  colour?: string;
+  additionalInfo?: string;
 }
 
 const bagItemSchema = new Schema<IBagItem>(
@@ -65,6 +67,14 @@ const bagItemSchema = new Schema<IBagItem>(
     specialDeliveryCategory: {
       type: String,
       required: false,
+    },
+    colour: {
+      type: String,
+      trim: true,
+    },
+    additionalInfo: {
+      type: String,
+      trim: true,
     },
   },
   {

@@ -6,6 +6,7 @@ import { ChevronRight, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 export default function ShopperDashboardPage() {
   const { data, isLoading, error } = useShopperDashboardData();
@@ -177,30 +178,32 @@ export default function ShopperDashboardPage() {
                 >
                   will be in Nigeria soon
                 </motion.p>
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.1 }}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button className='bg-linear-to-r font-space-grotesk from-white to-gray-100 text-purple-900 rounded-full shadow-lg hover:shadow-xl hover:from-gray-50 hover:to-white active:scale-95 transition-all duration-200 px-2 py-2.5 md:py-6 font-bold cursor-pointer group hover:px-2.5'>
-                    Place an Order
-                    <motion.span
-                      className='ml-2 flex items-center justify-center h-7 w-7 bg-purple-900 rounded-full p-5 font-bold group-hover:bg-purple-800 group-active:scale-90 transition-all duration-200'
-                      animate={{
-                        x: [0, 5, 0],
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: 'easeInOut',
-                      }}
-                    >
-                      <ChevronRight className='h-5 w-5 text-white' />
-                    </motion.span>
-                  </Button>
-                </motion.div>
+                <Link href="/dashboard/orders">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1, duration: 0.1 }}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button className='bg-linear-to-r font-space-grotesk from-white to-gray-100 text-purple-900 rounded-full shadow-lg hover:shadow-xl hover:from-gray-50 hover:to-white active:scale-95 transition-all duration-200 px-2 py-2.5 md:py-6 font-bold cursor-pointer group hover:px-2.5'>
+                      Place an Order
+                      <motion.span
+                        className='ml-2 flex items-center justify-center h-7 w-7 bg-purple-900 rounded-full p-5 font-bold group-hover:bg-purple-800 group-active:scale-90 transition-all duration-200'
+                        animate={{
+                          x: [0, 5, 0],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                      >
+                        <ChevronRight className='h-5 w-5 text-white' />
+                      </motion.span>
+                    </Button>
+                  </motion.div>
+                </Link>
               </div>
 
               {/* Traveler Avatars */}

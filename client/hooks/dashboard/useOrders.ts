@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export interface OrderData {
+  id: string;
   amount: string;
   item: string;
   details: string;
