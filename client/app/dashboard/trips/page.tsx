@@ -41,12 +41,14 @@ interface DisplayTrip {
 type TripStatus = 'pending' | 'active' | 'completed' | 'cancelled';
 
 // Fetch trips from API
-const fetchTrips = async (getToken: () => Promise<string | null>): Promise<ApiTrip[]> => {
+const fetchTrips = async (
+  getToken: () => Promise<string | null>
+): Promise<ApiTrip[]> => {
   const token = await getToken();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   const response = await fetch(`${apiUrl}/api/trips`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
   if (!response.ok) {
@@ -64,11 +66,15 @@ export default function TripsPage() {
   const [isTripModalOpen, setIsTripModalOpen] = useState(false);
 
   // Fetch trips data
-  const { data: trips = [], isLoading, error, refetch } = useQuery({
+  const {
+    data: trips = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['trips'],
     queryFn: () => fetchTrips(getToken),
   });
-
 
   if (isLoading) {
     return (
@@ -76,7 +82,7 @@ export default function TripsPage() {
         <div className='flex items-center justify-center min-h-[400px]'>
           <div className='text-center'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900 mx-auto mb-4'></div>
-            <p className="text-gray-600">Loading trips...</p>
+            <p className='text-gray-600'>Loading trips...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -88,9 +94,13 @@ export default function TripsPage() {
       <DashboardLayout>
         <div className='flex items-center justify-center min-h-[400px]'>
           <div className='text-center'>
-            <Plane className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Failed to load trips</h3>
-            <p className="text-gray-600 mb-4">{error?.message || 'An error occurred'}</p>
+            <Plane className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+            <h3 className='text-xl font-semibold text-gray-900 mb-2'>
+              Failed to load trips
+            </h3>
+            <p className='text-gray-600 mb-4'>
+              {error?.message || 'An error occurred'}
+            </p>
             <Button onClick={() => refetch()}>Retry</Button>
           </div>
         </div>
@@ -115,19 +125,23 @@ export default function TripsPage() {
     arrivalTime: trip.arrivalTime,
     departureDate: (() => {
       const d = new Date(trip.departureDate);
-      return isNaN(d.getTime()) ? 'Invalid date' : d.toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: '2-digit'
-      });
+      return isNaN(d.getTime())
+        ? 'Invalid date'
+        : d.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: '2-digit',
+          });
     })(),
     arrivalDate: (() => {
       const d = new Date(trip.arrivalDate);
-      return isNaN(d.getTime()) ? 'Invalid date' : d.toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: '2-digit'
-      });
+      return isNaN(d.getTime())
+        ? 'Invalid date'
+        : d.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: '2-digit',
+          });
     })(),
     timezone: trip.timezone,
     availableKG: trip.availableCarryOnKg + trip.availableCheckedKg,
@@ -135,12 +149,18 @@ export default function TripsPage() {
   }));
 
   // Group trips by status
-  const tripsByStatus = transformedTrips.reduce((acc: Record<TripStatus, DisplayTrip[]>, trip) => {
-    const status = trip.status;
-    if (!acc[status]) acc[status] = [];
-    acc[status].push(trip);
-    return acc;
-  }, { active: [], pending: [], completed: [], cancelled: [] } as Record<TripStatus, DisplayTrip[]>);
+  const tripsByStatus = transformedTrips.reduce(
+    (acc: Record<TripStatus, DisplayTrip[]>, trip) => {
+      const status = trip.status;
+      if (!acc[status]) acc[status] = [];
+      acc[status].push(trip);
+      return acc;
+    },
+    { active: [], pending: [], completed: [], cancelled: [] } as Record<
+      TripStatus,
+      DisplayTrip[]
+    >
+  );
 
   const currentTrips = tripsByStatus[activeTab] || [];
 
@@ -148,7 +168,10 @@ export default function TripsPage() {
   const groupedTrips = currentTrips.reduce(
     (acc: Record<string, DisplayTrip[]>, trip) => {
       const date = new Date(trip.departureDate);
-      const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const monthName = date.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      });
 
       if (!acc[monthName]) acc[monthName] = [];
       acc[monthName].push(trip);
@@ -161,12 +184,12 @@ export default function TripsPage() {
   if (role !== 'traveler') {
     return (
       <DashboardLayout>
-        <div className="text-center py-20">
-          <Plane className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+        <div className='text-center py-20'>
+          <Plane className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+          <h3 className='text-xl font-semibold text-gray-900 mb-2'>
             Traveler Account Required
           </h3>
-          <p className="text-gray-600">
+          <p className='text-gray-600'>
             This page is for users who travel and carry items for shoppers.
           </p>
         </div>
@@ -176,15 +199,17 @@ export default function TripsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 pb-24">
+      <div className='space-y-6 pb-24'>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 font-space-grotesk">Trips</h1>
+        <div className='flex items-center justify-between mb-6'>
+          <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>
+            Trips
+          </h1>
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-          {tabs.map((tab) => (
+        <div className='flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-hide'>
+          {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
@@ -200,17 +225,17 @@ export default function TripsPage() {
         </div>
 
         {/* Trips List */}
-        <div className="space-y-6">
+        <div className='space-y-6'>
           {Object.entries(groupedTrips).map(([month, trips]) => (
             <div key={month}>
               {/* Month Header */}
-              <div className="text-sm text-gray-500 mb-3 font-medium">
+              <div className='text-sm text-gray-500 mb-3 font-medium'>
                 {month}
               </div>
 
               {/* Trips in this month */}
-              <div className="space-y-3">
-                {trips.map((trip) => (
+              <div className='space-y-3'>
+                {trips.map(trip => (
                   <TripCard key={trip.id} trip={trip} />
                 ))}
               </div>
@@ -218,12 +243,12 @@ export default function TripsPage() {
           ))}
 
           {currentTrips.length === 0 && (
-            <div className="text-center py-12 font-space-grotesk">
-              <PlaneTakeoff className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                 You currently have no trips in this category
+            <div className='text-center py-12 font-space-grotesk'>
+              <PlaneTakeoff className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+              <h3 className='text-lg font-semibold text-gray-700 mb-2'>
+                You currently have no trips in this category
               </h3>
-              <p className="text-gray-600">
+              <p className='text-gray-600'>
                 Your trips will appear here when available.
               </p>
             </div>
@@ -233,9 +258,9 @@ export default function TripsPage() {
         {/* Floating Action Button to add a new trip */}
         <button
           onClick={() => setIsTripModalOpen(true)}
-          className="fixed bottom-24 right-8 w-14 h-14 bg-purple-800 hover:bg-purple-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-colors"
+          className='fixed bottom-24 right-8 w-14 h-14 bg-purple-800 hover:bg-purple-900 text-white rounded-2xl shadow-lg flex items-center justify-center transition-colors'
         >
-          <Plus className="text-3xl font-light cursor-pointer" />
+          <Plus className='text-3xl font-light cursor-pointer' />
         </button>
       </div>
 

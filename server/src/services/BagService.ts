@@ -15,8 +15,8 @@ const createBagItemSchema = z.object({
   photos: z.array(z.string().url()).optional(),
   requiresSpecialDelivery: z.boolean().optional(),
   specialDeliveryCategory: z.string().optional(),
-  colour: z.string().optional(),
-  additionalInfo: z.string().optional(),
+  colour: z.string().max(255).optional(),
+  additionalInfo: z.string().max(1024).optional(),
 });
 
 const updateBagItemSchema = createBagItemSchema.partial();

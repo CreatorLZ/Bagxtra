@@ -287,6 +287,27 @@ export const getOrderDetails = async (req: Request, res: Response) => {
 
     // Check if user has access to this order (either shopper or traveler)
     const request = match.requestId as any;
+
+    // Guards to ensure populated fields exist before accessing _id
+    if (!request) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Request data is missing'
+      });
+    }
+    if (!request.shopperId) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Shopper information is missing'
+      });
+    }
+    if (!match.travelerId) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Traveler information is missing'
+      });
+    }
+
     const isShopper = request.shopperId._id.toString() === userId;
     const isTraveler = match.travelerId._id.toString() === userId;
 
@@ -300,6 +321,11 @@ export const getOrderDetails = async (req: Request, res: Response) => {
     const trip = match.tripId as any;
     const traveler = match.travelerId as any;
     const shopper = request.shopperId as any;
+
+    // Validate required objects and nested properties
+    if (!trip || !shopper || !traveler || !trip.departureDate || !trip.arrivalDate || !shopper._id) {
+      return res.status(404).json({ error: 'Not found', message: 'Order data incomplete' });
+    }
 
     // Calculate duration
     const calculateDuration = (): string => {
@@ -352,7 +378,7 @@ export const getOrderDetails = async (req: Request, res: Response) => {
         availableCheckedKg: trip.availableCheckedKg,
         duration: calculateDuration(),
       },
-      products: request.bagItems.map((item: any) => ({
+      products: (Array.isArray(request.bagItems) ? request.bagItems : []).map((item: any) => ({
         name: item.productName,
         link: item.productLink,
         price: item.price,

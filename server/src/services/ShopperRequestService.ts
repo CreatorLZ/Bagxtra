@@ -16,6 +16,11 @@ const createShopperRequestSchema = z.object({
   toCountry: z.string().min(1).max(100),
   deliveryStartDate: z.string().optional(),
   deliveryEndDate: z.string().optional(),
+  pickup: z.boolean().optional(),
+  phone: z.string().max(20).regex(/^[\d\s\-\(\)\+]+$/).optional(),
+  phoneCountry: z.string().regex(/^[A-Z]{2,3}$/).optional(),
+  carryOn: z.boolean().optional(),
+  storePickup: z.boolean().optional(),
   bagItems: z.array(z.object({
     productName: z.string().min(1).max(255),
     productLink: z.string().url(),
@@ -30,6 +35,9 @@ const createShopperRequestSchema = z.object({
     colour: z.string().optional(),
     additionalInfo: z.string().optional(),
   })).min(1),
+}).refine((data) => !data.phone || data.phoneCountry, {
+  message: "phoneCountry is required when phone is provided",
+  path: ["phoneCountry"],
 });
 
 // Using BUSINESS_RULES from config instead of hardcoded values
@@ -92,6 +100,23 @@ export class ShopperRequestService {
       }
       if (validatedData.deliveryEndDate) {
         requestDataToCreate.deliveryEndDate = new Date(validatedData.deliveryEndDate);
+      }
+
+      // Add delivery preferences if provided
+      if (validatedData.pickup !== undefined) {
+        requestDataToCreate.pickup = validatedData.pickup;
+      }
+      if (validatedData.phone) {
+        requestDataToCreate.phone = validatedData.phone;
+      }
+      if (validatedData.phoneCountry) {
+        requestDataToCreate.phoneCountry = validatedData.phoneCountry;
+      }
+      if (validatedData.carryOn !== undefined) {
+        requestDataToCreate.carryOn = validatedData.carryOn;
+      }
+      if (validatedData.storePickup !== undefined) {
+        requestDataToCreate.storePickup = validatedData.storePickup;
       }
 
       const shopperRequest = await this.shopperRequestRepo.create(requestDataToCreate, session);

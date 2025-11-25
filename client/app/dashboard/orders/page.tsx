@@ -36,7 +36,7 @@ export default function OrdersPage() {
 
   // Track the last count of pending orders to detect when new server data arrives
   const [lastPendingCount, setLastPendingCount] = useState(0);
-  
+
   // Optimistic updates
   const [optimisticOrders, setOptimisticOrders] = useState<Order[]>([]);
 
@@ -50,7 +50,7 @@ export default function OrdersPage() {
   useEffect(() => {
     if (ordersData?.pending && !isFetching) {
       const currentPendingCount = ordersData.pending.length;
-      
+
       // console.log('Orders effect triggered:', {
       //   currentPendingCount,
       //   lastPendingCount,
@@ -58,7 +58,7 @@ export default function OrdersPage() {
       //   isFetching,
       //   serverOrders: ordersData.pending
       // });
-      
+
       // If we have optimistic orders and server now has data, clear optimistic
       // We check if count increased OR if we simply have optimistic orders and server data exists
       if (optimisticOrders.length > 0 && currentPendingCount > 0) {
@@ -66,13 +66,13 @@ export default function OrdersPage() {
         const hasMatchingServerOrder = optimisticOrders.some(opt =>
           ordersData.pending.some(server => server.item === opt.item)
         );
-        
+
         if (hasMatchingServerOrder) {
           // console.log('Found matching server order, clearing optimistic updates');
           // setOptimisticOrders([]);
         }
       }
-      
+
       setLastPendingCount(currentPendingCount);
     }
   }, [ordersData?.pending, isFetching, optimisticOrders.length]); // Monitor data, fetch status, and optimistic count
@@ -80,8 +80,9 @@ export default function OrdersPage() {
   // Convert API response to the expected format with deduplication
   const getOrdersByStatus = useMemo((): Record<OrderStatus, Order[]> => {
     // Helper to create unique key for deduplication
-    const getOrderKey = (order: Order) => `${order.item}-${order.amount}-${order.details}`;
-    
+    const getOrderKey = (order: Order) =>
+      `${order.item}-${order.amount}-${order.details}`;
+
     const deduplicateOrders = (orders: Order[]) => {
       const seen = new Set<string>();
       return orders.filter(order => {
@@ -95,70 +96,84 @@ export default function OrdersPage() {
       });
     };
 
-    const serverOrders = ordersData ? {
-      accepted: deduplicateOrders(ordersData.accepted.map(order => ({
-        id: order.id,
-        amount: order.amount,
-        item: order.item,
-        details: order.details,
-        timing: order.timing,
-        additionalInfo: order.additionalInfo
-      }))),
-      pending: deduplicateOrders(ordersData.pending.map(order => ({
-        id: order.id,
-        amount: order.amount,
-        item: order.item,
-        details: order.details,
-        timing: order.timing,
-        additionalInfo: order.additionalInfo
-      }))),
-      incoming: deduplicateOrders(ordersData.incoming.map(order => ({
-        id: order.id,
-        amount: order.amount,
-        item: order.item,
-        details: order.details,
-        timing: order.timing,
-        additionalInfo: order.additionalInfo
-      }))),
-      outgoing: deduplicateOrders(ordersData.outgoing.map(order => ({
-        id: order.id,
-        amount: order.amount,
-        item: order.item,
-        details: order.details,
-        timing: order.timing,
-        additionalInfo: order.additionalInfo
-      }))),
-      completed: deduplicateOrders(ordersData.completed.map(order => ({
-        id: order.id,
-        amount: order.amount,
-        item: order.item,
-        details: order.details,
-        timing: order.timing,
-        additionalInfo: order.additionalInfo
-      }))),
-      disputed: deduplicateOrders(ordersData.disputed.map(order => ({
-        id: order.id,
-        amount: order.amount,
-        item: order.item,
-        details: order.details,
-        timing: order.timing,
-        additionalInfo: order.additionalInfo
-      })))
-    } : {
-      accepted: [],
-      pending: [],
-      incoming: [],
-      outgoing: [],
-      completed: [],
-      disputed: []
-    };
+    const serverOrders = ordersData
+      ? {
+          accepted: deduplicateOrders(
+            ordersData.accepted.map(order => ({
+              id: order.id,
+              amount: order.amount,
+              item: order.item,
+              details: order.details,
+              timing: order.timing,
+              additionalInfo: order.additionalInfo,
+            }))
+          ),
+          pending: deduplicateOrders(
+            ordersData.pending.map(order => ({
+              id: order.id,
+              amount: order.amount,
+              item: order.item,
+              details: order.details,
+              timing: order.timing,
+              additionalInfo: order.additionalInfo,
+            }))
+          ),
+          incoming: deduplicateOrders(
+            ordersData.incoming.map(order => ({
+              id: order.id,
+              amount: order.amount,
+              item: order.item,
+              details: order.details,
+              timing: order.timing,
+              additionalInfo: order.additionalInfo,
+            }))
+          ),
+          outgoing: deduplicateOrders(
+            ordersData.outgoing.map(order => ({
+              id: order.id,
+              amount: order.amount,
+              item: order.item,
+              details: order.details,
+              timing: order.timing,
+              additionalInfo: order.additionalInfo,
+            }))
+          ),
+          completed: deduplicateOrders(
+            ordersData.completed.map(order => ({
+              id: order.id,
+              amount: order.amount,
+              item: order.item,
+              details: order.details,
+              timing: order.timing,
+              additionalInfo: order.additionalInfo,
+            }))
+          ),
+          disputed: deduplicateOrders(
+            ordersData.disputed.map(order => ({
+              id: order.id,
+              amount: order.amount,
+              item: order.item,
+              details: order.details,
+              timing: order.timing,
+              additionalInfo: order.additionalInfo,
+            }))
+          ),
+        }
+      : {
+          accepted: [],
+          pending: [],
+          incoming: [],
+          outgoing: [],
+          completed: [],
+          disputed: [],
+        };
 
     // Add optimistic orders to pending ONLY (they will be auto-cleared when server data arrives)
     const allPendingOrders = [...serverOrders.pending, ...optimisticOrders];
-    
+
     return {
       ...serverOrders,
-      pending: deduplicateOrders(allPendingOrders)
+      pending: deduplicateOrders(allPendingOrders),
     };
   }, [ordersData, optimisticOrders]);
 
@@ -168,7 +183,9 @@ export default function OrdersPage() {
       <DashboardLayout>
         <div className='space-y-6 pb-24'>
           <div className='flex items-center justify-between mb-6'>
-            <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>Orders</h1>
+            <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>
+              Orders
+            </h1>
           </div>
           <div className='flex justify-center py-12'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900'></div>
@@ -185,11 +202,15 @@ export default function OrdersPage() {
       <DashboardLayout>
         <div className='space-y-6 pb-24'>
           <div className='flex items-center justify-between mb-6'>
-            <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>Orders</h1>
+            <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>
+              Orders
+            </h1>
           </div>
           <div className='text-center py-12'>
             <p className='text-red-600 mb-2'>Failed to load orders</p>
-            <p className='text-gray-500 text-sm'>Please try refreshing the page</p>
+            <p className='text-gray-500 text-sm'>
+              Please try refreshing the page
+            </p>
           </div>
         </div>
       </DashboardLayout>
@@ -223,9 +244,12 @@ export default function OrdersPage() {
   const currentOrders = ordersByStatus[activeTab] || [];
 
   // Group orders by a simple "Recent" category for now
-  const groupedOrders = currentOrders.length > 0 ? {
-    'Recent': currentOrders
-  } : {};
+  const groupedOrders =
+    currentOrders.length > 0
+      ? {
+          Recent: currentOrders,
+        }
+      : {};
 
   const getIconColor = (status: string) => {
     switch (status) {
@@ -251,7 +275,9 @@ export default function OrdersPage() {
       <div className='space-y-6 pb-24'>
         {/* Header */}
         <div className='flex items-center justify-between mb-6'>
-          <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>Orders</h1>
+          <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>
+            Orders
+          </h1>
         </div>
 
         {/* Tabs */}
@@ -284,7 +310,7 @@ export default function OrdersPage() {
               <div className='space-y-3'>
                 {orders.map((order: Order, index: number) => (
                   <Card
-                    key={`${order.amount}-${order.item}-${index}`}
+                    key={order.id}
                     onClick={() => {
                       setSelectedOrder(order);
                       setIsSummaryOpen(true);
@@ -334,7 +360,11 @@ export default function OrdersPage() {
           {currentOrders.length === 0 && (
             <div className='text-center py-12 flex flex-col items-center font-space-grotesk'>
               {/* <ShoppingBag className='h-12 w-12 text-gray-400 mx-auto mb-4' /> */}
-              <img src="/twobags.png" alt="twinbags" className='h-12 w-12 md:h-24 md:w-24'/>
+              <img
+                src='/twobags.png'
+                alt='twinbags'
+                className='h-12 w-12 md:h-24 md:w-24'
+              />
               <h3 className='text-lg font-semibold text-gray-700 mb-2'>
                 You currently have no orders in this category
               </h3>
@@ -363,11 +393,14 @@ export default function OrdersPage() {
           // console.log('Order placed, adding optimistic update:', newOrder);
 
           // Add to optimistic state immediately
-          setOptimisticOrders(prev => [...prev, { ...newOrder, id: `temp_${Date.now()}` }]);
+          setOptimisticOrders(prev => [
+            ...prev,
+            { ...newOrder, id: `temp_${Date.now()}` },
+          ]);
 
           // Trigger a refetch in the background
           queryClient.invalidateQueries({
-            queryKey: ['orders']
+            queryKey: ['orders'],
           });
         }}
       />

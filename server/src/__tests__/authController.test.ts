@@ -51,7 +51,7 @@ describe('Auth Controller', () => {
             email_addresses: [{ email_address: userData.email }],
             phone_numbers: [{ phone_number: userData.phone }],
             image_url: userData.profileImage,
-            unsafe_metadata: { role: userData.role },
+            public_metadata: { role: userData.role },
           },
         };
 
@@ -60,7 +60,9 @@ describe('Auth Controller', () => {
           verifyWebhook: jest.fn().mockResolvedValue(mockWebhookEvent),
         }));
 
-        const response = await request(app).post('/auth/webhook').send(userData);
+        const response = await request(app)
+          .post('/auth/webhook')
+          .send(userData);
 
         expect(response.status).toBe(201);
         expect(response.body.message).toBe('User registered successfully');
@@ -87,7 +89,7 @@ describe('Auth Controller', () => {
             first_name: 'Existing',
             last_name: 'User',
             email_addresses: [{ email_address: 'existing@example.com' }],
-            unsafe_metadata: { role: 'shopper' },
+            public_metadata: { role: 'shopper' },
           },
         };
 
@@ -109,7 +111,7 @@ describe('Auth Controller', () => {
             first_name: 'Invalid',
             last_name: 'Role',
             email_addresses: [{ email_address: 'invalid@example.com' }],
-            unsafe_metadata: { role: 'invalid-role' },
+            public_metadata: { role: 'invalid-role' },
           },
         };
 
@@ -160,7 +162,9 @@ describe('Auth Controller', () => {
         expect(response.body.user.fullName).toBe('New Name');
         expect(response.body.user.email).toBe('new@example.com');
         expect(response.body.user.phone).toBe('+0987654321');
-        expect(response.body.user.profileImage).toBe('https://example.com/new-image.jpg');
+        expect(response.body.user.profileImage).toBe(
+          'https://example.com/new-image.jpg'
+        );
         // Role should remain unchanged
         expect(response.body.user.role).toBe('shopper');
       });

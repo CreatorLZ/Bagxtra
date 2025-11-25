@@ -71,10 +71,12 @@ const bagItemSchema = new Schema<IBagItem>(
     colour: {
       type: String,
       trim: true,
+      maxlength: 255,
     },
     additionalInfo: {
       type: String,
       trim: true,
+      maxlength: 1024,
     },
   },
   {

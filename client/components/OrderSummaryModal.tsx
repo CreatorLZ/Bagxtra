@@ -28,42 +28,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import Image from 'next/image';
 import NextImage from 'next/image';
-
 // --- Helper: Flight Path Visualization ---
-const FlightPath = () => (
-  <div className="flex items-center justify-between mt-6 px-2">
-    {/* Origin */}
-    <div className="text-left">
-      <p className="text-xl font-bold text-gray-900">LA</p>
-      <div className="text-xs text-gray-500 space-y-1 mt-1">
-        <p>12/12/25</p>
-        <p>10:30 am</p>
-      </div>
-    </div>
-
-    {/* Path Graphic */}
-    <div className="flex flex-col items-center flex-1 px-4 relative">
-      <Plane className="h-5 w-5 text-gray-400 mb-2 transform rotate-45" />
-      <div className="w-full flex items-center gap-1">
-        <div className="h-[1px] w-full bg-gray-300" />
-        <div className="h-[1px] w-full bg-gray-300 border-t border-dashed" />
-        <div className="h-[1px] w-full bg-gray-300" />
-      </div>
-      <p className="text-xs text-gray-500 mt-2">2h10m</p>
-    </div>
-
-    {/* Destination */}
-    <div className="text-right">
-      <p className="text-xl font-bold text-gray-900">LAG</p>
-      <div className="text-xs text-gray-500 space-y-1 mt-1">
-        <p>12/12/25</p>
-        <p>12:40 pm</p>
-      </div>
-    </div>
-  </div>
-);
 
 // --- Props Interface ---
 interface OrderSummaryModalProps {
@@ -83,6 +49,7 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
   // Reset image errors when order changes
   useEffect(() => {
     setImageErrors(new Set());
+    setSelectedImageIndex(0);
   }, [orderId]);
 
   // Show loading state
@@ -243,8 +210,7 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
               {selectedProduct?.name || 'Product'}
             </h3>
             <p className="text-gray-600 font-medium mb-4">
-              ${selectedProduct?.price?.toFixed(2) || '0.00'} - ${selectedProduct?.price?.toFixed(2) || '0.00'} x {selectedProduct?.quantity || 1} {(selectedProduct?.quantity || 1) === 1 ? 'Unit' : 'Units'}
-            </p>
+${selectedProduct?.price?.toFixed(2) || '0.00'} x {selectedProduct?.quantity || 1} {(selectedProduct?.quantity || 1) === 1 ? 'Unit' : 'Units'}            </p>
             <div className="bg-gray-50 px-3 py-2.5 rounded-lg text-sm text-gray-500 truncate flex items-center gap-2 border border-gray-100">
               <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50" />
               <a
@@ -350,14 +316,14 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
           {role === 'traveler' ? (
             <div className="flex space-x-3">
               <motion.button
-                className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-sm font-semibold font-space-grotesk hover:bg-red-100 transition-colors cursor-pointer"
+                className="flex-1 py-3 bg-red-200 text-red-600 rounded-md text-sm font-semibold font-space-grotesk hover:bg-red-100 transition-colors cursor-pointer"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
                 Decline
               </motion.button>
               <motion.button
-                className="flex-1 py-3 bg-purple-50 text-purple-900 rounded-xl text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors cursor-pointer"
+                className="flex-1 py-3 bg-purple-200 text-purple-900 rounded-md text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors cursor-pointer"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -365,7 +331,7 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
               </motion.button>
             </div>
           ) : (
-            <Button className="w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-xl shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]">
+            <Button className="w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]">
               Make Payment (${orderDetails.products.reduce((total, product) => total + (product.price * product.quantity), 0).toFixed(2)})
             </Button>
           )}

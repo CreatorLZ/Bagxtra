@@ -10,32 +10,52 @@ import { MatchingService } from '../services/MatchingService';
 import { MatchService } from '../services/MatchService';
 import mongoose from 'mongoose';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 
-const createRequestSchema = z.object({
-  fromCountry: z.string().min(1).max(100),
-  destinationCountry: z.string().min(1).max(100), // Changed to match client payload
-  deliveryStartDate: z.string().optional(),
-  deliveryEndDate: z.string().optional(),
-  pickup: z.boolean(),
-  phone: z.string().optional(),
-  phoneCountry: z.string().optional(),
-  carryOn: z.boolean(),
-  storePickup: z.boolean(),
-  bagItems: z.array(z.object({
-    productName: z.string().min(1).max(255),
-    productLink: z.string().url(),
-    price: z.number().positive(),
-    currency: z.string().min(1).max(10),
-    weightKg: z.number().positive(),
-    quantity: z.number().int().positive(),
-    isFragile: z.boolean(),
-    photos: z.array(z.string().url()).optional(),
-    requiresSpecialDelivery: z.boolean().optional(),
-    specialDeliveryCategory: z.string().optional(),
-    colour: z.string().optional(),
-    additionalInfo: z.string().optional(),
-  })).min(1),
+const createRequestSchema = z
+  .object({
+    fromCountry: z.string().min(1).max(100),
+    destinationCountry: z.string().min(1).max(100), // Changed to match client payload
+    deliveryStartDate: z.string().optional(),
+    deliveryEndDate: z.string().optional(),
+    pickup: z.boolean().optional(),
+    phone: z
+      .string()
+      .max(20)
+      .regex(/^[\d\s\-\(\)\+]+$/)
+      .optional(),
+    phoneCountry: z
+      .string()
+      .regex(/^[A-Z]{2,3}$/)
+      .optional(),
+    carryOn: z.boolean().optional(),
+    storePickup: z.boolean().optional(),
+    bagItems: z
+      .array(
+        z.object({
+          productName: z.string().min(1).max(255),
+          productLink: z.string().url(),
+          price: z.number().positive(),
+          currency: z.string().min(1).max(10),
+          weightKg: z.number().positive(),
+          quantity: z.number().int().positive(),
+          isFragile: z.boolean(),
+          photos: z.array(z.string().url()).optional(),
+          requiresSpecialDelivery: z.boolean().optional(),
+          specialDeliveryCategory: z.string().optional(),
+          colour: z.string().optional(),
+          additionalInfo: z.string().optional(),
+        })
+      )
+      .min(1),
+  })
+  .refine(data => !data.phone || data.phoneCountry, {
+    message: 'phoneCountry is required when phone is provided',
+    path: ['phoneCountry'],
+  });
+
+const publishRequestSchema = z.object({
+  status: z.enum(['open', 'marketplace']).optional(),
 });
 
 // Initialize repositories and services
@@ -46,7 +66,12 @@ const tripRepo = new TripRepository();
 const matchRepo = new MatchRepository();
 const bagService = new BagService(bagItemRepo, shopperRequestRepo);
 const matchingService = new MatchingService(tripRepo, userRepo);
-const matchService = new MatchService(matchRepo, shopperRequestRepo, tripRepo, bagItemRepo);
+const matchService = new MatchService(
+  matchRepo,
+  shopperRequestRepo,
+  tripRepo,
+  bagItemRepo
+);
 const shopperRequestService = new ShopperRequestService(
   shopperRequestRepo,
   bagItemRepo,
@@ -99,7 +124,7 @@ export const createShopperRequest = async (req: Request, res: Response) => {
     } catch {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid shopper ID'
+        message: 'Invalid shopper ID',
       });
     }
 
@@ -170,12 +195,14 @@ export const getMyShopperRequests = async (req: Request, res: Response) => {
     } catch {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid shopper ID'
+        message: 'Invalid shopper ID',
       });
     }
 
     // Get shopper's requests
-    const requests = await shopperRequestService.getShopperRequests(shopperObjectId);
+    const requests = await shopperRequestService.getShopperRequests(
+      shopperObjectId
+    );
 
     res.status(200).json({
       success: true,
@@ -212,7 +239,7 @@ export const getShopperRequest = async (req: Request, res: Response) => {
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid request ID'
+        message: 'Invalid request ID',
       });
     }
 
@@ -233,11 +260,14 @@ export const getShopperRequest = async (req: Request, res: Response) => {
     } catch {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid ID'
+        message: 'Invalid ID',
       });
     }
 
-    const request = await shopperRequestService.getShopperRequest(requestObjectId, shopperObjectId);
+    const request = await shopperRequestService.getShopperRequest(
+      requestObjectId,
+      shopperObjectId
+    );
 
     if (!request) {
       return res.status(404).json({
@@ -262,7 +292,10 @@ export const getShopperRequest = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized to access this request') {
+    if (
+      error instanceof Error &&
+      error.message === 'Unauthorized to access this request'
+    ) {
       return res.status(403).json({
         error: 'Forbidden',
         message: 'You can only view your own requests',
@@ -285,12 +318,13 @@ export const getShopperRequest = async (req: Request, res: Response) => {
 export const publishShopperRequest = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // Optional status override (e.g., 'marketplace')
+    const requestData = publishRequestSchema.parse(req.body);
+    const { status } = requestData; // Optional status override (e.g., 'marketplace')
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid request ID'
+        message: 'Invalid request ID',
       });
     }
 
@@ -311,7 +345,7 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
     } catch {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid ID'
+        message: 'Invalid ID',
       });
     }
 
@@ -335,16 +369,24 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
         const matches = await matchingService.findMatches(bagItems, {
           fromCountry: extractFromCountry(updatedRequest.fromCountry),
           toCountry: extractToCountry(updatedRequest.toCountry),
-          deliveryStartDate: updatedRequest.deliveryStartDate ? new Date(updatedRequest.deliveryStartDate) : undefined,
-          deliveryEndDate: updatedRequest.deliveryEndDate ? new Date(updatedRequest.deliveryEndDate) : undefined,
+          deliveryStartDate: updatedRequest.deliveryStartDate
+            ? new Date(updatedRequest.deliveryStartDate)
+            : undefined,
+          deliveryEndDate: updatedRequest.deliveryEndDate
+            ? new Date(updatedRequest.deliveryEndDate)
+            : undefined,
         });
 
         // FIXED: Sequential match creation to prevent race conditions and duplicates
         for (const match of matches) {
           try {
             // Check if match already exists (now happens sequentially)
-            const existingMatches = await matchRepo.findByRequest(requestObjectId);
-            const existingMatch = existingMatches.find(m => m.tripId.equals(match.trip._id));
+            const existingMatches = await matchRepo.findByRequest(
+              requestObjectId
+            );
+            const existingMatch = existingMatches.find(m =>
+              m.tripId.equals(match.trip._id)
+            );
 
             if (!existingMatch) {
               await matchService.createMatch(
@@ -353,13 +395,20 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
                 match.score,
                 [] // No assigned items initially
               );
-              console.log(`Created match for trip ${match.trip._id} with score ${match.score}`);
+              console.log(
+                `Created match for trip ${match.trip._id} with score ${match.score}`
+              );
             } else {
-              console.log(`Match already exists for trip ${match.trip._id}, skipping`);
+              console.log(
+                `Match already exists for trip ${match.trip._id}, skipping`
+              );
             }
           } catch (matchError) {
             // Log individual match creation errors but continue with others
-            console.error(`Error creating match for trip ${match.trip._id}:`, matchError);
+            console.error(
+              `Error creating match for trip ${match.trip._id}:`,
+              matchError
+            );
           }
         }
       }
@@ -378,6 +427,15 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Error publishing shopper request:', error);
+
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Invalid input data',
+        details: error.issues,
+      });
+    }
+
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to publish shopper request',
@@ -392,26 +450,32 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
  */
 export const findPotentialMatches = async (req: Request, res: Response) => {
   try {
-    const requestData = z.object({
-      fromCountry: z.string().min(1).max(100),
-      toCountry: z.string().min(1).max(100),
-      deliveryStartDate: z.string().optional(),
-      deliveryEndDate: z.string().optional(),
-      bagItems: z.array(z.object({
-        productName: z.string().min(1).max(255),
-        productLink: z.string().url().optional(),
-        price: z.number().positive(),
-        currency: z.string().min(1).max(10),
-        weightKg: z.number().positive(),
-        quantity: z.number().int().positive(),
-        isFragile: z.boolean(),
-        photos: z.array(z.string().url()).optional(),
-        requiresSpecialDelivery: z.boolean().optional(),
-        specialDeliveryCategory: z.string().optional(),
-        colour: z.string().optional(),
-        additionalInfo: z.string().optional(),
-      })).min(1),
-    }).parse(req.body);
+    const requestData = z
+      .object({
+        fromCountry: z.string().min(1).max(100),
+        toCountry: z.string().min(1).max(100),
+        deliveryStartDate: z.string().optional(),
+        deliveryEndDate: z.string().optional(),
+        bagItems: z
+          .array(
+            z.object({
+              productName: z.string().min(1).max(255),
+              productLink: z.string().url().optional(),
+              price: z.number().positive(),
+              currency: z.string().min(1).max(10),
+              weightKg: z.number().positive(),
+              quantity: z.number().int().positive(),
+              isFragile: z.boolean(),
+              photos: z.array(z.string().url()).optional(),
+              requiresSpecialDelivery: z.boolean().optional(),
+              specialDeliveryCategory: z.string().optional(),
+              colour: z.string().optional(),
+              additionalInfo: z.string().optional(),
+            })
+          )
+          .min(1),
+      })
+      .parse(req.body);
 
     // Convert plain bag items to format expected by matching service
     const convertedBagItems = requestData.bagItems.map(item => ({
@@ -427,8 +491,12 @@ export const findPotentialMatches = async (req: Request, res: Response) => {
     const matches = await matchingService.findMatches(convertedBagItems, {
       fromCountry: requestData.fromCountry,
       toCountry: requestData.toCountry,
-      deliveryStartDate: requestData.deliveryStartDate ? new Date(requestData.deliveryStartDate) : undefined,
-      deliveryEndDate: requestData.deliveryEndDate ? new Date(requestData.deliveryEndDate) : undefined,
+      deliveryStartDate: requestData.deliveryStartDate
+        ? new Date(requestData.deliveryStartDate)
+        : undefined,
+      deliveryEndDate: requestData.deliveryEndDate
+        ? new Date(requestData.deliveryEndDate)
+        : undefined,
     });
 
     // Format response with traveler and trip details (similar to getShopperRequestMatches)
@@ -441,6 +509,18 @@ export const findPotentialMatches = async (req: Request, res: Response) => {
           return null;
         }
 
+        // Validate dates to prevent formatting errors
+        if (trip.departureDate && !isValid(trip.departureDate)) {
+          console.warn(
+            `Invalid departure date for trip ${trip._id}: ${trip.departureDate}`
+          );
+        }
+        if (trip.arrivalDate && !isValid(trip.arrivalDate)) {
+          console.warn(
+            `Invalid arrival date for trip ${trip._id}: ${trip.arrivalDate}`
+          );
+        }
+
         return {
           _id: `temp_${match.trip._id}`, // Temporary ID for frontend
           matchScore: match.score,
@@ -450,9 +530,15 @@ export const findPotentialMatches = async (req: Request, res: Response) => {
           flightDetails: {
             from: trip.fromCountry,
             to: trip.toCountry,
-            departureDate: format(trip.departureDate, 'MM/dd/yy'),
+            departureDate:
+              trip.departureDate && isValid(trip.departureDate)
+                ? format(trip.departureDate, 'MM/dd/yy')
+                : null,
             departureTime: trip.departureTime,
-            arrivalDate: format(trip.arrivalDate, 'MM/dd/yy'),
+            arrivalDate:
+              trip.arrivalDate && isValid(trip.arrivalDate)
+                ? format(trip.arrivalDate, 'MM/dd/yy')
+                : null,
             arrivalTime: trip.arrivalTime,
             timezone: trip.timezone,
             airline: 'Delta', // TODO: Add to trip model
@@ -468,8 +554,12 @@ export const findPotentialMatches = async (req: Request, res: Response) => {
     );
 
     // Filter out null matches and sort by score
-    const validMatches = formattedMatches.filter((match: any) => match !== null);
-    validMatches.sort((a: any, b: any) => (b?.matchScore || 0) - (a?.matchScore || 0));
+    const validMatches = formattedMatches.filter(
+      (match: any) => match !== null
+    );
+    validMatches.sort(
+      (a: any, b: any) => (b?.matchScore || 0) - (a?.matchScore || 0)
+    );
 
     res.status(200).json({
       success: true,
@@ -505,7 +595,7 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid request ID'
+        message: 'Invalid request ID',
       });
     }
 
@@ -526,12 +616,15 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
     } catch {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid ID'
+        message: 'Invalid ID',
       });
     }
 
     // Verify request ownership
-    const request = await shopperRequestService.getShopperRequest(requestObjectId, shopperObjectId);
+    const request = await shopperRequestService.getShopperRequest(
+      requestObjectId,
+      shopperObjectId
+    );
     if (!request) {
       return res.status(404).json({
         error: 'Not found',
@@ -552,8 +645,12 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
     const matches = await matchingService.findMatches(bagItems, {
       fromCountry: extractFromCountry(request.fromCountry),
       toCountry: extractToCountry(request.toCountry),
-      deliveryStartDate: request.deliveryStartDate ? new Date(request.deliveryStartDate) : undefined,
-      deliveryEndDate: request.deliveryEndDate ? new Date(request.deliveryEndDate) : undefined,
+      deliveryStartDate: request.deliveryStartDate
+        ? new Date(request.deliveryStartDate)
+        : undefined,
+      deliveryEndDate: request.deliveryEndDate
+        ? new Date(request.deliveryEndDate)
+        : undefined,
     });
 
     // FIXED: Sequential match creation to prevent race conditions and duplicates
@@ -562,7 +659,9 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
       try {
         // Check if match already exists (now happens sequentially)
         const existingMatches = await matchRepo.findByRequest(requestObjectId);
-        const existingMatch = existingMatches.find(m => m.tripId.equals(match.trip._id));
+        const existingMatch = existingMatches.find(m =>
+          m.tripId.equals(match.trip._id)
+        );
 
         if (existingMatch) {
           matchRecords.push(existingMatch);
@@ -577,7 +676,10 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
           matchRecords.push(newMatch);
         }
       } catch (matchError) {
-        console.error(`Error processing match for trip ${match.trip._id}:`, matchError);
+        console.error(
+          `Error processing match for trip ${match.trip._id}:`,
+          matchError
+        );
         // Continue processing other matches
       }
     }
@@ -592,8 +694,22 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
           return null;
         }
 
+        // Validate dates to prevent formatting errors
+        if (trip.departureDate && !isValid(trip.departureDate)) {
+          console.warn(
+            `Invalid departure date for trip ${trip._id}: ${trip.departureDate}`
+          );
+        }
+        if (trip.arrivalDate && !isValid(trip.arrivalDate)) {
+          console.warn(
+            `Invalid arrival date for trip ${trip._id}: ${trip.arrivalDate}`
+          );
+        }
+
         // Find corresponding match result for rationale
-        const matchResult = matches.find((m: any) => m.trip._id.equals(trip._id));
+        const matchResult = matches.find((m: any) =>
+          m.trip._id.equals(trip._id)
+        );
 
         return {
           _id: matchRecord._id,
@@ -604,9 +720,15 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
           flightDetails: {
             from: trip.fromCountry,
             to: trip.toCountry,
-            departureDate: format(trip.departureDate, 'MM/dd/yy'),
+            departureDate:
+              trip.departureDate && isValid(trip.departureDate)
+                ? format(trip.departureDate, 'MM/dd/yy')
+                : null,
             departureTime: trip.departureTime,
-            arrivalDate: format(trip.arrivalDate, 'MM/dd/yy'),
+            arrivalDate:
+              trip.arrivalDate && isValid(trip.arrivalDate)
+                ? format(trip.arrivalDate, 'MM/dd/yy')
+                : null,
             arrivalTime: trip.arrivalTime,
             timezone: trip.timezone,
             airline: 'Delta', // TODO: Add to trip model
@@ -622,8 +744,12 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
     );
 
     // Filter out null matches and sort by score
-    const validMatches = formattedMatches.filter((match: any) => match !== null);
-    validMatches.sort((a: any, b: any) => (b?.matchScore || 0) - (a?.matchScore || 0));
+    const validMatches = formattedMatches.filter(
+      (match: any) => match !== null
+    );
+    validMatches.sort(
+      (a: any, b: any) => (b?.matchScore || 0) - (a?.matchScore || 0)
+    );
 
     res.status(200).json({
       success: true,
@@ -651,7 +777,7 @@ export const cancelShopperRequest = async (req: Request, res: Response) => {
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid request ID'
+        message: 'Invalid request ID',
       });
     }
 
@@ -672,7 +798,7 @@ export const cancelShopperRequest = async (req: Request, res: Response) => {
     } catch {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid ID'
+        message: 'Invalid ID',
       });
     }
 

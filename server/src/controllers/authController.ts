@@ -3,10 +3,7 @@ import { User, IUser, VALID_USER_ROLES } from '../models/User';
 import { RoleAuditLog } from '../models/RoleAuditLog';
 import { z } from 'zod';
 import { verifyWebhook } from '@clerk/express/webhooks';
-import {
-  logAuthEvent,
-  SecurityEventType,
-} from '../middleware/securityLogger';
+import { logAuthEvent, SecurityEventType } from '../middleware/securityLogger';
 import { createErrorResponse } from '../errors';
 
 // Validation schemas
@@ -103,13 +100,10 @@ const handleUserCreated = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  // Extract role from Clerk's unsafeMetadata
-  const roleFromMetadata = clerkData.unsafe_metadata?.['role'];
+  // Extract role from Clerk's publicMetadata
+  const roleFromMetadata = clerkData.public_metadata?.['role'];
   let role: string;
-  if (
-    roleFromMetadata &&
-    VALID_USER_ROLES.includes(roleFromMetadata as any)
-  ) {
+  if (roleFromMetadata && VALID_USER_ROLES.includes(roleFromMetadata as any)) {
     role = roleFromMetadata as string;
   } else {
     console.warn(
@@ -117,7 +111,7 @@ const handleUserCreated = async (
     );
     role = 'shopper';
     // Log this as a potential issue for monitoring
-    logAuthEvent(SecurityEventType.ROLE_CHANGED)(req, res, () => {});
+    logAuthEvent(SecurityEventType.ROLE_DEFAULTED)(req, res, () => {});
   }
 
   const userData = {
@@ -194,8 +188,14 @@ const handleUserUpdated = async (
     const updateData: Partial<IUser> = {};
 
     // Update name if changed
-    const newFullName = `${clerkData.first_name || ''} ${clerkData.last_name || ''}`.trim();
-    if (newFullName && newFullName !== 'Unknown User' && newFullName !== existingUser.fullName) {
+    const newFullName = `${clerkData.first_name || ''} ${
+      clerkData.last_name || ''
+    }`.trim();
+    if (
+      newFullName &&
+      newFullName !== 'Unknown User' &&
+      newFullName !== existingUser.fullName
+    ) {
       updateData.fullName = newFullName;
     }
 
@@ -213,7 +213,10 @@ const handleUserUpdated = async (
 
     // Update profile image if changed
     const newImageUrl = clerkData.image_url;
-    if (newImageUrl !== undefined && newImageUrl !== existingUser.profileImage) {
+    if (
+      newImageUrl !== undefined &&
+      newImageUrl !== existingUser.profileImage
+    ) {
       updateData.profileImage = newImageUrl || undefined;
     }
 
@@ -254,13 +257,15 @@ const handleUserUpdated = async (
     }
   } catch (error) {
     console.error('👤 Handle user updated error:', error);
-    res.status(500).json(
-      createErrorResponse(
-        'Internal Server Error',
-        'Failed to update user profile',
-        'INTERNAL_ERROR'
-      )
-    );
+    res
+      .status(500)
+      .json(
+        createErrorResponse(
+          'Internal Server Error',
+          'Failed to update user profile',
+          'INTERNAL_ERROR'
+        )
+      );
   }
 };
 

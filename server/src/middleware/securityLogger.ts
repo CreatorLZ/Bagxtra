@@ -16,6 +16,7 @@ export enum SecurityEventType {
   USER_REGISTERED = 'user_registered',
   USER_UPDATED = 'user_updated',
   ROLE_CHANGED = 'role_changed',
+  ROLE_DEFAULTED = 'role_defaulted',
 }
 
 /**

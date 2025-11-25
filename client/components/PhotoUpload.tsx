@@ -53,11 +53,15 @@ export function PhotoUpload({
   const [uploadProgress, setUploadProgress] = useState(0);
   
   const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (successTimeoutRef.current) {
         clearTimeout(successTimeoutRef.current);
+      }
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
       }
     };
   }, []);
@@ -109,7 +113,10 @@ export function PhotoUpload({
     setError(msg);
     onUploadError?.(msg);
 
-    setTimeout(() => {
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+    }
+    errorTimeoutRef.current = setTimeout(() => {
       setUploadStatus('idle');
       setError('');
     }, 3000);
@@ -235,8 +242,7 @@ export function PhotoUpload({
                         }}
                         onClientUploadComplete={handleUploadComplete}
                         onUploadError={handleUploadError}
-                        onDrop={() => setIsDragging(true)}
-                        disabled={disabled || uploadStatus === 'uploading'}
+                        onDrop={() => setIsDragging(false)}                        disabled={disabled || uploadStatus === 'uploading'}
                         config={{
                           mode: "auto",
                         }}

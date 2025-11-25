@@ -103,8 +103,6 @@ const stores = [
   { name: 'Gucci', logo: '/gucci.png', url: 'https://www.gucci.com' },
 ];
 
-
-
 // --- Helper Components ---
 function FormField({
   id,
@@ -138,15 +136,15 @@ function RadioOption({
   infoText: string;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-2">
+    <div className='flex items-center justify-between'>
+      <div className='flex items-center space-x-2'>
         <RadioGroupItem value={id} id={id} />
-        <Label htmlFor={id} className="font-medium text-gray-800">
+        <Label htmlFor={id} className='font-medium text-gray-800'>
           {label}
         </Label>
       </div>
       <button title={infoText}>
-        <Info className="h-5 w-5 text-gray-400" />
+        <Info className='h-5 w-5 text-gray-400' />
       </button>
     </div>
   );
@@ -160,9 +158,22 @@ const parseDate = (dateStr: string): Date | null => {
   const day = parseInt(parts[1], 10);
   const year = parseInt(parts[2], 10);
   if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
-  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return null;
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    year < 1900 ||
+    year > 2100
+  )
+    return null;
   const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  )
+    return null;
   return date;
 };
 
@@ -210,8 +221,16 @@ function TravelerCard({
    */
   const calculateDuration = (): string => {
     try {
-      const depDateTime = parseDateTimeToUTC(match.flightDetails.departureDate, match.flightDetails.departureTime, match.flightDetails.timezone);
-      const arrDateTime = parseDateTimeToUTC(match.flightDetails.arrivalDate, match.flightDetails.arrivalTime, match.flightDetails.timezone);
+      const depDateTime = parseDateTimeToUTC(
+        match.flightDetails.departureDate,
+        match.flightDetails.departureTime,
+        match.flightDetails.timezone
+      );
+      const arrDateTime = parseDateTimeToUTC(
+        match.flightDetails.arrivalDate,
+        match.flightDetails.arrivalTime,
+        match.flightDetails.timezone
+      );
 
       const diffMs = arrDateTime.getTime() - depDateTime.getTime();
       if (diffMs < 0) return 'Invalid duration';
@@ -226,25 +245,27 @@ function TravelerCard({
     }
   };
 
-
   return (
-    <div className="border border-gray-200 rounded-lg p-4 space-y-4 shadow-sm">
+    <div className='border border-gray-200 rounded-lg p-4 space-y-4 shadow-sm'>
       {/* Top Section: Profile + Book Button */}
-      <div className="flex justify-between items-center border-b border-b-gray-200 pb-2.5">
-        <div className="flex flex-col items-left gap-3">
+      <div className='flex justify-between items-center border-b border-b-gray-200 pb-2.5'>
+        <div className='flex flex-col items-left gap-3'>
           <NextImage
-            src={match.travelerAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop'}
+            src={
+              match.travelerAvatar ||
+              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop'
+            }
             alt={match.travelerName}
             width={80}
             height={80}
-            className="rounded-lg bg-gray-200 h-24 w-24 object-cover"
+            className='rounded-lg bg-gray-200 h-24 w-24 object-cover'
           />
-          <div className="text-left">
-            <h3 className="font-semibold text-gray-900 flex items-center justify-center gap-1 font-sans">
+          <div className='text-left'>
+            <h3 className='font-semibold text-gray-900 flex items-center justify-center gap-1 font-sans'>
               {match.travelerName}
-              <img src="/verified.png" alt="verified" className='h-4 w-4' />
+              <img src='/verified.png' alt='verified' className='h-4 w-4' />
             </h3>
-            <div className="flex gap-0.5 justify-start">
+            <div className='flex gap-0.5 justify-start'>
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
@@ -259,8 +280,8 @@ function TravelerCard({
           </div>
         </div>
         <Button
-          variant="outline"
-          className="text-purple-900 border-purple-900 hover:bg-purple-50 hover:text-purple-800 cursor-pointer disabled:opacity-50"
+          variant='outline'
+          className='text-purple-900 border-purple-900 hover:bg-purple-50 hover:text-purple-800 cursor-pointer disabled:opacity-50'
           onClick={() => onBookTraveler(match._id)}
           disabled={isBooking}
         >
@@ -269,32 +290,46 @@ function TravelerCard({
       </div>
 
       {/* Middle Section: Flight Info */}
-      <div className="flex justify-between items-center text-sm">
-        <div className="text-left">
-          <div className="text-lg font-bold text-gray-900">
+      <div className='flex justify-between items-center text-sm'>
+        <div className='text-left'>
+          <div className='text-lg font-bold text-gray-900'>
             {match.flightDetails.from}
           </div>
-          <div className="text-gray-600 flex">{match.flightDetails.departureDate} <span className='pl-3'>--------</span></div>
-          <div className="text-gray-600">{match.flightDetails.departureTime}</div>
+          <div className='text-gray-600 flex'>
+            {match.flightDetails.departureDate}{' '}
+            <span className='pl-3'>--------</span>
+          </div>
+          <div className='text-gray-600'>
+            {match.flightDetails.departureTime}
+          </div>
         </div>
-        <div className="text-center text-gray-500">
-          <Plane className="mx-auto" />
-          <div className="mt-1">{calculateDuration()}</div>
+        <div className='text-center text-gray-500'>
+          <Plane className='mx-auto' />
+          <div className='mt-1'>{calculateDuration()}</div>
         </div>
-        <div className="text-right">
-          <div className="text-lg font-bold text-gray-900">{match.flightDetails.to}</div>
-          <div className="text-gray-600 flex"><span className='pr-3'>--------</span>{match.flightDetails.arrivalDate}</div>
-          <div className="text-gray-600">{match.flightDetails.arrivalTime}</div>
+        <div className='text-right'>
+          <div className='text-lg font-bold text-gray-900'>
+            {match.flightDetails.to}
+          </div>
+          <div className='text-gray-600 flex'>
+            <span className='pr-3'>--------</span>
+            {match.flightDetails.arrivalDate}
+          </div>
+          <div className='text-gray-600'>{match.flightDetails.arrivalTime}</div>
         </div>
       </div>
 
       {/* Bottom Section: Match Score & Capacity Info */}
-      <div className="flex justify-between items-center">
-        <div className="text-sm text-gray-600">
-          {match.capacityFit.fitsCarryOn ? 'Carry-on friendly' : 'Checked baggage'}
+      <div className='flex justify-between items-center'>
+        <div className='text-sm text-gray-600'>
+          {match.capacityFit.fitsCarryOn
+            ? 'Carry-on friendly'
+            : 'Checked baggage'}
         </div>
         <div
-          className={`text-center font-semibold px-3 py-1 rounded-none border-b border-b-purple-900 ${getMatchColor(match.matchScore)}`}
+          className={`text-center font-semibold px-3 py-1 rounded-none border-b border-b-purple-900 ${getMatchColor(
+            match.matchScore
+          )}`}
         >
           {match.matchScore}% Match
         </div>
@@ -302,7 +337,7 @@ function TravelerCard({
 
       {/* Rationale */}
       {match.rationale && match.rationale.length > 0 && (
-        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+        <div className='text-xs text-gray-500 bg-gray-50 p-2 rounded'>
           {match.rationale[0]}
         </div>
       )}
@@ -341,7 +376,9 @@ export function PlaceOrderModal({
   const [isFindingMatches, setIsFindingMatches] = useState(false);
 
   // Track which booking flow was used
-  const [bookingFlow, setBookingFlow] = useState<'direct' | 'marketplace' | null>(null);
+  const [bookingFlow, setBookingFlow] = useState<
+    'direct' | 'marketplace' | null
+  >(null);
 
   // State for the current request ID (set when order is submitted)
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -376,7 +413,6 @@ export function PlaceOrderModal({
   // Auth hook for API calls
   const { getToken } = useAuth();
 
-
   const handleQuantityChange = (amount: number) => {
     setQuantity(Math.max(1, formData.quantity + amount));
   };
@@ -404,8 +440,10 @@ export function PlaceOrderModal({
     const errors: Record<string, string> = {};
 
     // Product Details Validation
-    if (!formData.productDetails.name?.trim()) errors.name = 'Product name is required';
-    if (!formData.productDetails.price?.trim()) errors.price = 'Product price is required';
+    if (!formData.productDetails.name?.trim())
+      errors.name = 'Product name is required';
+    if (!formData.productDetails.price?.trim())
+      errors.price = 'Product price is required';
 
     // Price validation
     if (formData.productDetails.price) {
@@ -437,8 +475,10 @@ export function PlaceOrderModal({
     }
 
     // Delivery Details Validation
-    if (!formData.deliveryDetails.buyingFrom?.trim()) errors.buyingFrom = 'Buying location is required';
-    if (!formData.deliveryDetails.deliveringTo?.trim()) errors.deliveringTo = 'Delivery destination is required';
+    if (!formData.deliveryDetails.buyingFrom?.trim())
+      errors.buyingFrom = 'Buying location is required';
+    if (!formData.deliveryDetails.deliveringTo?.trim())
+      errors.deliveringTo = 'Delivery destination is required';
 
     return { isValid: Object.keys(errors).length === 0, errors };
   };
@@ -486,12 +526,14 @@ export function PlaceOrderModal({
       <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl'>
         {/* Product Category Select */}
         <FormField id='category' label='Enter Product Category'>
-          <Select value={formData.productDetails.category} onValueChange={(value) => updateProductDetails({ category: value })}>
+          <Select
+            value={formData.productDetails.category}
+            onValueChange={value => updateProductDetails({ category: value })}
+          >
             <SelectTrigger className='w-full h-11'>
               <SelectValue placeholder='Select a category' />
             </SelectTrigger>
             <SelectContent>
-
               {categories.map(cat => (
                 <SelectItem key={cat.name} value={cat.name}>
                   <div className='flex items-center gap-3 py-2'>
@@ -515,11 +557,11 @@ export function PlaceOrderModal({
               placeholder='www.amazon.com'
               className='h-11 pr-24'
               value={formData.productDetails.url || ''}
-              onChange={(e) => handleInputChange('url', e.target.value)}
+              onChange={e => handleInputChange('url', e.target.value)}
               onBlur={() => handleBlur('url')}
               disabled={isSubmitting}
               aria-describedby={fieldErrors.url ? 'url-error' : undefined}
-              aria-required="true"
+              aria-required='true'
             />
             <button
               type='button'
@@ -531,7 +573,11 @@ export function PlaceOrderModal({
             </button>
           </div>
           {fieldErrors.url && (
-            <p id="url-error" className="text-red-500 text-sm mt-1" role="alert">
+            <p
+              id='url-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
               {fieldErrors.url}
             </p>
           )}
@@ -544,14 +590,18 @@ export function PlaceOrderModal({
             placeholder='Derma-cos skin-solve'
             className='h-11'
             value={formData.productDetails.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
+            onChange={e => handleInputChange('name', e.target.value)}
             onBlur={() => handleBlur('name')}
             disabled={isSubmitting}
             aria-describedby={fieldErrors.name ? 'name-error' : undefined}
-            aria-required="true"
+            aria-required='true'
           />
           {fieldErrors.name && (
-            <p id="name-error" className="text-red-500 text-sm mt-1" role="alert">
+            <p
+              id='name-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
               {fieldErrors.name}
             </p>
           )}
@@ -563,33 +613,40 @@ export function PlaceOrderModal({
             id='colour'
             placeholder='Teal Green'
             className='h-11'
+            maxLength={255}
             value={formData.productDetails.colour || ''}
-            onChange={(e) => updateProductDetails({ colour: e.target.value })}
+            onChange={e => updateProductDetails({ colour: e.target.value })}
           />
         </FormField>
 
         {/* Product Weight */}
         <FormField id='weight' label='Enter Product Weight'>
-          <div className="relative">
+          <div className='relative'>
             <input
-              type="number"
-              min="0.1"
-              step="0.1"
-              id="weight"
-              placeholder="e.g., 2.5"
-              title="Enter weight in kilograms"
-              className="h-11 pl-3 pr-10 border rounded-md w-full"
+              type='number'
+              min='0.1'
+              step='0.1'
+              id='weight'
+              placeholder='e.g., 2.5'
+              title='Enter weight in kilograms'
+              className='h-11 pl-3 pr-10 border rounded-md w-full'
               value={formData.productDetails.weight || ''}
-              onChange={(e) => handleInputChange('weight', e.target.value)}
+              onChange={e => handleInputChange('weight', e.target.value)}
               onBlur={() => handleBlur('weight')}
               disabled={isSubmitting}
               aria-describedby={fieldErrors.weight ? 'weight-error' : undefined}
-              aria-required="true"
+              aria-required='true'
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">KG</span>
+            <span className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-500'>
+              KG
+            </span>
           </div>
           {fieldErrors.weight && (
-            <p id="weight-error" className="text-red-500 text-sm mt-1" role="alert">
+            <p
+              id='weight-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
               {fieldErrors.weight}
             </p>
           )}
@@ -603,15 +660,15 @@ export function PlaceOrderModal({
               placeholder='$250'
               className='h-11'
               value={formData.productDetails.price}
-              onChange={(e) => handleInputChange('price', e.target.value)}
+              onChange={e => handleInputChange('price', e.target.value)}
               onBlur={() => handleBlur('price')}
               disabled={isSubmitting}
               aria-describedby={fieldErrors.price ? 'price-error' : undefined}
-              aria-required="true"
+              aria-required='true'
             />
             <Select
               value={formData.productDetails.currency}
-              onValueChange={(value) => updateProductDetails({ currency: value })}
+              onValueChange={value => updateProductDetails({ currency: value })}
               disabled={isSubmitting}
             >
               <SelectTrigger className='w-[100px] h-11 py-[21px]'>
@@ -625,27 +682,36 @@ export function PlaceOrderModal({
             </Select>
           </div>
           {fieldErrors.price && (
-            <p id="price-error" className="text-red-500 text-sm mt-1" role="alert">
+            <p
+              id='price-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
               {fieldErrors.price}
             </p>
           )}
         </FormField>
 
         {/* Product Photos */}
-<FormField
-  id='photos'
-  label={<>Add Product Photos <span className="text-gray-400">(Max size of 3MB each)</span></>}
-  className='font-sm'
->
-  <PhotoUpload
-    endpoint="productUploader"
-    multiple={true}
-    maxFiles={3}
-    currentPhotos={formData.productDetails.photos || []}
-    onPhotosUpdate={(urls) => updateProductDetails({ photos: urls })}
-    placeholder="Add photos"
-  />
-</FormField>
+        <FormField
+          id='photos'
+          label={
+            <>
+              Add Product Photos{' '}
+              <span className='text-gray-400'>(Max size of 3MB each)</span>
+            </>
+          }
+          className='font-sm'
+        >
+          <PhotoUpload
+            endpoint='productUploader'
+            multiple={true}
+            maxFiles={3}
+            currentPhotos={formData.productDetails.photos || []}
+            onPhotosUpdate={urls => updateProductDetails({ photos: urls })}
+            placeholder='Add photos'
+          />
+        </FormField>
 
         {/* Add Quantity */}
         <FormField id='quantity' label='Add Quantity'>
@@ -681,7 +747,9 @@ export function PlaceOrderModal({
           <Switch
             id='fragile'
             checked={formData.productDetails.fragile}
-            onCheckedChange={(checked) => updateProductDetails({ fragile: checked })}
+            onCheckedChange={checked =>
+              updateProductDetails({ fragile: checked })
+            }
           />
         </div>
 
@@ -695,9 +763,15 @@ export function PlaceOrderModal({
             id='additional-info'
             placeholder='Explain in details all you want the product to look like'
             rows={4}
+            maxLength={1024}
             value={formData.productDetails.additionalInfo || ''}
-            onChange={(e) => updateProductDetails({ additionalInfo: e.target.value })}
+            onChange={e =>
+              updateProductDetails({ additionalInfo: e.target.value })
+            }
           />
+          <p className='text-xs text-gray-500 text-right mt-1'>
+            {(formData.productDetails.additionalInfo || '').length}/1024
+          </p>
         </FormField>
 
         {/* Buttons at the bottom of the form */}
@@ -719,58 +793,62 @@ export function PlaceOrderModal({
   // "Browse Stores"
   const renderStoresView = () => (
     <>
-      <DialogHeader className="sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl">
-        <div className="flex items-center">
+      <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
+        <div className='flex items-center'>
           <button
-            type="button"
+            type='button'
             onClick={() => setView('details')} // Bug Fix: Was 'delivery', now 'details'
-            className="p-1 rounded-full hover:bg-gray-100 mr-2"
+            className='p-1 rounded-full hover:bg-gray-100 mr-2'
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className='h-6 w-6' />
           </button>
-          <DialogTitle className="text-lg font-semibold text-gray-900">
+          <DialogTitle className='text-lg font-semibold text-gray-900'>
             What store will this product be from?
           </DialogTitle>
         </div>
       </DialogHeader>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 rounded-xl">
+      <div className='flex-1 overflow-y-auto p-6 space-y-4 rounded-xl'>
         {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <div className='relative'>
+          <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
           <Input
-            placeholder="Search for stores"
-            className="h-11 pl-10"
+            placeholder='Search for stores'
+            className='h-11 pl-10'
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
 
         {/* Store List */}
-        <div className="space-y-2">
-          {stores.filter(store => store.name.toLowerCase().includes(searchQuery.toLowerCase())).map(store => (
-            <a
-              key={store.name}
-              href={store.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-32 h-10 rounded-none flex items-center justify-center overflow-hidden">
-                  <NextImage
-                    src={store.logo}
-                    alt={store.name}
-                    width={60}
-                    height={40}
-                  />
-                  {/* <span className="text-xs">{store.name} Logo</span> */}
+        <div className='space-y-2'>
+          {stores
+            .filter(store =>
+              store.name.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            .map(store => (
+              <a
+                key={store.name}
+                href={store.url}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-100 transition-colors'
+              >
+                <div className='flex items-center gap-3'>
+                  <div className='w-32 h-10 rounded-none flex items-center justify-center overflow-hidden'>
+                    <NextImage
+                      src={store.logo}
+                      alt={store.name}
+                      width={60}
+                      height={40}
+                    />
+                    {/* <span className="text-xs">{store.name} Logo</span> */}
+                  </div>
+                  {/* <span className="font-medium">{store.name}</span> */}
                 </div>
-                {/* <span className="font-medium">{store.name}</span> */}
-              </div>
-              <ExternalLink className="h-5 w-5 text-purple-900" />
-            </a>
-          ))}
+                <ExternalLink className='h-5 w-5 text-purple-900' />
+              </a>
+            ))}
         </div>
       </div>
     </>
@@ -779,192 +857,229 @@ export function PlaceOrderModal({
   // New "Delivery Details" view (Step 2)
   const renderDeliveryView = () => (
     <>
-      <DialogHeader className="sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
+      <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
+        <div className='flex justify-between items-center'>
+          <div className='flex items-center gap-2'>
             <button
-              type="button"
-              className="p-1 rounded-full hover:bg-gray-100"
+              type='button'
+              className='p-1 rounded-full hover:bg-gray-100'
               onClick={() => setView('details')} // Goes back to details
             >
-              <ChevronLeft className="h-6 w-6" />
+              <ChevronLeft className='h-6 w-6' />
             </button>
-            <DialogTitle className="text-lg font-semibold text-gray-900">
+            <DialogTitle className='text-lg font-semibold text-gray-900'>
               Delivery Details
             </DialogTitle>
           </div>
-          <span className="text-sm font-medium text-gray-500">Step 2/3</span>
+          <span className='text-sm font-medium text-gray-500'>Step 2/3</span>
         </div>
       </DialogHeader>
 
       {/* Scrollable Form Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl">
-        <p className="text-sm text-gray-500 text-center border-b border-b-gray-200 pb-2.5 mb-8">
+      <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl'>
+        <p className='text-sm text-gray-500 text-center border-b border-b-gray-200 pb-2.5 mb-8'>
           Travelers have up to 24 hours after arrival to drop off items at our
           approved stores for you to pick up.
         </p>
 
         {/* Pickup Checkbox */}
-        <div className="flex items-center space-x-2">
+        <div className='flex items-center space-x-2'>
           <Checkbox
-            id="pickup-for-me"
+            id='pickup-for-me'
             checked={formData.deliveryDetails.pickup}
-            onCheckedChange={(checked) => updateDeliveryDetails({ pickup: checked === true })}
+            onCheckedChange={checked =>
+              updateDeliveryDetails({ pickup: checked === true })
+            }
           />
           <Label
-            htmlFor="pickup-for-me"
-            className="text-sm font-medium text-gray-800 font-sans"
+            htmlFor='pickup-for-me'
+            className='text-sm font-medium text-gray-800 font-sans'
           >
             Somebody will be picking up my item(s) for me
           </Label>
         </div>
 
         {/* Buying From */}
-        <FormField id="buying-from" label="Buying From">
-          <div className="relative">
+        <FormField id='buying-from' label='Buying From'>
+          <div className='relative'>
             <Input
-              id="buying-from"
-              placeholder="New York, USA"
-              className="h-11 pl-10"
+              id='buying-from'
+              placeholder='New York, USA'
+              className='h-11 pl-10'
               value={formData.deliveryDetails.buyingFrom || ''}
-              onChange={(e) => handleInputChange('buyingFrom', e.target.value)}
+              onChange={e => handleInputChange('buyingFrom', e.target.value)}
               onBlur={() => handleBlur('buyingFrom')}
               disabled={isSubmitting}
-              aria-describedby={fieldErrors.buyingFrom ? 'buying-from-error' : undefined}
-              aria-required="true"
+              aria-describedby={
+                fieldErrors.buyingFrom ? 'buying-from-error' : undefined
+              }
+              aria-required='true'
             />
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
           </div>
           {fieldErrors.buyingFrom && (
-            <p id="buying-from-error" className="text-red-500 text-sm mt-1" role="alert">
+            <p
+              id='buying-from-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
               {fieldErrors.buyingFrom}
             </p>
           )}
         </FormField>
 
         {/* Delivering To */}
-        <FormField id="delivering-to" label="Delivering To">
-          <div className="relative">
+        <FormField id='delivering-to' label='Delivering To'>
+          <div className='relative'>
             <Input
-              id="delivering-to"
-              placeholder="Lagos, Nigeria"
-              className="h-11 pl-10"
+              id='delivering-to'
+              placeholder='Lagos, Nigeria'
+              className='h-11 pl-10'
               value={formData.deliveryDetails.deliveringTo}
-              onChange={(e) => handleInputChange('deliveringTo', e.target.value)}
+              onChange={e => handleInputChange('deliveringTo', e.target.value)}
               onBlur={() => handleBlur('deliveringTo')}
               disabled={isSubmitting}
-              aria-describedby={fieldErrors.deliveringTo ? 'delivering-to-error' : undefined}
-              aria-required="true"
+              aria-describedby={
+                fieldErrors.deliveringTo ? 'delivering-to-error' : undefined
+              }
+              aria-required='true'
             />
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
           </div>
           {fieldErrors.deliveringTo && (
-            <p id="delivering-to-error" className="text-red-500 text-sm mt-1" role="alert">
+            <p
+              id='delivering-to-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
               {fieldErrors.deliveringTo}
             </p>
           )}
         </FormField>
 
         {/* Delivery Date Range */}
-        <div className="grid grid-cols-2 gap-4">
-          <FormField id="delivery-start-date" label="Earliest Delivery Date">
+        <div className='grid grid-cols-2 gap-4'>
+          <FormField id='delivery-start-date' label='Earliest Delivery Date'>
             <DatePicker
-              date={parseDate(formData.deliveryDetails.deliveryStartDate || '') || undefined}
-              onDateChange={(date) => updateDeliveryDetails({
-                deliveryStartDate: date ? format(date, 'MM/dd/yyyy') : ''
-              })}
-              placeholder="Select start date"
+              date={
+                parseDate(formData.deliveryDetails.deliveryStartDate || '') ||
+                undefined
+              }
+              onDateChange={date =>
+                updateDeliveryDetails({
+                  deliveryStartDate: date ? format(date, 'MM/dd/yyyy') : '',
+                })
+              }
+              placeholder='Select start date'
             />
           </FormField>
 
-          <FormField id="delivery-end-date" label="Latest Delivery Date">
+          <FormField id='delivery-end-date' label='Latest Delivery Date'>
             <DatePicker
-              date={parseDate(formData.deliveryDetails.deliveryEndDate || '') || undefined}
-              onDateChange={(date) => updateDeliveryDetails({
-                deliveryEndDate: date ? format(date, 'MM/dd/yyyy') : ''
-              })}
-              placeholder="Select end date"
+              date={
+                parseDate(formData.deliveryDetails.deliveryEndDate || '') ||
+                undefined
+              }
+              onDateChange={date =>
+                updateDeliveryDetails({
+                  deliveryEndDate: date ? format(date, 'MM/dd/yyyy') : '',
+                })
+              }
+              placeholder='Select end date'
             />
           </FormField>
         </div>
 
         {/* Additional Phone Number */}
-        <FormField id="phone" label="Additional Phone Number">
-          <div className="flex gap-2 ">
-            <Select value={formData.deliveryDetails.phoneCountry} onValueChange={(value) => updateDeliveryDetails({ phoneCountry: value })}>
-              <SelectTrigger className="w-[100px] h-11 py-[21px]">
-                <SelectValue placeholder="🇳🇬" />
+        <FormField id='phone' label='Additional Phone Number'>
+          <div className='flex gap-2 '>
+            <Select
+              value={formData.deliveryDetails.phoneCountry}
+              onValueChange={value =>
+                updateDeliveryDetails({ phoneCountry: value })
+              }
+            >
+              <SelectTrigger className='w-[100px] h-11 py-[21px]'>
+                <SelectValue placeholder='🇳🇬' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="NG">🇳🇬</SelectItem>
-                <SelectItem value="US">🇺🇸</SelectItem>
-                <SelectItem value="GB">🇬🇧</SelectItem>
+                <SelectItem value='NG'>🇳🇬</SelectItem>
+                <SelectItem value='US'>🇺🇸</SelectItem>
+                <SelectItem value='GB'>🇬🇧</SelectItem>
               </SelectContent>
             </Select>
             <Input
-              id="phone"
-              type="tel"
-              placeholder="910 000 0000"
-              className="h-11"
+              id='phone'
+              type='tel'
+              placeholder='910 000 0000'
+              className='h-11'
               value={formData.deliveryDetails.phone || ''}
-              onChange={(e) => updateDeliveryDetails({ phone: e.target.value })}
+              onChange={e => updateDeliveryDetails({ phone: e.target.value })}
             />
           </div>
         </FormField>
 
         {/* How carried */}
-        <div className="space-y-3">
+        <div className='space-y-3'>
           <Label>How do you want this product carried?</Label>
           <RadioGroup
             value={formData.deliveryDetails.carryOn ? 'carry-on' : 'check-in'}
-            onValueChange={(value) => updateDeliveryDetails({ carryOn: value === 'carry-on' })}
-            className="space-y-2"
+            onValueChange={value =>
+              updateDeliveryDetails({ carryOn: value === 'carry-on' })
+            }
+            className='space-y-2'
           >
             <RadioOption
-              id="carry-on"
-              label="Carry-On"
-              infoText="Item will be carried on the plane with the traveler."
+              id='carry-on'
+              label='Carry-On'
+              infoText='Item will be carried on the plane with the traveler.'
             />
             <RadioOption
-              id="check-in"
-              label="Check-In"
-              infoText="Item will be checked in as luggage."
+              id='check-in'
+              label='Check-In'
+              infoText='Item will be checked in as luggage.'
             />
           </RadioGroup>
         </div>
 
         {/* How delivered */}
-        <div className="space-y-3">
+        <div className='space-y-3'>
           <Label>How do you want this package delivered?</Label>
           <RadioGroup
-            value={formData.deliveryDetails.storePickup ? 'store-pickup' : 'in-person'}
-            onValueChange={(value) => updateDeliveryDetails({ storePickup: value === 'store-pickup' })}
-            className="space-y-2"
+            value={
+              formData.deliveryDetails.storePickup
+                ? 'store-pickup'
+                : 'in-person'
+            }
+            onValueChange={value =>
+              updateDeliveryDetails({ storePickup: value === 'store-pickup' })
+            }
+            className='space-y-2'
           >
             <RadioOption
-              id="in-person"
-              label="In-person"
-              infoText="Meet the traveler in person for drop-off."
+              id='in-person'
+              label='In-person'
+              infoText='Meet the traveler in person for drop-off.'
             />
             <RadioOption
-              id="store-pickup"
-              label="BagXtra store pick-up"
-              infoText="Pick up your item from a secure BagXtra partner store."
+              id='store-pickup'
+              label='BagXtra store pick-up'
+              infoText='Pick up your item from a secure BagXtra partner store.'
             />
           </RadioGroup>
         </div>
 
         {/* Buttons */}
-        <div className="pt-6 mt-4 border-t rounded-b-xl">
-          <div className="flex flex-col sm:flex-row gap-3">
+        <div className='pt-6 mt-4 border-t rounded-b-xl'>
+          <div className='flex flex-col sm:flex-row gap-3'>
             <Button
-              className="w-full sm:flex-1 bg-purple-900 hover:bg-purple-800"
+              className='w-full sm:flex-1 bg-purple-900 hover:bg-purple-800'
               onClick={handleFindTravelers}
               disabled={isFindingMatches}
             >
               {isFindingMatches ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className='h-4 w-4 mr-2 animate-spin' />
                   Finding Travelers...
                 </>
               ) : (
@@ -972,14 +1087,14 @@ export function PlaceOrderModal({
               )}
             </Button>
             <Button
-              variant="outline"
-              className="w-full sm:flex-1 border-purple-900 text-purple-900 hover:bg-purple-50"
+              variant='outline'
+              className='w-full sm:flex-1 border-purple-900 text-purple-900 hover:bg-purple-50'
               onClick={handleGetProposals}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className='h-4 w-4 mr-2 animate-spin' />
                   Creating Marketplace Order...
                 </>
               ) : (
@@ -1018,42 +1133,54 @@ export function PlaceOrderModal({
       }
 
       // Find potential matches without creating database records
-      const matchesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/find-matches`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          fromCountry: formData.deliveryDetails.buyingFrom.trim(),
-          toCountry: formData.deliveryDetails.deliveringTo.trim(),
-          deliveryStartDate: formData.deliveryDetails.deliveryStartDate || undefined,
-          deliveryEndDate: formData.deliveryDetails.deliveryEndDate || undefined,
-          bagItems: [{
-            productName: formData.productDetails.name.trim(),
-            productLink: formData.productDetails.url?.trim() || undefined,
-            price: parseFloat(formData.productDetails.price),
-            currency: formData.productDetails.currency,
-            weightKg: parseFloat(formData.productDetails.weight!),
-            quantity: formData.quantity,
-            isFragile: formData.productDetails.fragile,
-            photos: formData.productDetails.photos || [],
-            colour: formData.productDetails.colour || undefined,
-            additionalInfo: formData.productDetails.additionalInfo || undefined,
-            requiresSpecialDelivery: false,
-            specialDeliveryCategory: undefined
-          }]
-        })
-      });
+      const matchesResponse = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+        }/api/shopper-requests/find-matches`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fromCountry: formData.deliveryDetails.buyingFrom.trim(),
+            toCountry: formData.deliveryDetails.deliveringTo.trim(),
+            deliveryStartDate:
+              formData.deliveryDetails.deliveryStartDate || undefined,
+            deliveryEndDate:
+              formData.deliveryDetails.deliveryEndDate || undefined,
+            bagItems: [
+              {
+                productName: formData.productDetails.name.trim(),
+                productLink: formData.productDetails.url?.trim() || undefined,
+                price: parseFloat(formData.productDetails.price),
+                currency: formData.productDetails.currency,
+                weightKg: parseFloat(formData.productDetails.weight!),
+                quantity: formData.quantity,
+                isFragile: formData.productDetails.fragile,
+                photos: formData.productDetails.photos || [],
+                colour: formData.productDetails.colour || undefined,
+                additionalInfo:
+                  formData.productDetails.additionalInfo || undefined,
+                requiresSpecialDelivery: false,
+                specialDeliveryCategory: undefined,
+              },
+            ],
+          }),
+        }
+      );
 
       if (!matchesResponse.ok) {
         const errorData = await matchesResponse.json();
         if (errorData.details) {
           // Handle validation errors
-          const validationMessages = errorData.details.map((detail: any) =>
-            `${detail.field}: ${detail.message}`
+          const validationMessages = errorData.details.map(
+            (detail: any) => `${detail.field}: ${detail.message}`
           );
-          setBookingError(`Please fix the following errors:\n${validationMessages.join('\n')}`);
+          setBookingError(
+            `Please fix the following errors:\n${validationMessages.join('\n')}`
+          );
         } else {
           setBookingError(errorData.message || 'Failed to find matches');
         }
@@ -1071,7 +1198,9 @@ export function PlaceOrderModal({
       if (error instanceof Error) {
         setBookingError(error.message);
       } else {
-        setBookingError('Network error occurred. Please check your connection and try again.');
+        setBookingError(
+          'Network error occurred. Please check your connection and try again.'
+        );
       }
     } finally {
       setIsFindingMatches(false);
@@ -1099,48 +1228,62 @@ export function PlaceOrderModal({
       }
 
       // Create shopper request with marketplace status
-      const createResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          fromCountry: formData.deliveryDetails.buyingFrom.trim(),
-          destinationCountry: formData.deliveryDetails.deliveringTo.trim(),
-          deliveryStartDate: formData.deliveryDetails.deliveryStartDate || undefined,
-          deliveryEndDate: formData.deliveryDetails.deliveryEndDate || undefined,
-          pickup: formData.deliveryDetails.pickup || false,
-          carryOn: formData.deliveryDetails.carryOn || false,
-          storePickup: formData.deliveryDetails.storePickup || false,
-          phone: formData.deliveryDetails.phone || '',
-          phoneCountry: formData.deliveryDetails.phoneCountry || 'NG',
-          bagItems: [{
-            productName: formData.productDetails.name.trim(),
-            productLink: formData.productDetails.url?.trim() || undefined,
-            price: parseFloat(formData.productDetails.price),
-            currency: formData.productDetails.currency,
-            weightKg: parseFloat(formData.productDetails.weight!),
-            quantity: formData.quantity,
-            isFragile: formData.productDetails.fragile,
-            photos: formData.productDetails.photos || [],
-            colour: formData.productDetails.colour || undefined,
-            additionalInfo: formData.productDetails.additionalInfo || undefined,
-            requiresSpecialDelivery: false,
-            specialDeliveryCategory: undefined
-          }]
-        })
-      });
+      const createResponse = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+        }/api/shopper-requests`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fromCountry: formData.deliveryDetails.buyingFrom.trim(),
+            destinationCountry: formData.deliveryDetails.deliveringTo.trim(),
+            deliveryStartDate:
+              formData.deliveryDetails.deliveryStartDate || undefined,
+            deliveryEndDate:
+              formData.deliveryDetails.deliveryEndDate || undefined,
+            pickup: formData.deliveryDetails.pickup || false,
+            carryOn: formData.deliveryDetails.carryOn || false,
+            storePickup: formData.deliveryDetails.storePickup || false,
+            phone: formData.deliveryDetails.phone || '',
+            phoneCountry: formData.deliveryDetails.phoneCountry || 'NG',
+            bagItems: [
+              {
+                productName: formData.productDetails.name.trim(),
+                productLink: formData.productDetails.url?.trim() || undefined,
+                price: parseFloat(formData.productDetails.price),
+                currency: formData.productDetails.currency,
+                weightKg: parseFloat(formData.productDetails.weight!),
+                quantity: formData.quantity,
+                isFragile: formData.productDetails.fragile,
+                photos: formData.productDetails.photos || [],
+                colour: formData.productDetails.colour || undefined,
+                additionalInfo:
+                  formData.productDetails.additionalInfo || undefined,
+                requiresSpecialDelivery: false,
+                specialDeliveryCategory: undefined,
+              },
+            ],
+          }),
+        }
+      );
 
       if (!createResponse.ok) {
         const errorData = await createResponse.json();
         if (errorData.details) {
-          const validationMessages = errorData.details.map((detail: any) =>
-            `${detail.field}: ${detail.message}`
+          const validationMessages = errorData.details.map(
+            (detail: any) => `${detail.field}: ${detail.message}`
           );
-          setBookingError(`Please fix the following errors:\n${validationMessages.join('\n')}`);
+          setBookingError(
+            `Please fix the following errors:\n${validationMessages.join('\n')}`
+          );
         } else {
-          setBookingError(errorData.message || 'Failed to create marketplace request');
+          setBookingError(
+            errorData.message || 'Failed to create marketplace request'
+          );
         }
         return;
       }
@@ -1149,18 +1292,25 @@ export function PlaceOrderModal({
       const requestId = createData.data.id;
 
       // Publish the request with marketplace status (no automatic matching)
-      const publishResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/${requestId}/publish`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: 'marketplace' }) // Specify marketplace status
-      });
+      const publishResponse = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+        }/api/shopper-requests/${requestId}/publish`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: 'marketplace' }), // Specify marketplace status
+        }
+      );
 
       if (!publishResponse.ok) {
         const errorData = await publishResponse.json();
-        throw new Error(errorData.message || 'Failed to publish marketplace request');
+        throw new Error(
+          errorData.message || 'Failed to publish marketplace request'
+        );
       }
 
       // Set booking flow and show success view
@@ -1171,7 +1321,9 @@ export function PlaceOrderModal({
       if (error instanceof Error) {
         setBookingError(error.message);
       } else {
-        setBookingError('Network error occurred. Please check your connection and try again.');
+        setBookingError(
+          'Network error occurred. Please check your connection and try again.'
+        );
       }
     }
   };
@@ -1188,38 +1340,48 @@ export function PlaceOrderModal({
       }
 
       // First, create the shopper request
-      const createResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          fromCountry: formData.deliveryDetails.buyingFrom.trim(),
-          destinationCountry: formData.deliveryDetails.deliveringTo.trim(),
-          deliveryStartDate: formData.deliveryDetails.deliveryStartDate || undefined,
-          deliveryEndDate: formData.deliveryDetails.deliveryEndDate || undefined,
-          pickup: formData.deliveryDetails.pickup || false,
-          carryOn: formData.deliveryDetails.carryOn || false,
-          storePickup: formData.deliveryDetails.storePickup || false,
-          phone: formData.deliveryDetails.phone || '',
-          phoneCountry: formData.deliveryDetails.phoneCountry || 'NG',
-          bagItems: [{
-            productName: formData.productDetails.name.trim(),
-            productLink: formData.productDetails.url?.trim() || undefined,
-            price: parseFloat(formData.productDetails.price),
-            currency: formData.productDetails.currency,
-            weightKg: parseFloat(formData.productDetails.weight!),
-            quantity: formData.quantity,
-            isFragile: formData.productDetails.fragile,
-            photos: formData.productDetails.photos || [],
-            colour: formData.productDetails.colour || undefined,
-            additionalInfo: formData.productDetails.additionalInfo || undefined,
-            requiresSpecialDelivery: false,
-            specialDeliveryCategory: undefined
-          }]
-        })
-      });
+      const createResponse = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+        }/api/shopper-requests`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fromCountry: formData.deliveryDetails.buyingFrom.trim(),
+            destinationCountry: formData.deliveryDetails.deliveringTo.trim(),
+            deliveryStartDate:
+              formData.deliveryDetails.deliveryStartDate || undefined,
+            deliveryEndDate:
+              formData.deliveryDetails.deliveryEndDate || undefined,
+            pickup: formData.deliveryDetails.pickup || false,
+            carryOn: formData.deliveryDetails.carryOn || false,
+            storePickup: formData.deliveryDetails.storePickup || false,
+            phone: formData.deliveryDetails.phone || '',
+            phoneCountry: formData.deliveryDetails.phoneCountry || 'NG',
+            bagItems: [
+              {
+                productName: formData.productDetails.name.trim(),
+                productLink: formData.productDetails.url?.trim() || undefined,
+                price: parseFloat(formData.productDetails.price),
+                currency: formData.productDetails.currency,
+                weightKg: parseFloat(formData.productDetails.weight!),
+                quantity: formData.quantity,
+                isFragile: formData.productDetails.fragile,
+                photos: formData.productDetails.photos || [],
+                colour: formData.productDetails.colour || undefined,
+                additionalInfo:
+                  formData.productDetails.additionalInfo || undefined,
+                requiresSpecialDelivery: false,
+                specialDeliveryCategory: undefined,
+              },
+            ],
+          }),
+        }
+      );
 
       if (!createResponse.ok) {
         const errorData = await createResponse.json();
@@ -1230,37 +1392,36 @@ export function PlaceOrderModal({
       const requestId = createData.data.id;
 
       // Publish the request
-      const publishResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/${requestId}/publish`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const publishResponse = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+        }/api/shopper-requests/${requestId}/publish`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         }
-      });
+      );
 
       if (!publishResponse.ok) {
         const errorData = await publishResponse.json();
         throw new Error(errorData.message || 'Failed to publish request');
       }
 
-      // Notify parent component with new order data for optimistic update
-      const newOrder = {
-        id: `temp_${Date.now()}`, // Temporary ID for optimistic updates
-        amount: `$${(parseFloat(formData.productDetails.price || '0') * formData.quantity).toFixed(2)}`,
-        item: formData.productDetails.name,
-        details: 'Waiting for traveler approval',
-        timing: null,
-        additionalInfo: null
-      };
-      onOrderPlaced?.(newOrder);
-
       // Fetch the matches created by publish
-      const matchesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/shopper-requests/${requestId}/matches`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const matchesResponse = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+        }/api/shopper-requests/${requestId}/matches`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         }
-      });
+      );
 
       if (!matchesResponse.ok) {
         const errorData = await matchesResponse.json();
@@ -1285,8 +1446,10 @@ export function PlaceOrderModal({
 
         // Match by flight details
         if (selectedMatch && m.flightDetails) {
-          return m.flightDetails.from === selectedMatch.flightDetails.from &&
-                 m.flightDetails.to === selectedMatch.flightDetails.to;
+          return (
+            m.flightDetails.from === selectedMatch.flightDetails.from &&
+            m.flightDetails.to === selectedMatch.flightDetails.to
+          );
         }
 
         return false;
@@ -1299,12 +1462,27 @@ export function PlaceOrderModal({
       // Match found successfully - booking request sent
       // Match stays "Pending" for traveler to accept/reject
 
+      // Notify parent component with new order data for optimistic update
+      const newOrder = {
+        id: `temp_${Date.now()}`, // Temporary ID for optimistic updates
+        amount: `$${(
+          parseFloat(formData.productDetails.price || '0') * formData.quantity
+        ).toFixed(2)}`,
+        item: formData.productDetails.name,
+        details: 'Waiting for traveler approval',
+        timing: null,
+        additionalInfo: null,
+      };
+      onOrderPlaced?.(newOrder);
+
       // Set booking flow and show success view
       setBookingFlow('direct');
       setView('success');
     } catch (error) {
       console.error('Booking error:', error);
-      setBookingError(error instanceof Error ? error.message : 'Failed to book traveler');
+      setBookingError(
+        error instanceof Error ? error.message : 'Failed to book traveler'
+      );
     } finally {
       setBookingMatchId(null);
     }
@@ -1316,65 +1494,69 @@ export function PlaceOrderModal({
 
     return (
       <>
-        <DialogHeader className="sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
+        <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
+          <div className='flex justify-between items-center'>
+            <div className='flex items-center gap-2'>
               <button
-                type="button"
-                className="p-1 rounded-full hover:bg-gray-100"
+                type='button'
+                className='p-1 rounded-full hover:bg-gray-100'
                 onClick={() => setView('delivery')} // Goes back to delivery
               >
-                <ChevronLeft className="h-6 w-6" />
+                <ChevronLeft className='h-6 w-6' />
               </button>
-              <DialogTitle className="text-lg font-semibold text-gray-900">
+              <DialogTitle className='text-lg font-semibold text-gray-900'>
                 Find Traveller
               </DialogTitle>
             </div>
-            <span className="text-sm font-medium text-gray-500">Step 3/3</span>
+            <span className='text-sm font-medium text-gray-500'>Step 3/3</span>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl bg-gray-50">
-          <p className="text-sm text-gray-500 border-b border-b-gray-200 pb-2.5 mb-8 text-center">
+        <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl bg-gray-50'>
+          <p className='text-sm text-gray-500 border-b border-b-gray-200 pb-2.5 mb-8 text-center'>
             Travelers have up to 24 hours after arrival to drop off items at our
             approved stores for you to pick up.
           </p>
 
           {/* Error Display */}
           {bookingError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <p className="text-red-800 text-sm">{bookingError}</p>
+            <div className='bg-red-50 border border-red-200 rounded-lg p-4 mb-4'>
+              <p className='text-red-800 text-sm'>{bookingError}</p>
             </div>
           )}
 
           {/* Loading State */}
           {isFindingMatches && (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900"></div>
-              <span className="ml-2 text-gray-600">Finding travelers...</span>
+            <div className='flex justify-center py-8'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900'></div>
+              <span className='ml-2 text-gray-600'>Finding travelers...</span>
             </div>
           )}
 
           {/* Error State */}
           {bookingError && !isFindingMatches && (
-            <div className="text-center py-8">
-              <p className="text-red-600 mb-2">Failed to load travelers</p>
-              <p className="text-gray-500 text-sm">{bookingError}</p>
+            <div className='text-center py-8'>
+              <p className='text-red-600 mb-2'>Failed to load travelers</p>
+              <p className='text-gray-500 text-sm'>{bookingError}</p>
             </div>
           )}
 
           {/* No Matches */}
           {!isFindingMatches && !bookingError && matches.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-600 mb-2">No travelers found for your request</p>
-              <p className="text-gray-500 text-sm">Try adjusting your delivery preferences or check back later</p>
+            <div className='text-center py-8'>
+              <p className='text-gray-600 mb-2'>
+                No travelers found for your request
+              </p>
+              <p className='text-gray-500 text-sm'>
+                Try adjusting your delivery preferences or check back later
+              </p>
             </div>
           )}
 
           {/* Traveler List */}
           {!isFindingMatches && !bookingError && matches.length > 0 && (
-            <div className="space-y-4">
-              {matches.map((match) => (
+            <div className='space-y-4'>
+              {matches.map(match => (
                 <TravelerCard
                   key={match._id}
                   match={match}
@@ -1394,19 +1576,20 @@ export function PlaceOrderModal({
     if (bookingFlow === 'marketplace') {
       // Marketplace success - offer posted
       return (
-        <div className="flex flex-col items-center justify-center p-8 text-center h-full bg-white">
-          <CheckCircle className="h-16 w-16 text-purple-900 mb-4" />
-          <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
+        <div className='flex flex-col items-center justify-center p-8 text-center h-full bg-white'>
+          <CheckCircle className='h-16 w-16 text-purple-900 mb-4' />
+          <DialogTitle className='text-xl font-bold text-gray-900 mb-2'>
             Offer Posted
           </DialogTitle>
-          <p className="text-sm text-gray-600 mb-6">
-            Travelers who are interested will send a proposal message and you can choose from them
+          <p className='text-sm text-gray-600 mb-6'>
+            Travelers who are interested will send a proposal message and you
+            can choose from them
           </p>
 
           {/* Action Buttons */}
-          <div className="space-y-3 w-full max-w-xs">
+          <div className='space-y-3 w-full max-w-xs'>
             <Button
-              className="w-full bg-purple-900 hover:bg-purple-800 h-11"
+              className='w-full bg-purple-900 hover:bg-purple-800 h-11'
               onClick={() => {
                 handleReset();
                 onOpenChange(false);
@@ -1420,19 +1603,20 @@ export function PlaceOrderModal({
     } else {
       // Direct booking success - request sent to traveler
       return (
-        <div className="flex flex-col items-center justify-center p-8 text-center h-full bg-white">
-          <CheckCircle className="h-16 w-16 text-purple-900 mb-4" />
-          <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
+        <div className='flex flex-col items-center justify-center p-8 text-center h-full bg-white'>
+          <CheckCircle className='h-16 w-16 text-purple-900 mb-4' />
+          <DialogTitle className='text-xl font-bold text-gray-900 mb-2'>
             Request has been sent to traveler
           </DialogTitle>
-          <p className="text-sm text-gray-600 mb-6">
-            We will send a notification once traveler accepts, after which payment can be made
+          <p className='text-sm text-gray-600 mb-6'>
+            We will send a notification once traveler accepts, after which
+            payment can be made
           </p>
 
           {/* Action Buttons */}
-          <div className="space-y-3 w-full max-w-xs">
+          <div className='space-y-3 w-full max-w-xs'>
             <Button
-              className="w-full bg-purple-900 hover:bg-purple-800 h-11"
+              className='w-full bg-purple-900 hover:bg-purple-800 h-11'
               onClick={() => {
                 handleReset();
                 setView('details');
@@ -1441,8 +1625,8 @@ export function PlaceOrderModal({
               Create New Order
             </Button>
             <Button
-              variant="outline"
-              className="w-full border-purple-900 text-purple-900 hover:bg-purple-50 h-11"
+              variant='outline'
+              className='w-full border-purple-900 text-purple-900 hover:bg-purple-50 h-11'
               onClick={() => {
                 handleReset();
                 onOpenChange(false);
@@ -1458,7 +1642,11 @@ export function PlaceOrderModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className={`sm:max-w-md lg:max-w-lg p-0 gap-0 flex ${view === 'success' ? 'max-h-[50vh]' : 'flex-col max-h-[90vh] h-full'} font-space-grotesk rounded-xl`}>
+      <DialogContent
+        className={`sm:max-w-md lg:max-w-lg p-0 gap-0 flex ${
+          view === 'success' ? 'max-h-[50vh]' : 'flex-col max-h-[90vh] h-full'
+        } font-space-grotesk rounded-xl`}
+      >
         {/* Updated rendering logic */}
         {view === 'details' && renderDetailsView()}
         {view === 'stores' && renderStoresView()}
