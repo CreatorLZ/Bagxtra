@@ -1038,6 +1038,8 @@ export function PlaceOrderModal({
             quantity: formData.quantity,
             isFragile: formData.productDetails.fragile,
             photos: formData.productDetails.photos || [],
+            colour: formData.productDetails.colour || undefined,
+            additionalInfo: formData.productDetails.additionalInfo || undefined,
             requiresSpecialDelivery: false,
             specialDeliveryCategory: undefined
           }]
@@ -1122,6 +1124,8 @@ export function PlaceOrderModal({
             quantity: formData.quantity,
             isFragile: formData.productDetails.fragile,
             photos: formData.productDetails.photos || [],
+            colour: formData.productDetails.colour || undefined,
+            additionalInfo: formData.productDetails.additionalInfo || undefined,
             requiresSpecialDelivery: false,
             specialDeliveryCategory: undefined
           }]
@@ -1209,6 +1213,8 @@ export function PlaceOrderModal({
             quantity: formData.quantity,
             isFragile: formData.productDetails.fragile,
             photos: formData.productDetails.photos || [],
+            colour: formData.productDetails.colour || undefined,
+            additionalInfo: formData.productDetails.additionalInfo || undefined,
             requiresSpecialDelivery: false,
             specialDeliveryCategory: undefined
           }]

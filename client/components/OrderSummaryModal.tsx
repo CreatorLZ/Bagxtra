@@ -21,6 +21,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useOrderDetails } from '@/hooks/dashboard/useOrderDetails';
 import { useRole } from '@/hooks/useRole';
+import { motion } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -246,22 +247,39 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
             </p>
             <div className="bg-gray-50 px-3 py-2.5 rounded-lg text-sm text-gray-500 truncate flex items-center gap-2 border border-gray-100">
               <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50" />
-              <span className="truncate text-blue-600 underline decoration-blue-200 underline-offset-2">
-                {selectedProduct?.link || '#'}
-              </span>
+              <a
+                href={selectedProduct?.link || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate text-blue-600 underline decoration-blue-200 underline-offset-2 hover:text-blue-800 transition-colors"
+              >
+                {selectedProduct?.link || 'No link available'}
+              </a>
             </div>
           </Card>
 
           {/* 3. Product Description Card */}
+          {selectedProduct?.additionalInfo && (
+            <Card className="p-5 border-none shadow-sm rounded-2xl bg-white space-y-2">
+              <h4 className="text-sm font-medium text-gray-400">Product Description</h4>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {selectedProduct.additionalInfo}
+              </p>
+            </Card>
+          )}
+
+          {/* 4. Product Specifications Card */}
           <Card className="p-5 border-none shadow-sm rounded-2xl bg-white space-y-2">
-            <h4 className="text-sm font-medium text-gray-400">Product Description</h4>
+            <h4 className="text-sm font-medium text-gray-400">Product Specifications</h4>
             <p className="text-sm text-gray-700 leading-relaxed">
-              {selectedProduct?.additionalInfo ||
-                `Product: ${selectedProduct?.name || 'N/A'}\nColour: ${selectedProduct?.colour || 'N/A'}\nWeight: ${selectedProduct?.weight || 0}kg\nQuantity: ${selectedProduct?.quantity || 1}`}
+              Product: {selectedProduct?.name || 'N/A'}<br />
+              Colour: {selectedProduct?.colour || 'N/A'}<br />
+              Weight: {selectedProduct?.weight || 0}kg<br />
+              Quantity: {selectedProduct?.quantity || 1}
             </p>
           </Card>
 
-          {/* 4. Traveler/Shopper Information Card */}
+          {/* 5. Traveler/Shopper Information Card */}
           <Card className="p-5 border-none shadow-sm rounded-2xl bg-white">
             <h4 className="text-sm font-medium text-gray-400 mb-4">
               {role === 'traveler' ? "Shopper's Information" : "Traveler's Information"}
@@ -327,11 +345,30 @@ export function OrderSummaryModal({ isOpen, onOpenChange, orderId }: OrderSummar
           </Card>
         </div>
 
-        {/* --- Bottom Action Button --- */}
+        {/* --- Bottom Action Buttons --- */}
         <div className="flex-shrink-0 p-6 bg-white border-t border-gray-100">
-          <Button className="w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-xl shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]">
-            Make Payment (${orderDetails.products.reduce((total, product) => total + (product.price * product.quantity), 0).toFixed(2)})
-          </Button>
+          {role === 'traveler' ? (
+            <div className="flex space-x-3">
+              <motion.button
+                className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-sm font-semibold font-space-grotesk hover:bg-red-100 transition-colors cursor-pointer"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Decline
+              </motion.button>
+              <motion.button
+                className="flex-1 py-3 bg-purple-50 text-purple-900 rounded-xl text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors cursor-pointer"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Accept
+              </motion.button>
+            </div>
+          ) : (
+            <Button className="w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-xl shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]">
+              Make Payment (${orderDetails.products.reduce((total, product) => total + (product.price * product.quantity), 0).toFixed(2)})
+            </Button>
+          )}
         </div>
 
       </DialogContent>

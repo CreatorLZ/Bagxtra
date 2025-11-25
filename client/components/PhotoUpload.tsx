@@ -423,7 +423,7 @@ export function PhotoUpload({
 
       {error && (
         <div className="mt-2 flex items-center gap-2 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2 animate-in slide-in-from-top-2 fade-in">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}

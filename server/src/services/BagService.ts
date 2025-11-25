@@ -13,6 +13,10 @@ const createBagItemSchema = z.object({
   quantity: z.number().int().positive(),
   isFragile: z.boolean(),
   photos: z.array(z.string().url()).optional(),
+  requiresSpecialDelivery: z.boolean().optional(),
+  specialDeliveryCategory: z.string().optional(),
+  colour: z.string().optional(),
+  additionalInfo: z.string().optional(),
 });
 
 const updateBagItemSchema = createBagItemSchema.partial();

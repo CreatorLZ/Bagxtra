@@ -27,6 +27,8 @@ const createShopperRequestSchema = z.object({
     photos: z.array(z.string().url()).optional(),
     requiresSpecialDelivery: z.boolean().optional(),
     specialDeliveryCategory: z.string().optional(),
+    colour: z.string().optional(),
+    additionalInfo: z.string().optional(),
   })).min(1),
 });
 
