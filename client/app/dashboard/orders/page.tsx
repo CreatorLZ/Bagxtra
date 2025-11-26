@@ -4,6 +4,7 @@ import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { Card } from '@/components/ui/card';
 import { Plus, ShoppingBag } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { PlaceOrderModal } from '@/components/PlaceOrderModal';
 import { OrderSummaryModal } from '@/components/OrderSummaryModal';
 import { useRole } from '@/hooks/useRole';
@@ -29,7 +30,11 @@ type OrderStatus =
 
 export default function OrdersPage() {
   const { role } = useRole();
-  const [activeTab, setActiveTab] = useState<OrderStatus>('accepted');
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab') as OrderStatus;
+  const [activeTab, setActiveTab] = useState<OrderStatus>(
+    tabParam || 'accepted'
+  );
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);

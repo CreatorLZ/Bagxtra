@@ -10,6 +10,8 @@ export interface OrderData {
   details: string;
   timing: string | null;
   additionalInfo: string | null;
+  shopperName?: string; // For traveler view
+  shopperAvatar?: string; // For traveler view
 }
 
 export interface OrdersResponse {

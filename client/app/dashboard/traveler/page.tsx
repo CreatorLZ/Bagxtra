@@ -1,14 +1,30 @@
 'use client';
 
 import { useTravelerDashboardData } from '@/hooks/dashboard/useTravelerDashboardData';
+import { useOrders } from '@/hooks/dashboard/useOrders';
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { ChevronRight, MapPin, Bell, Calendar, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { OrderSummaryModal } from '@/components/OrderSummaryModal';
+import { useAuth } from '@clerk/nextjs';
+import { useQueryClient } from '@tanstack/react-query';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function TravelerDashboardPage() {
   const { data, isLoading, error } = useTravelerDashboardData();
+  const { data: ordersData, isLoading: ordersLoading } = useOrders();
+  const { getToken } = useAuth();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>(
+    undefined
+  );
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -80,14 +96,6 @@ export default function TravelerDashboardPage() {
               <span className='text-sm'>Los Angeles, USA</span>
             </div>
           </div>
-          {/* <motion.div
-            className='relative'
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Bell className='h-6 w-6 text-gray-600 cursor-pointer' />
-            <span className='absolute -top-1 -right-1 h-3 w-3 bg-purple-600 rounded-full border-2 border-white'></span>
-          </motion.div> */}
         </motion.div>
 
         {/* Purple Banner */}
@@ -166,107 +174,126 @@ export default function TravelerDashboardPage() {
 
         {/* New Delivery Request */}
         <motion.div variants={itemVariants}>
-          <div className='flex items-center justify-between mb-4'>
+          <div
+            className='flex items-center justify-between mb-4 cursor-pointer'
+            onClick={() => router.push('/dashboard/orders?tab=pending')}
+          >
             <h3 className='text-lg font-semibold text-gray-900 font-space-grotesk'>
               New Delivery Request
             </h3>
             <motion.button
-              className='text-gray-400 hover:text-gray-600'
+              className='text-gray-400 hover:text-gray-600 cursor-pointer'
               whileHover={{ x: 5 }}
               transition={{ duration: 0.2 }}
+              onClick={() => router.push('/dashboard/orders?tab=pending')}
             >
               <ChevronRight className='h-5 w-5' />
             </motion.button>
           </div>
 
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-            <Card className='p-6 rounded-2xl shadow-sm border border-gray-100'>
-              <div className='flex items-start space-x-4 mb-4'>
-                <motion.div
-                  className='w-14 h-14 rounded-full overflow-hidden shrink-0'
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <img
-                    src='https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop'
-                    alt='Daramola Oluwadara'
-                    className='w-full h-full object-cover'
-                  />
-                </motion.div>
+            {ordersData?.pending.slice(0, 2).map(order => (
+              <Card
+                key={order.id}
+                className='p-6 rounded-2xl shadow-sm border border-gray-100'
+              >
+                <div className='flex items-start space-x-4 mb-4'>
+                  <motion.div
+                    className='w-14 h-14 rounded-full overflow-hidden shrink-0'
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <img
+                      src={
+                        order.shopperAvatar ||
+                        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop'
+                      }
+                      alt={order.shopperName || 'Shopper'}
+                      className='w-full h-full object-cover'
+                    />
+                  </motion.div>
 
-                <div className='flex-1 min-w-0'>
-                  <h4 className='font-semibold text-gray-900 mb-1 font-space-grotesk'>
-                    Daramola Oluwadara
-                  </h4>
-                  <p className='text-sm text-gray-500'>
-                    Sent you a delivery request 2 mins ago
+                  <div className='flex-1 min-w-0'>
+                    <h4 className='font-semibold text-gray-900 mb-1 font-space-grotesk'>
+                      {order.shopperName || 'Unknown Shopper'}
+                    </h4>
+                    <p className='text-sm text-gray-500'>
+                      {order.timing || 'Recently sent delivery request'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className='w-full h-px bg-gray-100 my-4'></div>
+
+                <div className='flex space-x-3'>
+                  <motion.button
+                    className='flex-1 py-3 bg-red-50 text-red-600 rounded-md text-sm cursor-pointer font-semibold font-space-grotesk hover:bg-red-100 transition-colors'
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={async () => {
+                      try {
+                        const token = await getToken();
+                        const response = await fetch(
+                          `${API_URL}/api/matches/${order.id}/cancel`,
+                          {
+                            method: 'POST',
+                            headers: {
+                              Authorization: `Bearer ${token}`,
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                              reason: 'Declined by traveler',
+                            }),
+                          }
+                        );
+
+                        if (response.ok) {
+                          // Refresh orders data
+                          queryClient.invalidateQueries({
+                            queryKey: ['orders'],
+                          });
+                        } else {
+                          console.error('Failed to decline order');
+                        }
+                      } catch (error) {
+                        console.error('Error declining order:', error);
+                      }
+                    }}
+                  >
+                    Decline
+                  </motion.button>
+                  <motion.button
+                    className='flex-1 py-3 bg-purple-50 text-purple-900 rounded-md cursor-pointer text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors'
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setSelectedOrderId(order.id);
+                      setIsSummaryOpen(true);
+                    }}
+                  >
+                    View Order
+                  </motion.button>
+                </div>
+              </Card>
+            ))}
+
+            {/* Show empty state if no pending orders */}
+            {(!ordersData?.pending || ordersData.pending.length === 0) &&
+              !ordersLoading && (
+                <div className='col-span-full text-center py-12 flex flex-col items-center font-space-grotesk'>
+                  <img
+                    src='/twobags.png'
+                    alt='twinbags'
+                    className='h-12 w-12 md:h-20 md:w-20 mb-4'
+                  />
+                  <h3 className='text-lg font-semibold text-gray-700 mb-2'>
+                    No new delivery requests available
+                  </h3>
+                  <p className='text-gray-600'>
+                    New requests will appear here when shoppers need your help
                   </p>
                 </div>
-              </div>
-
-              <div className='w-full h-px bg-gray-100 my-4'></div>
-
-              <div className='flex space-x-3'>
-                <motion.button
-                  className='flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-sm font-semibold font-space-grotesk hover:bg-red-100 transition-colors'
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Decline
-                </motion.button>
-                <motion.button
-                  className='flex-1 py-3 bg-purple-50 text-purple-900 rounded-xl text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors'
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  View Order
-                </motion.button>
-              </div>
-            </Card>
-
-            <Card className='p-6 rounded-2xl shadow-sm border border-gray-100'>
-              <div className='flex items-start space-x-4 mb-4'>
-                <motion.div
-                  className='w-14 h-14 rounded-full overflow-hidden shrink-0'
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <img
-                    src='https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop'
-                    alt='Daramola Oluwadara'
-                    className='w-full h-full object-cover'
-                  />
-                </motion.div>
-
-                <div className='flex-1 min-w-0'>
-                  <h4 className='font-semibold text-gray-900 mb-1 font-space-grotesk'>
-                    Daramola Oluwadara
-                  </h4>
-                  <p className='text-sm text-gray-500'>
-                    Sent you a delivery request 2 mins ago
-                  </p>
-                </div>
-              </div>
-
-              <div className='w-full h-px bg-gray-100 my-4'></div>
-
-              <div className='flex space-x-3'>
-                <motion.button
-                  className='flex-1 py-3 bg-red-50 text-red-600 rounded-xl text-sm font-semibold font-space-grotesk hover:bg-red-100 transition-colors'
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Decline
-                </motion.button>
-                <motion.button
-                  className='flex-1 py-3 bg-purple-50 text-purple-900 rounded-xl text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors'
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  View Order
-                </motion.button>
-              </div>
-            </Card>
+              )}
           </div>
         </motion.div>
 
@@ -474,6 +501,12 @@ export default function TravelerDashboardPage() {
           </div>
         </motion.div>
       </motion.div>
+
+      <OrderSummaryModal
+        isOpen={isSummaryOpen}
+        onOpenChange={setIsSummaryOpen}
+        orderId={selectedOrderId}
+      />
     </DashboardLayout>
   );
 }

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Match, MatchStatus } from '../models/Match';
 import { ShopperRequest } from '../models/ShopperRequest';
 import { UserRepository } from '../services/repositoryImpl';
+import { formatTimeAgo } from '../utils/dateUtils';
 
 const userRepo = new UserRepository();
 
@@ -13,6 +14,8 @@ export interface OrderData {
   details: string;
   timing: string | null;
   additionalInfo: string | null;
+  shopperName?: string; // For traveler view
+  shopperAvatar?: string; // For traveler view
 }
 
 export interface OrdersResponse {
@@ -79,21 +82,23 @@ export const getOrders = async (req: Request, res: Response) => {
 async function getShopperOrders(shopperId: string): Promise<OrdersResponse> {
   const shopperObjectId = new mongoose.Types.ObjectId(shopperId);
 
-
   // Get shopper's requests to find related matches
   const requests = await ShopperRequest.find({ shopperId: shopperObjectId });
   const requestIds = requests.map(r => r._id);
 
   // Get all matches for shopper's requests
   const shopperMatches = await Match.find({
-    requestId: { $in: requestIds }
-  }).populate({
-    path: 'requestId',
-    populate: {
-      path: 'bagItems',
-      model: 'BagItem'
-    }
-  }).populate('tripId').populate('travelerId');
+    requestId: { $in: requestIds },
+  })
+    .populate({
+      path: 'requestId',
+      populate: {
+        path: 'bagItems',
+        model: 'BagItem',
+      },
+    })
+    .populate('tripId')
+    .populate('travelerId');
 
   const orders: OrdersResponse = {
     accepted: [],
@@ -101,7 +106,7 @@ async function getShopperOrders(shopperId: string): Promise<OrdersResponse> {
     incoming: [],
     outgoing: [],
     completed: [],
-    disputed: []
+    disputed: [],
   };
 
   for (const match of shopperMatches) {
@@ -112,16 +117,25 @@ async function getShopperOrders(shopperId: string): Promise<OrdersResponse> {
     if (!request || !trip || !traveler) continue;
 
     // Calculate total amount from bag items
-    const totalAmount = request.bagItems?.reduce((sum: number, item: any) =>
-      sum + (item.price * item.quantity), 0) || 0;
+    const totalAmount =
+      request.bagItems?.reduce(
+        (sum: number, item: any) => sum + item.price * item.quantity,
+        0
+      ) || 0;
 
     const orderData: OrderData = {
       id: (match as any)._id.toString(),
       amount: `$${totalAmount.toFixed(2)}`,
       item: request.bagItems?.[0]?.productName || 'Unknown Item',
       details: getShopperOrderDetails(match),
-      timing: null,
-      additionalInfo: request.bagItems?.length > 1 ? `${request.bagItems.length} items` : null
+      timing:
+        match.status === MatchStatus.Pending
+          ? formatTimeAgo(match.createdAt)
+          : null,
+      additionalInfo:
+        request.bagItems?.length > 1
+          ? `${request.bagItems.length} items`
+          : null,
     };
 
     // Categorize by match status
@@ -155,13 +169,13 @@ async function getTravelerOrders(travelerId: string): Promise<OrdersResponse> {
       populate: [
         {
           path: 'shopperId',
-          model: 'User'
+          model: 'User',
         },
         {
           path: 'bagItems',
-          model: 'BagItem'
-        }
-      ]
+          model: 'BagItem',
+        },
+      ],
     })
     .populate('tripId');
 
@@ -171,7 +185,7 @@ async function getTravelerOrders(travelerId: string): Promise<OrdersResponse> {
     incoming: [],
     outgoing: [],
     completed: [],
-    disputed: []
+    disputed: [],
   };
 
   for (const match of matches) {
@@ -181,16 +195,27 @@ async function getTravelerOrders(travelerId: string): Promise<OrdersResponse> {
     if (!request || !trip || !request.shopperId) continue;
 
     // Calculate total amount from bag items
-    const totalAmount = request.bagItems?.reduce((sum: number, item: any) =>
-      sum + (item.price * item.quantity), 0) || 0;
+    const totalAmount =
+      request.bagItems?.reduce(
+        (sum: number, item: any) => sum + item.price * item.quantity,
+        0
+      ) || 0;
 
     const orderData: OrderData = {
       id: (match as any)._id.toString(),
       amount: `$${totalAmount.toFixed(2)}`,
       item: request.bagItems?.[0]?.productName || 'Unknown Item',
       details: getTravelerOrderDetails(match),
-      timing: null,
-      additionalInfo: request.bagItems?.length > 1 ? `${request.bagItems.length} items` : null
+      timing:
+        match.status === MatchStatus.Pending
+          ? formatTimeAgo(match.createdAt)
+          : null,
+      additionalInfo:
+        request.bagItems?.length > 1
+          ? `${request.bagItems.length} items`
+          : null,
+      shopperName: request.shopperId?.fullName || 'Unknown Shopper',
+      shopperAvatar: request.shopperId?.profileImage || null,
     };
 
     // Categorize by match status
@@ -262,21 +287,21 @@ export const getOrderDetails = async (req: Request, res: Response) => {
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid order ID'
+        message: 'Invalid order ID',
       });
     }
 
     // Find the match
-    const match = await Match.findById(id)
+    const match = (await Match.findById(id)
       .populate({
         path: 'requestId',
         populate: [
           { path: 'shopperId', model: 'User' },
-          { path: 'bagItems', model: 'BagItem' }
-        ]
+          { path: 'bagItems', model: 'BagItem' },
+        ],
       })
       .populate('tripId')
-      .populate('travelerId') as any; // Type assertion for populated fields
+      .populate('travelerId')) as any; // Type assertion for populated fields
 
     if (!match) {
       return res.status(404).json({
@@ -292,19 +317,19 @@ export const getOrderDetails = async (req: Request, res: Response) => {
     if (!request) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Request data is missing'
+        message: 'Request data is missing',
       });
     }
     if (!request.shopperId) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Shopper information is missing'
+        message: 'Shopper information is missing',
       });
     }
     if (!match.travelerId) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Traveler information is missing'
+        message: 'Traveler information is missing',
       });
     }
 
@@ -323,15 +348,30 @@ export const getOrderDetails = async (req: Request, res: Response) => {
     const shopper = request.shopperId as any;
 
     // Validate required objects and nested properties
-    if (!trip || !shopper || !traveler || !trip.departureDate || !trip.arrivalDate || !shopper._id) {
-      return res.status(404).json({ error: 'Not found', message: 'Order data incomplete' });
+    if (
+      !trip ||
+      !shopper ||
+      !traveler ||
+      !trip.departureDate ||
+      !trip.arrivalDate ||
+      !shopper._id
+    ) {
+      return res
+        .status(404)
+        .json({ error: 'Not found', message: 'Order data incomplete' });
     }
 
     // Calculate duration
     const calculateDuration = (): string => {
       try {
-        const depDateTime = new Date(`${trip.departureDate.toISOString().split('T')[0]}T${trip.departureTime}`);
-        const arrDateTime = new Date(`${trip.arrivalDate.toISOString().split('T')[0]}T${trip.arrivalTime}`);
+        const depDateTime = new Date(
+          `${trip.departureDate.toISOString().split('T')[0]}T${
+            trip.departureTime
+          }`
+        );
+        const arrDateTime = new Date(
+          `${trip.arrivalDate.toISOString().split('T')[0]}T${trip.arrivalTime}`
+        );
         const diffMs = arrDateTime.getTime() - depDateTime.getTime();
         if (diffMs < 0) return 'Invalid duration';
         const hours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -378,18 +418,20 @@ export const getOrderDetails = async (req: Request, res: Response) => {
         availableCheckedKg: trip.availableCheckedKg,
         duration: calculateDuration(),
       },
-      products: (Array.isArray(request.bagItems) ? request.bagItems : []).map((item: any) => ({
-        name: item.productName,
-        link: item.productLink,
-        price: item.price,
-        currency: item.currency,
-        weight: item.weightKg,
-        quantity: item.quantity,
-        isFragile: item.isFragile,
-        photos: item.photos || [],
-        colour: item.colour,
-        additionalInfo: item.additionalInfo,
-      })),
+      products: (Array.isArray(request.bagItems) ? request.bagItems : []).map(
+        (item: any) => ({
+          name: item.productName,
+          link: item.productLink,
+          price: item.price,
+          currency: item.currency,
+          weight: item.weightKg,
+          quantity: item.quantity,
+          isFragile: item.isFragile,
+          photos: item.photos || [],
+          colour: item.colour,
+          additionalInfo: item.additionalInfo,
+        })
+      ),
       delivery: {
         fromCountry: request.fromCountry,
         toCountry: request.toCountry,

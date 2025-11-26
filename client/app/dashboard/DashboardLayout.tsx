@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,8 +63,16 @@ const getNavigationItems = (role: string | null) => {
       return [
         { name: 'Overview', href: `/dashboard/vendor`, icon: LayoutDashboard },
         { name: 'Orders', href: '/dashboard/vendor/orders', icon: ShoppingBag },
-        { name: 'Transactions', href: '/dashboard/transactions', icon: CircleDollarSign },
-        { name: 'Disputes', href: '/dashboard/disputes', icon: MessageCircleWarning },
+        {
+          name: 'Transactions',
+          href: '/dashboard/transactions',
+          icon: CircleDollarSign,
+        },
+        {
+          name: 'Disputes',
+          href: '/dashboard/disputes',
+          icon: MessageCircleWarning,
+        },
         { name: 'Profile', href: '/dashboard/profile', icon: User },
       ];
     case 'admin':
@@ -95,6 +103,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const { user, isLoaded } = useUser();
   const { role } = useRole();
+  const router = useRouter();
   const [bagCount] = useState(3); // Example count, replace with actual data
   const [notificationCount] = useState(5); // Example count, replace with actual data
 
@@ -273,6 +282,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 variant='ghost'
                 size='sm'
                 className='relative bg-white rounded-full shadow-md hover:bg-gray-100 mr-7'
+                onClick={() => router.push('/dashboard/notifications')}
               >
                 <Bell className='h-6 w-6 text-gray-600' />
                 {notificationCount > 0 && (
