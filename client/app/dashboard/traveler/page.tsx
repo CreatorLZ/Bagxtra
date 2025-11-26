@@ -2,6 +2,7 @@
 
 import { useTravelerDashboardData } from '@/hooks/dashboard/useTravelerDashboardData';
 import { useOrders } from '@/hooks/dashboard/useOrders';
+import { useRejectMatch } from '@/hooks/useMatchActions';
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { ChevronRight, MapPin, Bell, Calendar, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ export default function TravelerDashboardPage() {
   const { getToken } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const rejectMatch = useRejectMatch();
   const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>(
     undefined
   );
@@ -227,40 +229,18 @@ export default function TravelerDashboardPage() {
 
                 <div className='flex space-x-3'>
                   <motion.button
-                    className='flex-1 py-3 bg-red-50 text-red-600 rounded-md text-sm cursor-pointer font-semibold font-space-grotesk hover:bg-red-100 transition-colors'
+                    className='flex-1 py-3 bg-red-50 text-red-600 rounded-md text-sm cursor-pointer font-semibold font-space-grotesk hover:bg-red-100 transition-colors disabled:opacity-50'
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={async () => {
-                      try {
-                        const token = await getToken();
-                        const response = await fetch(
-                          `${API_URL}/api/matches/${order.id}/cancel`,
-                          {
-                            method: 'POST',
-                            headers: {
-                              Authorization: `Bearer ${token}`,
-                              'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                              reason: 'Declined by traveler',
-                            }),
-                          }
-                        );
-
-                        if (response.ok) {
-                          // Refresh orders data
-                          queryClient.invalidateQueries({
-                            queryKey: ['orders'],
-                          });
-                        } else {
-                          console.error('Failed to decline order');
-                        }
-                      } catch (error) {
-                        console.error('Error declining order:', error);
-                      }
+                    disabled={rejectMatch.isPending}
+                    onClick={() => {
+                      rejectMatch.mutate({
+                        matchId: order.id,
+                        reason: 'Declined by traveler',
+                      });
                     }}
                   >
-                    Decline
+                    {rejectMatch.isPending ? 'Declining...' : 'Decline'}
                   </motion.button>
                   <motion.button
                     className='flex-1 py-3 bg-purple-50 text-purple-900 rounded-md cursor-pointer text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors'

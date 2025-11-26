@@ -3,7 +3,7 @@
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { Card } from '@/components/ui/card';
 import { Plus, ShoppingBag } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PlaceOrderModal } from '@/components/PlaceOrderModal';
 import { OrderSummaryModal } from '@/components/OrderSummaryModal';
@@ -28,7 +28,7 @@ type OrderStatus =
   | 'completed'
   | 'disputed';
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const { role } = useRole();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab') as OrderStatus;
@@ -416,5 +416,29 @@ export default function OrdersPage() {
         orderId={selectedOrder?.id}
       />
     </DashboardLayout>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className='space-y-6 pb-24'>
+            <div className='flex items-center justify-between mb-6'>
+              <h1 className='text-2xl font-bold text-gray-900 font-space-grotesk'>
+                Orders
+              </h1>
+            </div>
+            <div className='flex justify-center py-12'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900'></div>
+              <span className='ml-2 text-gray-600'>Loading...</span>
+            </div>
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <OrdersPageContent />
+    </Suspense>
   );
 }
