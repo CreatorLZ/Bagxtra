@@ -16,9 +16,10 @@ import {
   MapPin,
   CreditCard,
 } from 'lucide-react';
-import DashboardLayout from '../../DashboardLayout'; 
+import DashboardLayout from '../../DashboardLayout';
 import { useState } from 'react';
 import { useRole } from '@/hooks/useRole';
+import { formatName } from '@/lib/utils';
 
 // --- Re-usable Toggle Switch Component ---
 const ToggleSwitch = ({
@@ -349,9 +350,9 @@ export default function UserProfilePage() {
               />
               <div className='flex items-center justify-center space-x-1 mt-3'>
                 <h2 className='text-xl font-bold text-gray-900'>
-                  {user.fullName}
+                  {formatName(user.fullName)}
                 </h2>
-                <img src="/verified.png" alt="verified" />
+                <img src='/verified.png' alt='verified' />
               </div>
               <div className='flex items-center space-x-1 mt-1'>
                 {[...Array(5)].map((_, i) => (

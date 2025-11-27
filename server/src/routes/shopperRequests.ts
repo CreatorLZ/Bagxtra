@@ -9,6 +9,7 @@ import {
   getShopperRequestMatches,
   publishShopperRequest,
   cancelShopperRequest,
+  getMarketplaceOrders,
 } from '../controllers/shopperRequestController.js';
 import { z } from 'zod';
 import mongoose from 'mongoose';
@@ -19,7 +20,6 @@ const idSchema = z.object({
 });
 
 const router = Router();
-
 
 /**
  * @route POST /api/shopper-requests
@@ -33,41 +33,87 @@ router.post('/', requireAuth, authorizeRoles('shopper'), createShopperRequest);
  * @desc Get current shopper's requests
  * @access Private (Shopper only)
  */
-router.get('/my-requests', requireAuth, authorizeRoles('shopper'), getMyShopperRequests);
+router.get(
+  '/my-requests',
+  requireAuth,
+  authorizeRoles('shopper'),
+  getMyShopperRequests
+);
 
 /**
  * @route GET /api/shopper-requests/:id
  * @desc Get specific shopper request details
  * @access Private (Shopper only - own requests)
  */
-router.get('/:id', requireAuth, authorizeRoles('shopper'), validateParams(idSchema), getShopperRequest);
+router.get(
+  '/:id',
+  requireAuth,
+  authorizeRoles('shopper'),
+  validateParams(idSchema),
+  getShopperRequest
+);
 
 /**
  * @route POST /api/shopper-requests/find-matches
  * @desc Find potential matches without creating database records
  * @access Private (Shopper only)
  */
-router.post('/find-matches', requireAuth, authorizeRoles('shopper'), findPotentialMatches);
+router.post(
+  '/find-matches',
+  requireAuth,
+  authorizeRoles('shopper'),
+  findPotentialMatches
+);
 
 /**
  * @route GET /api/shopper-requests/:id/matches
  * @desc Get potential traveler matches for a shopper request
  * @access Private (Shopper only - own requests)
  */
-router.get('/:id/matches', requireAuth, authorizeRoles('shopper'), validateParams(idSchema), getShopperRequestMatches);
+router.get(
+  '/:id/matches',
+  requireAuth,
+  authorizeRoles('shopper'),
+  validateParams(idSchema),
+  getShopperRequestMatches
+);
 
 /**
  * @route PUT /api/shopper-requests/:id/publish
  * @desc Publish a draft shopper request (make it available for matching)
  * @access Private (Shopper only - own requests)
  */
-router.put('/:id/publish', requireAuth, authorizeRoles('shopper'), validateParams(idSchema), publishShopperRequest);
+router.put(
+  '/:id/publish',
+  requireAuth,
+  authorizeRoles('shopper'),
+  validateParams(idSchema),
+  publishShopperRequest
+);
 
 /**
  * @route PUT /api/shopper-requests/:id/cancel
  * @desc Cancel a shopper request
  * @access Private (Shopper only - own requests)
  */
-router.put('/:id/cancel', requireAuth, authorizeRoles('shopper'), validateParams(idSchema), cancelShopperRequest);
+router.put(
+  '/:id/cancel',
+  requireAuth,
+  authorizeRoles('shopper'),
+  validateParams(idSchema),
+  cancelShopperRequest
+);
+
+/**
+ * @route GET /api/marketplace/orders
+ * @desc Get marketplace orders for travelers
+ * @access Private (Traveler only)
+ */
+router.get(
+  '/marketplace/orders',
+  requireAuth,
+  authorizeRoles('traveler'),
+  getMarketplaceOrders
+);
 
 export default router;

@@ -109,12 +109,18 @@ async function getShopperOrders(shopperId: string): Promise<OrdersResponse> {
     disputed: [],
   };
 
+  // Track which requests have matches to avoid duplicates
+  const matchedRequestIds = new Set<string>();
+
   for (const match of shopperMatches) {
     const request = match.requestId as any;
     const trip = match.tripId as any;
     const traveler = match.travelerId as any;
 
     if (!request || !trip || !traveler) continue;
+
+    // Mark this request as having a match
+    matchedRequestIds.add(request._id.toString());
 
     // Calculate total amount from bag items
     const totalAmount =
@@ -151,6 +157,37 @@ async function getShopperOrders(shopperId: string): Promise<OrdersResponse> {
         break;
       // Add other status mappings as needed
     }
+  }
+
+  // Add marketplace requests that don't have matches yet
+  const marketplaceRequests = await ShopperRequest.find({
+    shopperId: shopperObjectId,
+    status: 'marketplace',
+  }).populate('bagItems');
+
+  for (const request of marketplaceRequests) {
+    // Skip if this request already has a match
+    if (matchedRequestIds.has(request._id.toString())) continue;
+
+    const req = request as any; // Cast to any to access populated bagItems
+    const totalAmount =
+      req.bagItems?.reduce(
+        (sum: number, item: any) => sum + item.price * item.quantity,
+        0
+      ) || 0;
+
+    const orderData: OrderData = {
+      id: request._id.toString(),
+      amount: `$${totalAmount.toFixed(2)}`,
+      item: req.bagItems?.[0]?.productName || 'Unknown Item',
+      details: 'Sent a delivery proposal',
+      timing: formatTimeAgo(request.createdAt),
+      additionalInfo:
+        req.bagItems?.length > 1 ? `${req.bagItems.length} items` : null,
+    };
+
+    // Marketplace orders go to pending
+    orders.pending.push(orderData);
   }
 
   return orders;
@@ -291,8 +328,8 @@ export const getOrderDetails = async (req: Request, res: Response) => {
       });
     }
 
-    // Find the match
-    const match = (await Match.findById(id)
+    // First try to find a match (existing orders)
+    let match = (await Match.findById(id)
       .populate({
         path: 'requestId',
         populate: [
@@ -301,68 +338,111 @@ export const getOrderDetails = async (req: Request, res: Response) => {
         ],
       })
       .populate('tripId')
-      .populate('travelerId')) as any; // Type assertion for populated fields
+      .populate('travelerId')) as any;
 
+    let isMarketplaceOrder = false;
+    let marketplaceRequest = null;
+
+    // If no match found, try to find a marketplace shopper request
     if (!match) {
-      return res.status(404).json({
-        error: 'Not found',
-        message: 'Order not found',
-      });
+      marketplaceRequest = (await ShopperRequest.findById(id)
+        .populate('shopperId', 'fullName profileImage rating phone country')
+        .populate('bagItems')) as any;
+
+      if (marketplaceRequest && marketplaceRequest.status === 'marketplace') {
+        isMarketplaceOrder = true;
+      } else {
+        return res.status(404).json({
+          error: 'Not found',
+          message: 'Order not found',
+        });
+      }
     }
 
-    // Check if user has access to this order (either shopper or traveler)
-    const request = match.requestId as any;
+    let request: any;
+    let shopper: any;
+    let traveler: any = null;
+    let trip: any = null;
 
-    // Guards to ensure populated fields exist before accessing _id
-    if (!request) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Request data is missing',
-      });
+    if (isMarketplaceOrder) {
+      // For marketplace orders, only travelers can view them
+      const user = await userRepo.findById(new mongoose.Types.ObjectId(userId));
+      if (user?.role !== 'traveler') {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Only travelers can view marketplace orders',
+        });
+      }
+
+      request = marketplaceRequest;
+      shopper = request.shopperId;
+    } else {
+      // For existing matches, check access control
+      request = match.requestId as any;
+
+      // Guards to ensure populated fields exist before accessing _id
+      if (!request) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Request data is missing',
+        });
+      }
+      if (!request.shopperId) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Shopper information is missing',
+        });
+      }
+      if (!match.travelerId) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'Traveler information is missing',
+        });
+      }
+
+      const isShopper = request.shopperId._id.toString() === userId;
+      const isTraveler = match.travelerId._id.toString() === userId;
+
+      if (!isShopper && !isTraveler) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'You do not have access to this order',
+        });
+      }
+
+      shopper = request.shopperId;
+      traveler = match.travelerId;
+      trip = match.tripId;
     }
-    if (!request.shopperId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Shopper information is missing',
-      });
-    }
-    if (!match.travelerId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'Traveler information is missing',
-      });
-    }
 
-    const isShopper = request.shopperId._id.toString() === userId;
-    const isTraveler = match.travelerId._id.toString() === userId;
+    // Variables already declared above
 
-    if (!isShopper && !isTraveler) {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'You do not have access to this order',
-      });
-    }
-
-    const trip = match.tripId as any;
-    const traveler = match.travelerId as any;
-    const shopper = request.shopperId as any;
-
-    // Validate required objects and nested properties
-    if (
-      !trip ||
-      !shopper ||
-      !traveler ||
-      !trip.departureDate ||
-      !trip.arrivalDate ||
-      !shopper._id
-    ) {
-      return res
-        .status(404)
-        .json({ error: 'Not found', message: 'Order data incomplete' });
+    // Validate required objects for non-marketplace orders
+    if (!isMarketplaceOrder) {
+      if (
+        !trip ||
+        !shopper ||
+        !traveler ||
+        !trip.departureDate ||
+        !trip.arrivalDate ||
+        !shopper._id
+      ) {
+        return res
+          .status(404)
+          .json({ error: 'Not found', message: 'Order data incomplete' });
+      }
+    } else {
+      // For marketplace orders, only shopper is required
+      if (!shopper || !shopper._id) {
+        return res
+          .status(404)
+          .json({ error: 'Not found', message: 'Shopper data incomplete' });
+      }
     }
 
-    // Calculate duration
+    // Calculate duration (only for non-marketplace orders)
     const calculateDuration = (): string => {
+      if (!trip) return 'N/A';
       try {
         const depDateTime = new Date(
           `${trip.departureDate.toISOString().split('T')[0]}T${
@@ -384,10 +464,10 @@ export const getOrderDetails = async (req: Request, res: Response) => {
 
     const response = {
       order: {
-        id: match._id,
-        status: match.status,
-        matchScore: match.matchScore,
-        createdAt: match.createdAt,
+        id: isMarketplaceOrder ? request._id : match._id,
+        status: isMarketplaceOrder ? 'marketplace' : match.status,
+        matchScore: isMarketplaceOrder ? 0 : match.matchScore,
+        createdAt: isMarketplaceOrder ? request.createdAt : match.createdAt,
         priceSummary: request.priceSummary,
       },
       shopper: {
@@ -398,26 +478,30 @@ export const getOrderDetails = async (req: Request, res: Response) => {
         phone: shopper.phone,
         country: shopper.country,
       },
-      traveler: {
-        id: traveler._id,
-        name: traveler.fullName,
-        avatar: traveler.profileImage,
-        rating: traveler.rating || 0,
-        phone: traveler.phone,
-        country: traveler.country,
-      },
-      trip: {
-        fromCountry: trip.fromCountry,
-        toCountry: trip.toCountry,
-        departureDate: trip.departureDate.toISOString().split('T')[0],
-        departureTime: trip.departureTime,
-        arrivalDate: trip.arrivalDate.toISOString().split('T')[0],
-        arrivalTime: trip.arrivalTime,
-        timezone: trip.timezone,
-        availableCarryOnKg: trip.availableCarryOnKg,
-        availableCheckedKg: trip.availableCheckedKg,
-        duration: calculateDuration(),
-      },
+      traveler: isMarketplaceOrder
+        ? null
+        : {
+            id: traveler._id,
+            name: traveler.fullName,
+            avatar: traveler.profileImage,
+            rating: traveler.rating || 0,
+            phone: traveler.phone,
+            country: traveler.country,
+          },
+      trip: isMarketplaceOrder
+        ? null
+        : {
+            fromCountry: trip.fromCountry,
+            toCountry: trip.toCountry,
+            departureDate: trip.departureDate.toISOString().split('T')[0],
+            departureTime: trip.departureTime,
+            arrivalDate: trip.arrivalDate.toISOString().split('T')[0],
+            arrivalTime: trip.arrivalTime,
+            timezone: trip.timezone,
+            availableCarryOnKg: trip.availableCarryOnKg,
+            availableCheckedKg: trip.availableCheckedKg,
+            duration: calculateDuration(),
+          },
       products: (Array.isArray(request.bagItems) ? request.bagItems : []).map(
         (item: any) => ({
           name: item.productName,

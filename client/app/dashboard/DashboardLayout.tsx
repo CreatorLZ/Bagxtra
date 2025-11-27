@@ -27,7 +27,7 @@ import {
   CircleDollarSign,
   MessageCircleWarning,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatName } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import { Skeleton } from '@/components/ui/loading-skeleton';
 
@@ -319,10 +319,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className='hidden md:flex flex-col '>
                   <span className='text-sm font-medium text-gray-900'>
                     {isLoaded ? (
-                      user?.fullName ||
-                      (user?.firstName && user?.lastName
-                        ? `${user.firstName} ${user.lastName}`
-                        : user?.firstName || 'User')
+                      formatName(user?.fullName) ||
+                      formatName(
+                        user?.firstName && user?.lastName
+                          ? `${user.firstName} ${user.lastName}`
+                          : user?.firstName || 'User'
+                      )
                     ) : (
                       <Skeleton className='h-4 w-32' />
                     )}

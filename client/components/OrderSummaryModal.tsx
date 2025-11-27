@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import NextImage from 'next/image';
+import { formatName } from '@/lib/utils';
 // --- Helper: Flight Path Visualization ---
 
 // --- Props Interface ---
@@ -38,12 +39,14 @@ interface OrderSummaryModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   orderId?: string; // Match ID to fetch detailed order information
+  isMarketplaceOrder?: boolean; // Whether this is a marketplace order (not a pending match)
 }
 
 export function OrderSummaryModal({
   isOpen,
   onOpenChange,
   orderId,
+  isMarketplaceOrder = false,
 }: OrderSummaryModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
@@ -295,15 +298,15 @@ export function OrderSummaryModal({
               <NextImage
                 src={
                   role === 'traveler'
-                    ? orderDetails.shopper.avatar ||
+                    ? orderDetails.shopper?.avatar ||
                       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop'
-                    : orderDetails.traveler.avatar ||
+                    : orderDetails.traveler?.avatar ||
                       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop'
                 }
                 alt={
                   role === 'traveler'
-                    ? orderDetails.shopper.name
-                    : orderDetails.traveler.name
+                    ? formatName(orderDetails.shopper?.name) || 'Shopper'
+                    : formatName(orderDetails.traveler?.name) || 'Traveler'
                 }
                 width={80}
                 height={80}
@@ -312,8 +315,8 @@ export function OrderSummaryModal({
               <div className='text-left'>
                 <h3 className='font-semibold text-gray-900 flex items-center justify-start gap-1 font-sans'>
                   {role === 'traveler'
-                    ? orderDetails.shopper.name
-                    : orderDetails.traveler.name}
+                    ? formatName(orderDetails.shopper?.name) || 'Shopper'
+                    : formatName(orderDetails.traveler?.name) || 'Traveler'}
                   <img src='/verified.png' alt='verified' className='h-4 w-4' />
                 </h3>
                 <div className='flex gap-0.5 justify-start'>
@@ -324,8 +327,8 @@ export function OrderSummaryModal({
                         i <
                         Math.floor(
                           (role === 'traveler'
-                            ? orderDetails.shopper.rating
-                            : orderDetails.traveler.rating) || 0
+                            ? orderDetails.shopper?.rating
+                            : orderDetails.traveler?.rating) || 0
                         )
                           ? 'text-yellow-400 fill-yellow-400'
                           : 'text-gray-300'
@@ -373,16 +376,20 @@ export function OrderSummaryModal({
                 <div>
                   <strong>Order Status:</strong> {orderDetails.order.status}
                 </div>
+                {orderDetails.order.matchScore !== undefined && (
+                  <div>
+                    <strong>Match Score:</strong>{' '}
+                    {orderDetails.order.matchScore}%
+                  </div>
+                )}
                 <div>
-                  <strong>Match Score:</strong> {orderDetails.order.matchScore}%
-                </div>
-                <div>
-                  <strong>Delivery:</strong> {orderDetails.delivery.fromCountry}{' '}
-                  → {orderDetails.delivery.toCountry}
+                  <strong>Delivery:</strong>{' '}
+                  {orderDetails.delivery?.fromCountry || 'N/A'} →{' '}
+                  {orderDetails.delivery?.toCountry || 'N/A'}
                 </div>
                 <div>
                   <strong>Pickup:</strong>{' '}
-                  {orderDetails.delivery.pickup ? 'Required' : 'Not required'}
+                  {orderDetails.delivery?.pickup ? 'Required' : 'Not required'}
                 </div>
               </div>
             )}
@@ -392,41 +399,59 @@ export function OrderSummaryModal({
         {/* --- Bottom Action Buttons --- */}
         <div className='flex-shrink-0 p-6 bg-white border-t border-gray-100'>
           {role === 'traveler' ? (
-            <div className='flex space-x-3'>
-              <motion.button
+            isMarketplaceOrder ? (
+              // Single button for marketplace orders
+              <Button
                 onClick={() => {
-                  rejectMatch.mutate(
-                    { matchId: orderId!, reason: 'Declined by traveler' },
-                    {
+                  // TODO: Implement proposal creation for marketplace orders
+                  console.log(
+                    'Creating proposal for marketplace order:',
+                    orderId
+                  );
+                  onOpenChange(false);
+                }}
+                className='w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]'
+              >
+                I will like to deliver this item
+              </Button>
+            ) : (
+              // Two buttons for pending matches
+              <div className='flex space-x-3'>
+                <motion.button
+                  onClick={() => {
+                    rejectMatch.mutate(
+                      { matchId: orderId!, reason: 'Declined by traveler' },
+                      {
+                        onSuccess: () => {
+                          onOpenChange(false);
+                        },
+                      }
+                    );
+                  }}
+                  disabled={rejectMatch.isPending}
+                  className='flex-1 py-3 bg-red-200 text-red-600 rounded-md text-sm font-semibold font-space-grotesk hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50'
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {rejectMatch.isPending ? 'Declining...' : 'Decline'}
+                </motion.button>
+                <motion.button
+                  onClick={() => {
+                    acceptMatch.mutate(orderId!, {
                       onSuccess: () => {
                         onOpenChange(false);
                       },
-                    }
-                  );
-                }}
-                disabled={rejectMatch.isPending}
-                className='flex-1 py-3 bg-red-200 text-red-600 rounded-md text-sm font-semibold font-space-grotesk hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50'
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {rejectMatch.isPending ? 'Declining...' : 'Decline'}
-              </motion.button>
-              <motion.button
-                onClick={() => {
-                  acceptMatch.mutate(orderId!, {
-                    onSuccess: () => {
-                      onOpenChange(false);
-                    },
-                  });
-                }}
-                disabled={acceptMatch.isPending}
-                className='flex-1 py-3 bg-purple-200 text-purple-900 rounded-md text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors cursor-pointer disabled:opacity-50'
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {acceptMatch.isPending ? 'Accepting...' : 'Accept'}
-              </motion.button>
-            </div>
+                    });
+                  }}
+                  disabled={acceptMatch.isPending}
+                  className='flex-1 py-3 bg-purple-200 text-purple-900 rounded-md text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors cursor-pointer disabled:opacity-50'
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {acceptMatch.isPending ? 'Accepting...' : 'Accept'}
+                </motion.button>
+              </div>
+            )
           ) : (
             <Button className='w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]'>
               Make Payment ($

@@ -23,6 +23,27 @@ export interface OrdersResponse {
   disputed: OrderData[];
 }
 
+export interface MarketplaceOrder {
+  id: string;
+  shopperName: string;
+  shopperAvatar: string | null;
+  item: string;
+  amount: string;
+  fromCountry: string;
+  toCountry: string;
+  deliveryStartDate?: string;
+  deliveryEndDate?: string;
+  postedTime: string;
+  itemCount: number;
+  priceSummary: any;
+  bagItems: any[];
+  delivery: any;
+}
+
+export interface MarketplaceOrdersResponse {
+  data: MarketplaceOrder[];
+}
+
 export function useOrders() {
   const { getToken } = useAuth();
 
@@ -47,6 +68,42 @@ export function useOrders() {
       return result.data;
     },
     staleTime: 30 * 1000, // 30 seconds - orders change frequently
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error) => {
+      // Don't retry on auth errors
+      if (error.message.includes('authentication')) return false;
+      return failureCount < 3;
+    },
+  });
+}
+
+export function useMarketplaceOrders() {
+  const { getToken } = useAuth();
+
+  return useQuery<MarketplaceOrder[]>({
+    queryKey: ['marketplace-orders'],
+    queryFn: async (): Promise<MarketplaceOrder[]> => {
+      const token = await getToken();
+      if (!token) throw new Error('No authentication token');
+
+      const response = await fetch(
+        `${API_URL}/api/shopper-requests/marketplace/orders`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch marketplace orders');
+      }
+
+      const result = await response.json();
+      return result.data;
+    },
+    staleTime: 60 * 1000, // 1 minute - marketplace orders update less frequently
     gcTime: 5 * 60 * 1000, // 5 minutes
     retry: (failureCount, error) => {
       // Don't retry on auth errors

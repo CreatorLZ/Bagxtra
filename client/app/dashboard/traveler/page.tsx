@@ -1,7 +1,7 @@
 'use client';
 
 import { useTravelerDashboardData } from '@/hooks/dashboard/useTravelerDashboardData';
-import { useOrders } from '@/hooks/dashboard/useOrders';
+import { useOrders, useMarketplaceOrders } from '@/hooks/dashboard/useOrders';
 import { useRejectMatch } from '@/hooks/useMatchActions';
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { ChevronRight, MapPin, Bell, Calendar, Package } from 'lucide-react';
@@ -13,12 +13,15 @@ import { useState } from 'react';
 import { OrderSummaryModal } from '@/components/OrderSummaryModal';
 import { useAuth } from '@clerk/nextjs';
 import { useQueryClient } from '@tanstack/react-query';
+import { formatName } from '@/lib/utils';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function TravelerDashboardPage() {
   const { data, isLoading, error } = useTravelerDashboardData();
   const { data: ordersData, isLoading: ordersLoading } = useOrders();
+  const { data: marketplaceOrders, isLoading: marketplaceLoading } =
+    useMarketplaceOrders();
   const { getToken } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -27,6 +30,7 @@ export default function TravelerDashboardPage() {
     undefined
   );
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isMarketplaceOrder, setIsMarketplaceOrder] = useState(false);
 
   if (isLoading) {
     return (
@@ -217,7 +221,7 @@ export default function TravelerDashboardPage() {
 
                   <div className='flex-1 min-w-0'>
                     <h4 className='font-semibold text-gray-900 mb-1 font-space-grotesk'>
-                      {order.shopperName || 'Unknown Shopper'}
+                      {formatName(order.shopperName) || 'Unknown Shopper'}
                     </h4>
                     <p className='text-sm text-gray-500'>
                       {order.timing || 'Recently sent delivery request'}
@@ -248,6 +252,7 @@ export default function TravelerDashboardPage() {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       setSelectedOrderId(order.id);
+                      setIsMarketplaceOrder(false);
                       setIsSummaryOpen(true);
                     }}
                   >
@@ -279,7 +284,10 @@ export default function TravelerDashboardPage() {
 
         {/* Available Orders */}
         <motion.div variants={itemVariants}>
-          <div className='flex items-center justify-between mb-4'>
+          <div
+            className='flex items-center justify-between mb-4 cursor-pointer'
+            onClick={() => router.push('/dashboard/orders?tab=pending')}
+          >
             <h3 className='text-lg font-semibold text-gray-900 font-space-grotesk'>
               Available Orders
             </h3>
@@ -293,99 +301,95 @@ export default function TravelerDashboardPage() {
           </div>
 
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-            {/* First Available Order */}
-            <Card className='p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer'>
-              <div className='flex items-center space-x-2 mb-3'>
-                <span className='text-xs text-gray-400'>Posted 25mins ago</span>
-              </div>
+            {marketplaceOrders?.slice(0, 4).map(order => (
+              <Card
+                key={order.id}
+                className='p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer'
+                onClick={() => {
+                  setSelectedOrderId(order.id);
+                  setIsMarketplaceOrder(true);
+                  setIsSummaryOpen(true);
+                }}
+              >
+                <div className='flex items-center space-x-2 mb-3'>
+                  <span className='text-xs text-gray-400'>
+                    {'Posted ' + order.postedTime}
+                  </span>
+                </div>
 
-              <div className='flex items-start space-x-4 mb-4'>
-                <motion.div
-                  className='w-14 h-14 rounded-full overflow-hidden shrink-0'
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.2 }}
-                >
+                <div className='flex items-start space-x-4 mb-4'>
+                  <motion.div
+                    className='w-14 h-14 rounded-full overflow-hidden shrink-0'
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <img
+                      src={
+                        order.shopperAvatar ||
+                        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop'
+                      }
+                      alt={order.shopperName}
+                      className='w-full h-full object-cover'
+                    />
+                  </motion.div>
+
+                  <div className='flex-1 min-w-0'>
+                    <h4 className='font-semibold text-gray-900 mb-1 font-space-grotesk'>
+                      {formatName(order.shopperName)}
+                    </h4>
+                    <p className='text-sm text-gray-600'>
+                      {order.item}
+                      {order.itemCount > 1
+                        ? ` + ${order.itemCount - 1} more`
+                        : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className='space-y-3 text-sm'>
+                  <div className='flex items-start space-x-3'>
+                    <MapPin className='h-4 w-4 text-gray-400 mt-0.5 shrink-0' />
+                    <span className='text-gray-600 text-sm'>
+                      {order.fromCountry} to {order.toCountry}
+                    </span>
+                  </div>
+                  {(order.deliveryStartDate || order.deliveryEndDate) && (
+                    <div className='flex items-center space-x-3'>
+                      <Calendar className='h-4 w-4 text-gray-400 shrink-0' />
+                      <span className='text-gray-600 text-sm'>
+                        {order.deliveryStartDate && order.deliveryEndDate
+                          ? `${order.deliveryStartDate} - ${order.deliveryEndDate}`
+                          : order.deliveryStartDate || order.deliveryEndDate}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+
+            {/* Show empty state if no marketplace orders */}
+            {(!marketplaceOrders || marketplaceOrders.length === 0) &&
+              !marketplaceLoading && (
+                <div className='col-span-full text-center py-12 flex flex-col items-center font-space-grotesk'>
                   <img
-                    src='https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop'
-                    alt='Daramola Oluwadara'
-                    className='w-full h-full object-cover'
+                    src='/twobags.png'
+                    alt='twinbags'
+                    className='h-12 w-12 md:h-20 md:w-20 mb-4'
                   />
-                </motion.div>
-
-                <div className='flex-1 min-w-0'>
-                  <h4 className='font-semibold text-gray-900 mb-1 font-space-grotesk'>
-                    Daramola Oluwadara
-                  </h4>
-                  <p className='text-sm text-gray-600'>
-                    Zara's latest shoe, LV purse
+                  <h3 className='text-lg font-semibold text-gray-700 mb-2'>
+                    No marketplace orders available
+                  </h3>
+                  <p className='text-gray-600'>
+                    New marketplace orders will appear here when shoppers post
+                    them
                   </p>
                 </div>
-              </div>
-
-              <div className='space-y-3 text-sm'>
-                <div className='flex items-start space-x-3'>
-                  <MapPin className='h-4 w-4 text-gray-400 mt-0.5 shrink-0' />
-                  <span className='text-gray-600 text-sm'>
-                    Kingsway road, Port Harcourt, Nigeria
-                  </span>
-                </div>
-                <div className='flex items-center space-x-3'>
-                  <Calendar className='h-4 w-4 text-gray-400 shrink-0' />
-                  <span className='text-gray-600 text-sm'>
-                    24th - 26th of July
-                  </span>
-                </div>
-              </div>
-            </Card>
-
-            {/* Second Available Order - Desktop only */}
-            <Card className='p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer hidden lg:block'>
-              <div className='flex items-center space-x-2 mb-3'>
-                <span className='text-xs text-gray-400'>Posted 1 hour ago</span>
-              </div>
-
-              <div className='flex items-start space-x-4 mb-4'>
-                <motion.div
-                  className='w-14 h-14 rounded-full overflow-hidden shrink-0'
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <img
-                    src='https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop'
-                    alt='Sarah Johnson'
-                    className='w-full h-full object-cover'
-                  />
-                </motion.div>
-
-                <div className='flex-1 min-w-0'>
-                  <h4 className='font-semibold text-gray-900 mb-1 font-space-grotesk'>
-                    Sarah Johnson
-                  </h4>
-                  <p className='text-sm text-gray-600'>
-                    Designer handbag, Perfume set
-                  </p>
-                </div>
-              </div>
-
-              <div className='space-y-3 text-sm'>
-                <div className='flex items-start space-x-3'>
-                  <MapPin className='h-4 w-4 text-gray-400 mt-0.5 shrink-0' />
-                  <span className='text-gray-600 text-sm'>
-                    Victoria Island, Lagos, Nigeria
-                  </span>
-                </div>
-                <div className='flex items-center space-x-3'>
-                  <Calendar className='h-4 w-4 text-gray-400 shrink-0' />
-                  <span className='text-gray-600 text-sm'>
-                    15th - 18th of August
-                  </span>
-                </div>
-              </div>
-            </Card>
+              )}
           </div>
         </motion.div>
 
         {/* More Available Orders - Desktop only */}
-        <motion.div variants={itemVariants} className='hidden lg:block'>
+        <motion.div variants={itemVariants} className='hidden lg:hidden'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
             {/* Order Card 3 */}
             <Card className='p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer'>
@@ -486,6 +490,7 @@ export default function TravelerDashboardPage() {
         isOpen={isSummaryOpen}
         onOpenChange={setIsSummaryOpen}
         orderId={selectedOrderId}
+        isMarketplaceOrder={isMarketplaceOrder}
       />
     </DashboardLayout>
   );

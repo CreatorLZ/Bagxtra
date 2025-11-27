@@ -3,12 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -35,12 +30,8 @@ import {
 } from '@/components/ui/pagination';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Search,
-  Filter,
-  MoreHorizontal,
-  Bell,
-} from 'lucide-react';
+import { formatName } from '@/lib/utils';
+import { Search, Filter, MoreHorizontal, Bell } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -228,15 +219,15 @@ export default function VendorOrdersPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className='space-y-6'>
         {/* Page Title (as in screenshot) */}
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <h2 className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
           Orders
         </h2>
 
         {/* Tabs */}
-        <div className="flex items-center space-x-2 border-b border-gray-200">
-          {tabs.map((tab) => (
+        <div className='flex items-center space-x-2 border-b border-gray-200'>
+          {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => {
@@ -255,91 +246,105 @@ export default function VendorOrdersPage() {
         </div>
 
         {/* Orders Table Card */}
-        <Card className="rounded-xl shadow-xs border-gray-200 font-space-grotesk">
-          <CardHeader className="flex flex-col md:flex-row md:items-center justify-end space-y-4 md:space-y-0 p-4">
-            <div className="flex items-center space-x-2">
+        <Card className='rounded-xl shadow-xs border-gray-200 font-space-grotesk'>
+          <CardHeader className='flex flex-col md:flex-row md:items-center justify-end space-y-4 md:space-y-0 p-4'>
+            <div className='flex items-center space-x-2'>
               <Select>
-                <SelectTrigger className="w-[120px] bg-white border-gray-300 rounded-md">
-                  <SelectValue placeholder="Filter By" />
+                <SelectTrigger className='w-[120px] bg-white border-gray-300 rounded-md'>
+                  <SelectValue placeholder='Filter By' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="date">Date</SelectItem>
-                  <SelectItem value="traveler">Traveler</SelectItem>
+                  <SelectItem value='date'>Date</SelectItem>
+                  <SelectItem value='traveler'>Traveler</SelectItem>
                 </SelectContent>
               </Select>
               <Select>
-                <SelectTrigger className="w-[120px] bg-white border-gray-300 rounded-md">
-                  <SelectValue placeholder="Order By" />
+                <SelectTrigger className='w-[120px] bg-white border-gray-300 rounded-md'>
+                  <SelectValue placeholder='Order By' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="date-asc">Date Asc</SelectItem>
-                  <SelectItem value="date-desc">Date Desc</SelectItem>
+                  <SelectItem value='date-asc'>Date Asc</SelectItem>
+                  <SelectItem value='date-desc'>Date Desc</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <div className='relative'>
+                <Search className='absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500' />
                 <Input
-                  placeholder="Search"
-                  className="pl-8 w-[180px] bg-white border-gray-300 rounded-md"
+                  placeholder='Search'
+                  className='pl-8 w-[180px] bg-white border-gray-300 rounded-md'
                 />
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
+          <CardContent className='p-0'>
+            <div className='overflow-x-auto'>
               <Table>
-                <TableHeader className="bg-purple-50">
+                <TableHeader className='bg-purple-50'>
                   <TableRow>
-                    <TableHead className="w-[50px] px-4">
+                    <TableHead className='w-[50px] px-4'>
                       <Checkbox />
                     </TableHead>
-                    <TableHead className="px-4 text-purple-900">Invoice</TableHead>
-                    <TableHead className="px-4 text-purple-900">Traveler's Name</TableHead>
-                    <TableHead className="px-4 text-purple-900" colSpan={2}>Log In Date & Time</TableHead>
-                    <TableHead className="px-4 text-purple-900">Shopper's Name</TableHead>
-                    <TableHead className="px-4 text-purple-900" colSpan={2}>Pick up Date & Time</TableHead>
-                    <TableHead className="w-[50px] px-4"></TableHead>
+                    <TableHead className='px-4 text-purple-900'>
+                      Invoice
+                    </TableHead>
+                    <TableHead className='px-4 text-purple-900'>
+                      Traveler's Name
+                    </TableHead>
+                    <TableHead className='px-4 text-purple-900' colSpan={2}>
+                      Log In Date & Time
+                    </TableHead>
+                    <TableHead className='px-4 text-purple-900'>
+                      Shopper's Name
+                    </TableHead>
+                    <TableHead className='px-4 text-purple-900' colSpan={2}>
+                      Pick up Date & Time
+                    </TableHead>
+                    <TableHead className='w-[50px] px-4'></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedOrders.map((order, index) => (
-                    <TableRow key={index} className="hover:bg-gray-50">
-                      <TableCell className="px-4">
+                    <TableRow key={index} className='hover:bg-gray-50'>
+                      <TableCell className='px-4'>
                         <Checkbox />
                       </TableCell>
-                      <TableCell className="px-4 font-medium text-gray-900">
+                      <TableCell className='px-4 font-medium text-gray-900'>
                         {order.invoice}
                       </TableCell>
-                      <TableCell className="px-4 text-gray-600">
-                        {order.travelerName}
+                      <TableCell className='px-4 text-gray-600'>
+                        {formatName(order.travelerName)}
                       </TableCell>
-                      <TableCell className="px-4 text-gray-600">
+                      <TableCell className='px-4 text-gray-600'>
                         {order.logInDate}
                       </TableCell>
-                      <TableCell className="px-4 text-gray-600">
+                      <TableCell className='px-4 text-gray-600'>
                         {order.logInTime}
                       </TableCell>
-                      <TableCell className="px-4 text-gray-600">
-                        {order.shopperName}
+                      <TableCell className='px-4 text-gray-600'>
+                        {formatName(order.shopperName)}
                       </TableCell>
-                      <TableCell className="px-4 text-gray-600">
+                      <TableCell className='px-4 text-gray-600'>
                         {order.pickupDate}
                       </TableCell>
-                      <TableCell className="px-4 text-gray-600">
+                      <TableCell className='px-4 text-gray-600'>
                         {order.pickupTime}
                       </TableCell>
-                      <TableCell className="px-4 text-center">
+                      <TableCell className='px-4 text-center'>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button className="text-gray-500 hover:text-gray-900">
-                              <MoreHorizontal className="h-5 w-5" />
+                            <button className='text-gray-500 hover:text-gray-900'>
+                              <MoreHorizontal className='h-5 w-5' />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleViewDetails(order.invoice)}>
+                            <DropdownMenuItem
+                              onClick={() => handleViewDetails(order.invoice)}
+                            >
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOpenDispute(order.invoice)}>
+                            <DropdownMenuItem
+                              onClick={() => handleOpenDispute(order.invoice)}
+                            >
                               Open Dispute
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -354,12 +359,12 @@ export default function VendorOrdersPage() {
         </Card>
 
         {/* pagination */}
-        <div className="flex justify-center p-4">
+        <div className='flex justify-center p-4'>
           <Pagination>
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   className={
                     currentPage === 1 ? 'pointer-events-none opacity-50' : ''
                   }
@@ -369,7 +374,7 @@ export default function VendorOrdersPage() {
               {/* Logic to show pagination links */}
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 // Implement Ellipsis logic if many pages
-                .map((page) => (
+                .map(page => (
                   <PaginationItem key={page}>
                     <PaginationLink
                       isActive={page === currentPage}
@@ -389,7 +394,7 @@ export default function VendorOrdersPage() {
               <PaginationItem>
                 <PaginationNext
                   onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    setCurrentPage(prev => Math.min(prev + 1, totalPages))
                   }
                   className={
                     currentPage === totalPages

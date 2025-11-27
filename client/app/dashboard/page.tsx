@@ -27,6 +27,7 @@ import {
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { redirect } from 'next/navigation';
+import { formatName } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { user, isLoading, isAuthenticated } = useUser();
@@ -91,7 +92,9 @@ export default function DashboardPage() {
         {/* Header */}
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Dashboard</h1>
-          <p className='text-gray-600'>Welcome back, {user?.fullName}</p>
+          <p className='text-gray-600'>
+            Welcome back, {formatName(user?.fullName)}
+          </p>
         </div>
 
         {/* Default dashboard for unknown roles */}
@@ -125,7 +128,9 @@ export default function DashboardPage() {
                   <User className='h-4 w-4 text-gray-500' />
                   <span className='text-sm font-medium'>Full Name</span>
                 </div>
-                <p className='text-sm text-gray-900'>{user?.fullName}</p>
+                <p className='text-sm text-gray-900'>
+                  {formatName(user?.fullName)}
+                </p>
               </div>
 
               <div className='space-y-2'>

@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import { ErrorMessage } from '@/components/ui/error-message';
+import { formatName } from '@/lib/utils';
 
 const AdminUserManagement = () => {
   const { user: currentUser } = useUser();
@@ -240,7 +241,7 @@ const AdminUserManagement = () => {
                     {usersData?.users.map((user: User) => (
                       <TableRow key={user._id}>
                         <TableCell className='font-medium'>
-                          {user.fullName}
+                          {formatName(user.fullName)}
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>

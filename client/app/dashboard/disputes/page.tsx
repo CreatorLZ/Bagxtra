@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Filter, CheckCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { formatName } from '@/lib/utils';
 
 // --- Helper Components (Inlined to fix import error) ---
 
@@ -58,7 +59,7 @@ const StatusBadge = ({ status }: { status: DisputeStatus }) => {
     >
       {/* Dot color matches the text color */}
       <span
-        className="inline-block w-2 h-2 rounded-full mr-1.5"
+        className='inline-block w-2 h-2 rounded-full mr-1.5'
         style={{ backgroundColor: 'currentColor' }}
       />
       {text}
@@ -77,16 +78,16 @@ const UserInfo = ({
   avatar: string;
 }) => (
   <div className='shadow-sm p-3 px-5 rounded-lg'>
-    <h4 className="text-xs font-medium text-gray-500 mb-2">{title}</h4>
-    <div className="flex items-start gap-2 flex-col space-x-2">
-      <Avatar className="h-14 w-14 rounded-md">
+    <h4 className='text-xs font-medium text-gray-500 mb-2'>{title}</h4>
+    <div className='flex items-start gap-2 flex-col space-x-2'>
+      <Avatar className='h-14 w-14 rounded-md'>
         <AvatarImage src={avatar} alt={name} />
         <AvatarFallback>{name.substring(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div className='flex items-center'>
-      <span className="text-sm font-medium text-gray-900">{name}</span>
-      {/* <CheckCircle className="h-4 w-4 text-green-500" /> */}
-      <img src="/verified.png" alt=""  className='h-4 w-4'/>
+        <span className='text-sm font-medium text-gray-900'>{name}</span>
+        {/* <CheckCircle className="h-4 w-4 text-green-500" /> */}
+        <img src='/verified.png' alt='' className='h-4 w-4' />
       </div>
     </div>
   </div>
@@ -99,29 +100,29 @@ interface DisputeCardProps {
 
 export function DisputeCard({ dispute }: DisputeCardProps) {
   return (
-    <Card className="rounded-xl shadow-xs border border-gray-200 font-sans hover:shadow-md transition-shadow">
-      <CardContent className="p-5 space-y-4">
+    <Card className='rounded-xl shadow-xs border border-gray-200 font-sans hover:shadow-md transition-shadow'>
+      <CardContent className='p-5 space-y-4'>
         {/* Header: ID and Status */}
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">{dispute.id}</h3>
+        <div className='flex items-center justify-between'>
+          <h3 className='font-semibold text-gray-900'>{dispute.id}</h3>
           <StatusBadge status={dispute.status} />
         </div>
 
         {/* Description */}
-        <p className="text-sm text-gray-600 leading-relaxed">
+        <p className='text-sm text-gray-600 leading-relaxed'>
           {dispute.description}
         </p>
 
         {/* User Info */}
-        <div className="flex items-center justify-between pt-2">
+        <div className='flex items-center justify-between pt-2'>
           <UserInfo
             title="Traveler's Information"
-            name={dispute.travelerName}
+            name={formatName(dispute.travelerName)}
             avatar={dispute.travelerAvatar}
           />
           <UserInfo
             title="Shopper's Information"
-            name={dispute.shopperName}
+            name={formatName(dispute.shopperName)}
             avatar={dispute.shopperAvatar}
           />
         </div>
@@ -138,9 +139,11 @@ const mockDisputes: Dispute[] = [
     description:
       'The bag was exposed, looked very tattered and I thought to flag it, as I don’t think the traveler would want it like this.',
     travelerName: 'Daramola Oluwadara',
-    travelerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
+    travelerAvatar:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
     shopperName: 'Daramola Oluwadara',
-    shopperAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
+    shopperAvatar:
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
   },
   {
     id: 'DISP 0001',
@@ -148,9 +151,11 @@ const mockDisputes: Dispute[] = [
     description:
       'The bag was exposed, looked very tattered and I thought to flag it, as I don’t think the traveler would want it like this.',
     travelerName: 'Daramola Oluwadara',
-     travelerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
+    travelerAvatar:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
     shopperName: 'Daramola Oluwadara',
-    shopperAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
+    shopperAvatar:
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
   },
   {
     id: 'DISP 0001',
@@ -158,9 +163,11 @@ const mockDisputes: Dispute[] = [
     description:
       'The bag was exposed, looked very tattered and I thought to flag it, as I don’t think the traveler would want it like this.',
     travelerName: 'Daramola Oluwadara',
-    travelerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
+    travelerAvatar:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
     shopperName: 'Daramola Oluwadara',
-    shopperAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
+    shopperAvatar:
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
   },
   {
     id: 'DISP 0001',
@@ -168,9 +175,11 @@ const mockDisputes: Dispute[] = [
     description:
       'The bag was exposed, looked very tattered and I thought to flag it, as I don’t think the traveler would want it like this.',
     travelerName: 'Daramola Oluwadara',
-     travelerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
+    travelerAvatar:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
     shopperName: 'Daramola Oluwadara',
-    shopperAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
+    shopperAvatar:
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
   },
   {
     id: 'DISP 0001',
@@ -178,9 +187,11 @@ const mockDisputes: Dispute[] = [
     description:
       'The bag was exposed, looked very tattered and I thought to flag it, as I don’t think the traveler would want it like this.',
     travelerName: 'Daramola Oluwadara',
-    travelerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
+    travelerAvatar:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
     shopperName: 'Daramola Oluwadara',
-    shopperAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
+    shopperAvatar:
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
   },
   {
     id: 'DISP 0001',
@@ -188,9 +199,11 @@ const mockDisputes: Dispute[] = [
     description:
       'The bag was exposed, looked very tattered and I thought to flag it, as I don’t think the traveler would want it like this.',
     travelerName: 'Daramola Oluwadara',
-     travelerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
+    travelerAvatar:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
     shopperName: 'Daramola Oluwadara',
-    shopperAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
+    shopperAvatar:
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687',
   },
 ];
 
@@ -198,46 +211,46 @@ const mockDisputes: Dispute[] = [
 export default function VendorDisputePage() {
   return (
     <DashboardLayout>
-      <div className="space-y-6 font-space-grotesk">
+      <div className='space-y-6 font-space-grotesk'>
         {/* Header: Title and Filters (Copied from your homepage structure) */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <div className='flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0'>
+          <h2 className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
             DISPUTES
           </h2>
-          <div className="flex items-center space-x-2">
+          <div className='flex items-center space-x-2'>
             <Select>
-              <SelectTrigger className="w-[120px] bg-white border-gray-300 rounded-md">
-                <SelectValue placeholder="Order By" />
+              <SelectTrigger className='w-[120px] bg-white border-gray-300 rounded-md'>
+                <SelectValue placeholder='Order By' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="date-new">Newest</SelectItem>
-                <SelectItem value="date-old">Oldest</SelectItem>
+                <SelectItem value='date-new'>Newest</SelectItem>
+                <SelectItem value='date-old'>Oldest</SelectItem>
               </SelectContent>
             </Select>
             <Select>
-              <SelectTrigger className="w-[100px] bg-white border-gray-300 rounded-md">
-                <Filter className="h-4 w-4 mr-2 text-gray-500" />
-                <SelectValue placeholder="Filter" />
+              <SelectTrigger className='w-[100px] bg-white border-gray-300 rounded-md'>
+                <Filter className='h-4 w-4 mr-2 text-gray-500' />
+                <SelectValue placeholder='Filter' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="resolving">Resolving</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value='all'>All</SelectItem>
+                <SelectItem value='resolving'>Resolving</SelectItem>
+                <SelectItem value='resolved'>Resolved</SelectItem>
+                <SelectItem value='pending'>Pending</SelectItem>
               </SelectContent>
             </Select>
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+            <div className='relative'>
+              <Search className='absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500' />
               <Input
-                placeholder="Search"
-                className="pl-8 w-[180px] bg-white border-gray-300 rounded-md"
+                placeholder='Search'
+                className='pl-8 w-[180px] bg-white border-gray-300 rounded-md'
               />
             </div>
           </div>
         </div>
 
         {/* Disputes Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
           {mockDisputes.map((dispute, index) => (
             <DisputeCard key={index} dispute={dispute} />
           ))}

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { ShopperRequest } from '../models/ShopperRequest';
 import { ShopperRequestService } from '../services/ShopperRequestService';
 import { ShopperRequestRepository } from '../services/repositoryImpl';
 import { BagItemRepository } from '../services/repositoryImpl';
@@ -8,6 +9,7 @@ import { MatchRepository } from '../services/repositoryImpl';
 import { BagService } from '../services/BagService';
 import { MatchingService } from '../services/MatchingService';
 import { MatchService } from '../services/MatchService';
+import { formatTimeAgo } from '../utils/dateUtils';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import { format, isValid } from 'date-fns';
@@ -439,6 +441,78 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to publish shopper request',
+    });
+  }
+  return;
+};
+
+/**
+ * Get marketplace orders for travelers
+ * GET /api/marketplace/orders
+ */
+export const getMarketplaceOrders = async (req: Request, res: Response) => {
+  try {
+    // Get traveler ID from auth middleware
+    const travelerId = req.user?.id;
+    if (!travelerId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+    }
+
+    // Get marketplace orders (latest 4)
+    const marketplaceOrders = await ShopperRequest.find({
+      status: 'marketplace',
+    })
+      .populate('shopperId', 'fullName profileImage')
+      .populate('bagItems')
+      .sort({ createdAt: -1 })
+      .limit(4);
+
+    // Format response
+    const formattedOrders = marketplaceOrders.map(order => {
+      const shopper = order.shopperId as any;
+      const bagItems = order.bagItems as any[];
+      const totalAmount =
+        bagItems?.reduce(
+          (sum: number, item: any) => sum + item.price * item.quantity,
+          0
+        ) || 0;
+
+      return {
+        id: order._id.toString(),
+        shopperName: shopper?.fullName || 'Unknown Shopper',
+        shopperAvatar: shopper?.profileImage || null,
+        item: bagItems?.[0]?.productName || 'Unknown Item',
+        amount: `$${totalAmount.toFixed(2)}`,
+        fromCountry: order.fromCountry,
+        toCountry: order.toCountry,
+        deliveryStartDate: order.deliveryStartDate?.toISOString().split('T')[0],
+        deliveryEndDate: order.deliveryEndDate?.toISOString().split('T')[0],
+        postedTime: formatTimeAgo(order.createdAt),
+        itemCount: bagItems?.length || 0,
+        priceSummary: order.priceSummary,
+        bagItems: bagItems,
+        delivery: {
+          pickup: order.pickup,
+          carryOn: order.carryOn,
+          storePickup: order.storePickup,
+          phone: order.phone,
+          phoneCountry: order.phoneCountry,
+        },
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: formattedOrders,
+    });
+  } catch (error) {
+    console.error('Error fetching marketplace orders:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch marketplace orders',
     });
   }
   return;
