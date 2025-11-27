@@ -8,22 +8,19 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   ChevronLeft,
   MoreVertical,
   Plane,
   Star,
-  CheckCircle,
   ExternalLink,
-  ArrowRight,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useOrderDetails } from '@/hooks/dashboard/useOrderDetails';
 import { useRole } from '@/hooks/useRole';
 import { useAcceptMatch, useRejectMatch } from '@/hooks/useMatchActions';
-import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { formatDistanceToNow } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,19 +36,16 @@ interface OrderSummaryModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   orderId?: string; // Match ID to fetch detailed order information
-  isMarketplaceOrder?: boolean; // Whether this is a marketplace order (not a pending match)
 }
 
 export function OrderSummaryModal({
   isOpen,
   onOpenChange,
   orderId,
-  isMarketplaceOrder = false,
 }: OrderSummaryModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const { role } = useRole();
-  const queryClient = useQueryClient();
 
   // Match action hooks
   const acceptMatch = useAcceptMatch();
@@ -130,6 +124,9 @@ export function OrderSummaryModal({
       product: product,
     }))
   );
+
+  // Determine if this is a marketplace order
+  const isMarketplace = orderDetails.order.status === 'marketplace';
 
   // Get the currently selected product based on selected photo
   const selectedProduct =
@@ -288,7 +285,9 @@ export function OrderSummaryModal({
           {/* 5. Traveler/Shopper Information Card */}
           <Card className='p-5 border-none shadow-sm rounded-2xl bg-white'>
             <h4 className='text-sm font-medium text-gray-400 mb-4'>
-              {role === 'traveler'
+              {isMarketplace
+                ? "Shopper's Information"
+                : role === 'traveler'
                 ? "Shopper's Information"
                 : "Traveler's Information"}
             </h4>
@@ -297,14 +296,14 @@ export function OrderSummaryModal({
             <div className='flex flex-col items-left gap-3 border-b border-b-gray-200 pb-2.5 mb-4'>
               <NextImage
                 src={
-                  role === 'traveler'
+                  isMarketplace || role === 'traveler'
                     ? orderDetails.shopper?.avatar ||
                       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop'
                     : orderDetails.traveler?.avatar ||
                       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop'
                 }
                 alt={
-                  role === 'traveler'
+                  isMarketplace || role === 'traveler'
                     ? formatName(orderDetails.shopper?.name) || 'Shopper'
                     : formatName(orderDetails.traveler?.name) || 'Traveler'
                 }
@@ -314,7 +313,7 @@ export function OrderSummaryModal({
               />
               <div className='text-left'>
                 <h3 className='font-semibold text-gray-900 flex items-center justify-start gap-1 font-sans'>
-                  {role === 'traveler'
+                  {isMarketplace || role === 'traveler'
                     ? formatName(orderDetails.shopper?.name) || 'Shopper'
                     : formatName(orderDetails.traveler?.name) || 'Traveler'}
                   <img src='/verified.png' alt='verified' className='h-4 w-4' />
@@ -326,7 +325,7 @@ export function OrderSummaryModal({
                       className={`h-4 w-4 ${
                         i <
                         Math.floor(
-                          (role === 'traveler'
+                          (isMarketplace || role === 'traveler'
                             ? orderDetails.shopper?.rating
                             : orderDetails.traveler?.rating) || 0
                         )
@@ -339,8 +338,29 @@ export function OrderSummaryModal({
               </div>
             </div>
 
-            {/* Middle Section: Flight Info (only for shoppers) or Order Info (for travelers) */}
-            {role === 'shopper' ? (
+            {/* Middle Section: Order Info for marketplace, Flight Info for matched orders */}
+            {isMarketplace ? (
+              <div className='text-sm text-gray-600 space-y-2'>
+                <div>
+                  <strong>Order Status:</strong> {orderDetails.order.status}
+                </div>
+                <div>
+                  <strong>Posted:</strong>{' '}
+                  {formatDistanceToNow(new Date(orderDetails.order.createdAt), {
+                    addSuffix: true,
+                  })}
+                </div>
+                <div>
+                  <strong>Delivery:</strong>{' '}
+                  {orderDetails.delivery?.fromCountry || 'N/A'} →{' '}
+                  {orderDetails.delivery?.toCountry || 'N/A'}
+                </div>
+                <div>
+                  <strong>Pickup:</strong>{' '}
+                  {orderDetails.delivery?.pickup ? 'Required' : 'Not required'}
+                </div>
+              </div>
+            ) : role === 'shopper' ? (
               <div className='flex justify-between items-center text-sm'>
                 <div className='text-left'>
                   <div className='text-lg font-bold text-gray-900'>
@@ -399,7 +419,7 @@ export function OrderSummaryModal({
         {/* --- Bottom Action Buttons --- */}
         <div className='flex-shrink-0 p-6 bg-white border-t border-gray-100'>
           {role === 'traveler' ? (
-            isMarketplaceOrder ? (
+            isMarketplace ? (
               // Single button for marketplace orders
               <Button
                 onClick={() => {
@@ -452,6 +472,10 @@ export function OrderSummaryModal({
                 </motion.button>
               </div>
             )
+          ) : isMarketplace ? (
+            <Button className='w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]'>
+              View Proposals
+            </Button>
           ) : (
             <Button className='w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]'>
               Make Payment ($

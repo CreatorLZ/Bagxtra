@@ -365,17 +365,20 @@ export const getOrderDetails = async (req: Request, res: Response) => {
     let trip: any = null;
 
     if (isMarketplaceOrder) {
-      // For marketplace orders, only travelers can view them
-      const user = await userRepo.findById(new mongoose.Types.ObjectId(userId));
-      if (user?.role !== 'traveler') {
-        return res.status(403).json({
-          error: 'Forbidden',
-          message: 'Only travelers can view marketplace orders',
-        });
-      }
-
+      // For marketplace orders, travelers or the owning shopper can view them
       request = marketplaceRequest;
       shopper = request.shopperId;
+
+      const user = await userRepo.findById(new mongoose.Types.ObjectId(userId));
+      const isTraveler = user?.role === 'traveler';
+      const isOwningShopper = shopper._id.toString() === userId;
+
+      if (!isTraveler && !isOwningShopper) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'You do not have permission to view this marketplace order',
+        });
+      }
     } else {
       // For existing matches, check access control
       request = match.requestId as any;

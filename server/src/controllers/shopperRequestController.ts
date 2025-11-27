@@ -364,59 +364,64 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
       });
     }
 
-    // Automatically find and create matches for the published request
-    try {
-      const bagItems = await bagItemRepo.findByShopperRequest(requestObjectId);
-      if (bagItems && bagItems.length > 0) {
-        const matches = await matchingService.findMatches(bagItems, {
-          fromCountry: extractFromCountry(updatedRequest.fromCountry),
-          toCountry: extractToCountry(updatedRequest.toCountry),
-          deliveryStartDate: updatedRequest.deliveryStartDate
-            ? new Date(updatedRequest.deliveryStartDate)
-            : undefined,
-          deliveryEndDate: updatedRequest.deliveryEndDate
-            ? new Date(updatedRequest.deliveryEndDate)
-            : undefined,
-        });
+    // Only create automatic matches for non-marketplace orders
+    // Marketplace orders should remain as listings for travelers to browse and send proposals
+    if (status !== 'marketplace') {
+      try {
+        const bagItems = await bagItemRepo.findByShopperRequest(
+          requestObjectId
+        );
+        if (bagItems && bagItems.length > 0) {
+          const matches = await matchingService.findMatches(bagItems, {
+            fromCountry: extractFromCountry(updatedRequest.fromCountry),
+            toCountry: extractToCountry(updatedRequest.toCountry),
+            deliveryStartDate: updatedRequest.deliveryStartDate
+              ? new Date(updatedRequest.deliveryStartDate)
+              : undefined,
+            deliveryEndDate: updatedRequest.deliveryEndDate
+              ? new Date(updatedRequest.deliveryEndDate)
+              : undefined,
+          });
 
-        // FIXED: Sequential match creation to prevent race conditions and duplicates
-        for (const match of matches) {
-          try {
-            // Check if match already exists (now happens sequentially)
-            const existingMatches = await matchRepo.findByRequest(
-              requestObjectId
-            );
-            const existingMatch = existingMatches.find(m =>
-              m.tripId.equals(match.trip._id)
-            );
+          // FIXED: Sequential match creation to prevent race conditions and duplicates
+          for (const match of matches) {
+            try {
+              // Check if match already exists (now happens sequentially)
+              const existingMatches = await matchRepo.findByRequest(
+                requestObjectId
+              );
+              const existingMatch = existingMatches.find(m =>
+                m.tripId.equals(match.trip._id)
+              );
 
-            if (!existingMatch) {
-              await matchService.createMatch(
-                requestObjectId,
-                match.trip._id,
-                match.score,
-                [] // No assigned items initially
-              );
-              console.log(
-                `Created match for trip ${match.trip._id} with score ${match.score}`
-              );
-            } else {
-              console.log(
-                `Match already exists for trip ${match.trip._id}, skipping`
+              if (!existingMatch) {
+                await matchService.createMatch(
+                  requestObjectId,
+                  match.trip._id,
+                  match.score,
+                  [] // No assigned items initially
+                );
+                console.log(
+                  `Created match for trip ${match.trip._id} with score ${match.score}`
+                );
+              } else {
+                console.log(
+                  `Match already exists for trip ${match.trip._id}, skipping`
+                );
+              }
+            } catch (matchError) {
+              // Log individual match creation errors but continue with others
+              console.error(
+                `Error creating match for trip ${match.trip._id}:`,
+                matchError
               );
             }
-          } catch (matchError) {
-            // Log individual match creation errors but continue with others
-            console.error(
-              `Error creating match for trip ${match.trip._id}:`,
-              matchError
-            );
           }
         }
+      } catch (error) {
+        // Log error but don't fail the publish operation
+        console.error('Error during automatic matching:', error);
       }
-    } catch (error) {
-      // Log error but don't fail the publish operation
-      console.error('Error during automatic matching:', error);
     }
 
     res.status(200).json({

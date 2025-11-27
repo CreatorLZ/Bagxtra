@@ -490,7 +490,6 @@ export default function TravelerDashboardPage() {
         isOpen={isSummaryOpen}
         onOpenChange={setIsSummaryOpen}
         orderId={selectedOrderId}
-        isMarketplaceOrder={isMarketplaceOrder}
       />
     </DashboardLayout>
   );
