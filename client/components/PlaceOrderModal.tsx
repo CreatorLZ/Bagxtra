@@ -48,6 +48,7 @@ import {
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { DatePicker } from '@/components/DatePicker';
 import { CountrySelect } from '@/components/ui/CountrySelect';
+import { SmartStoreSelector } from '@/components/SmartStoreSelector';
 import {
   SHOPPER_BUYING_COUNTRIES,
   DELIVERY_COUNTRIES,
@@ -377,8 +378,11 @@ export function PlaceOrderModal({
 }: PlaceOrderModalProps) {
   // Updated view state to include 'travelers' and 'success'
   const [view, setView] = useState<
-    'details' | 'stores' | 'delivery' | 'travelers' | 'success'
+    'details' | 'delivery' | 'travelers' | 'success'
   >('details');
+
+  // State for SmartStoreSelector
+  const [showSmartStoreSelector, setShowSmartStoreSelector] = useState(false);
 
   // State for potential matches (before booking)
   const [potentialMatches, setPotentialMatches] = useState<any[]>([]);
@@ -392,9 +396,6 @@ export function PlaceOrderModal({
 
   // State for the current request ID (set when order is submitted)
   const [requestId, setRequestId] = useState<string | null>(null);
-
-  // State for store search
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Form validation state
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -424,6 +425,14 @@ export function PlaceOrderModal({
 
   // Auth hook for API calls
   const { getToken } = useAuth();
+
+  // Handle URL submission from SmartStoreSelector
+  const handleUrlSubmit = (url: string) => {
+    updateProductDetails({ url });
+    setShowSmartStoreSelector(false);
+    // Clear any existing URL errors
+    setFieldErrors(prev => ({ ...prev, url: '' }));
+  };
 
   const handleQuantityChange = (amount: number) => {
     const newQuantity = Math.max(1, formData.quantity + amount);
@@ -620,8 +629,8 @@ export function PlaceOrderModal({
             />
             <button
               type='button'
-              onClick={() => setView('stores')}
-              className='absolute right-2 top-1/2 -translate-y-1/2 text-sm font-semibold text-purple-700 hover:text-purple-800 cursor-pointer'
+              onClick={() => setShowSmartStoreSelector(true)}
+              className='absolute right-2 top-1/2 -translate-y-1/2 text-sm font-semibold text-purple-800 hover:text-purple-900 cursor-pointer'
               disabled={isSubmitting}
             >
               Browse Stores
@@ -872,70 +881,6 @@ export function PlaceOrderModal({
           >
             Enter Delivery Details
           </Button>
-        </div>
-      </div>
-    </>
-  );
-
-  // "Browse Stores"
-  const renderStoresView = () => (
-    <>
-      <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
-        <div className='flex items-center'>
-          <button
-            type='button'
-            onClick={() => setView('details')} // Bug Fix: Was 'delivery', now 'details'
-            className='p-1 rounded-full hover:bg-gray-100 mr-2'
-          >
-            <ChevronLeft className='h-6 w-6' />
-          </button>
-          <DialogTitle className='text-lg font-semibold text-gray-900'>
-            What store will this product be from?
-          </DialogTitle>
-        </div>
-      </DialogHeader>
-
-      <div className='flex-1 overflow-y-auto p-6 space-y-4 rounded-xl'>
-        {/* Search Bar */}
-        <div className='relative'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
-          <Input
-            placeholder='Search for stores'
-            className='h-11 pl-10'
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        {/* Store List */}
-        <div className='space-y-2'>
-          {stores
-            .filter(store =>
-              store.name.toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .map(store => (
-              <a
-                key={store.name}
-                href={store.url}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='flex items-center justify-between w-full p-3 rounded-lg hover:bg-gray-100 transition-colors'
-              >
-                <div className='flex items-center gap-3'>
-                  <div className='w-32 h-10 rounded-none flex items-center justify-center overflow-hidden'>
-                    <NextImage
-                      src={store.logo}
-                      alt={store.name}
-                      width={60}
-                      height={40}
-                    />
-                    {/* <span className="text-xs">{store.name} Logo</span> */}
-                  </div>
-                  {/* <span className="font-medium">{store.name}</span> */}
-                </div>
-                <ExternalLink className='h-5 w-5 text-purple-900' />
-              </a>
-            ))}
         </div>
       </div>
     </>
@@ -1736,19 +1681,51 @@ export function PlaceOrderModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={`sm:max-w-md lg:max-w-lg p-0 gap-0 flex ${
-          view === 'success' ? 'max-h-[50vh]' : 'flex-col max-h-[90vh] h-full'
-        } font-space-grotesk rounded-xl`}
+    <>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent
+          className={`sm:max-w-md lg:max-w-lg p-0 gap-0 flex ${
+            view === 'success' ? 'max-h-[50vh]' : 'flex-col max-h-[90vh] h-full'
+          } font-space-grotesk rounded-xl`}
+        >
+          {/* Updated rendering logic */}
+          {view === 'details' && renderDetailsView()}
+          {view === 'delivery' && renderDeliveryView()}
+          {view === 'travelers' && renderTravelerView()}
+          {view === 'success' && renderSuccessView()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Smart Store Selector Modal */}
+      <Dialog
+        open={showSmartStoreSelector}
+        onOpenChange={setShowSmartStoreSelector}
       >
-        {/* Updated rendering logic */}
-        {view === 'details' && renderDetailsView()}
-        {view === 'stores' && renderStoresView()}
-        {view === 'delivery' && renderDeliveryView()}
-        {view === 'travelers' && renderTravelerView()}
-        {view === 'success' && renderSuccessView()}
-      </DialogContent>
-    </Dialog>
+        <DialogContent className='sm:max-w-2xl max-h-[90vh] p-0 gap-0 flex flex-col font-space-grotesk rounded-xl'>
+          <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
+            <div className='flex items-center gap-2'>
+              <button
+                type='button'
+                className='p-1 rounded-full hover:bg-gray-100'
+                onClick={() => setShowSmartStoreSelector(false)}
+              >
+                <ChevronLeft className='h-6 w-6' />
+              </button>
+              <DialogTitle className='text-lg font-semibold text-gray-900'>
+                Select a Store
+              </DialogTitle>
+            </div>
+            <p className='text-sm text-gray-600 mt-2'>
+              Choose a store to browse products. We'll guide you through getting
+              the correct US pricing.
+            </p>
+          </DialogHeader>
+
+          <div className='flex-1 overflow-y-auto p-6'>
+            <SmartStoreSelector onUrlSubmit={handleUrlSubmit} />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
