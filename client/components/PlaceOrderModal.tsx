@@ -374,6 +374,7 @@ export function PlaceOrderModal({
   // State for potential matches (before booking)
   const [potentialMatches, setPotentialMatches] = useState<any[]>([]);
   const [isFindingMatches, setIsFindingMatches] = useState(false);
+  const [isCreatingMarketplace, setIsCreatingMarketplace] = useState(false);
 
   // Track which booking flow was used
   const [bookingFlow, setBookingFlow] = useState<
@@ -399,6 +400,7 @@ export function PlaceOrderModal({
     submitOrder,
     isSubmitting,
     validateForm: validateStoreForm,
+    validateSingleField,
   } = useOrderStore();
 
   // Enhanced reset function
@@ -408,13 +410,17 @@ export function PlaceOrderModal({
     setPotentialMatches([]);
     setRequestId(null);
     setFieldErrors({});
+    setIsCreatingMarketplace(false);
   };
 
   // Auth hook for API calls
   const { getToken } = useAuth();
 
   const handleQuantityChange = (amount: number) => {
-    setQuantity(Math.max(1, formData.quantity + amount));
+    const newQuantity = Math.max(1, formData.quantity + amount);
+    setQuantity(newQuantity);
+    const error = validateSingleField('quantity', newQuantity);
+    setFieldErrors(prev => ({ ...prev, quantity: error || '' }));
   };
 
   // Input change and blur handlers for validation
@@ -428,11 +434,19 @@ export function PlaceOrderModal({
     setFieldErrors(prev => ({ ...prev, [field]: '' }));
   };
 
-  const handleBlur = (field: string) => {
-    // Use store validation and update field errors
-    const isValid = validateStoreForm();
-    // For now, we'll handle field-level validation in the store
-    // TODO: Extract field-level errors from store validation
+  const handleBlur = (field: string, value: any) => {
+    let fieldPath = field;
+    if (
+      ['name', 'url', 'weight', 'price', 'category', 'additionalInfo'].includes(
+        field
+      )
+    ) {
+      fieldPath = `productDetails.${field}`;
+    } else if (['buyingFrom', 'deliveringTo', 'phone'].includes(field)) {
+      fieldPath = `deliveryDetails.${field}`;
+    }
+    const error = validateSingleField(fieldPath, value);
+    setFieldErrors(prev => ({ ...prev, [field]: error || '' }));
   };
 
   // Enhanced validation function for API submission
@@ -440,6 +454,17 @@ export function PlaceOrderModal({
     const errors: Record<string, string> = {};
 
     // Product Details Validation
+    if (!formData.productDetails.category?.trim())
+      errors.category = 'Product category is required';
+    if (!formData.productDetails.url?.trim()) {
+      errors.url = 'Product URL is required';
+    } else {
+      try {
+        new URL(formData.productDetails.url);
+      } catch {
+        errors.url = 'Please enter a valid URL';
+      }
+    }
     if (!formData.productDetails.name?.trim())
       errors.name = 'Product name is required';
     if (!formData.productDetails.price?.trim())
@@ -453,7 +478,7 @@ export function PlaceOrderModal({
       }
     }
 
-    // Weight validation (like CreateTripModal)
+    // Weight validation
     if (formData.productDetails.weight) {
       const weight = parseFloat(formData.productDetails.weight);
       if (isNaN(weight) || weight <= 0 || weight > 50) {
@@ -463,15 +488,12 @@ export function PlaceOrderModal({
       errors.weight = 'Weight is required';
     }
 
-    // URL validation (required)
-    if (!formData.productDetails.url?.trim()) {
-      errors.url = 'Product URL is required';
-    } else {
-      try {
-        new URL(formData.productDetails.url);
-      } catch {
-        errors.url = 'Please enter a valid URL';
-      }
+    if (!formData.productDetails.additionalInfo?.trim())
+      errors.additionalInfo = 'Additional information is required';
+
+    // Quantity validation
+    if (formData.quantity > 3) {
+      errors.quantity = 'Maximum 3 items allowed per order';
     }
 
     // Delivery Details Validation
@@ -479,6 +501,14 @@ export function PlaceOrderModal({
       errors.buyingFrom = 'Buying location is required';
     if (!formData.deliveryDetails.deliveringTo?.trim())
       errors.deliveringTo = 'Delivery destination is required';
+
+    // Phone validation
+    if (
+      formData.deliveryDetails.phone &&
+      !/^[\+]?[0-9\s\-\(\)]{7,15}$/.test(formData.deliveryDetails.phone)
+    ) {
+      errors.phone = 'Invalid phone number format';
+    }
 
     return { isValid: Object.keys(errors).length === 0, errors };
   };
@@ -528,7 +558,14 @@ export function PlaceOrderModal({
         <FormField id='category' label='Enter Product Category'>
           <Select
             value={formData.productDetails.category}
-            onValueChange={value => updateProductDetails({ category: value })}
+            onValueChange={value => {
+              updateProductDetails({ category: value });
+              const error = validateSingleField(
+                'productDetails.category',
+                value
+              );
+              setFieldErrors(prev => ({ ...prev, category: error || '' }));
+            }}
           >
             <SelectTrigger className='w-full h-11'>
               <SelectValue placeholder='Select a category' />
@@ -547,6 +584,15 @@ export function PlaceOrderModal({
               ))}
             </SelectContent>
           </Select>
+          {fieldErrors.category && (
+            <p
+              id='category-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
+              {fieldErrors.category}
+            </p>
+          )}
         </FormField>
 
         {/* Product URL */}
@@ -558,7 +604,7 @@ export function PlaceOrderModal({
               className='h-11 pr-24'
               value={formData.productDetails.url || ''}
               onChange={e => handleInputChange('url', e.target.value)}
-              onBlur={() => handleBlur('url')}
+              onBlur={() => handleBlur('url', formData.productDetails.url)}
               disabled={isSubmitting}
               aria-describedby={fieldErrors.url ? 'url-error' : undefined}
               aria-required='true'
@@ -591,7 +637,7 @@ export function PlaceOrderModal({
             className='h-11'
             value={formData.productDetails.name}
             onChange={e => handleInputChange('name', e.target.value)}
-            onBlur={() => handleBlur('name')}
+            onBlur={() => handleBlur('name', formData.productDetails.name)}
             disabled={isSubmitting}
             aria-describedby={fieldErrors.name ? 'name-error' : undefined}
             aria-required='true'
@@ -632,7 +678,9 @@ export function PlaceOrderModal({
               className='h-11 pl-3 pr-10 border rounded-md w-full'
               value={formData.productDetails.weight || ''}
               onChange={e => handleInputChange('weight', e.target.value)}
-              onBlur={() => handleBlur('weight')}
+              onBlur={() =>
+                handleBlur('weight', formData.productDetails.weight)
+              }
               disabled={isSubmitting}
               aria-describedby={fieldErrors.weight ? 'weight-error' : undefined}
               aria-required='true'
@@ -661,7 +709,7 @@ export function PlaceOrderModal({
               className='h-11'
               value={formData.productDetails.price}
               onChange={e => handleInputChange('price', e.target.value)}
-              onBlur={() => handleBlur('price')}
+              onBlur={() => handleBlur('price', formData.productDetails.price)}
               disabled={isSubmitting}
               aria-describedby={fieldErrors.price ? 'price-error' : undefined}
               aria-required='true'
@@ -734,6 +782,15 @@ export function PlaceOrderModal({
               <Plus className='h-5 w-5' />
             </button>
           </div>
+          {fieldErrors.quantity && (
+            <p
+              id='quantity-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
+              {fieldErrors.quantity}
+            </p>
+          )}
         </FormField>
 
         {/* Fragile Item */}
@@ -765,13 +822,34 @@ export function PlaceOrderModal({
             rows={4}
             maxLength={1024}
             value={formData.productDetails.additionalInfo || ''}
-            onChange={e =>
-              updateProductDetails({ additionalInfo: e.target.value })
+            onChange={e => {
+              updateProductDetails({ additionalInfo: e.target.value });
+              // Clear error on change
+              setFieldErrors(prev => ({ ...prev, additionalInfo: '' }));
+            }}
+            onBlur={() =>
+              handleBlur(
+                'additionalInfo',
+                formData.productDetails.additionalInfo
+              )
             }
+            aria-describedby={
+              fieldErrors.additionalInfo ? 'additional-info-error' : undefined
+            }
+            aria-required='true'
           />
           <p className='text-xs text-gray-500 text-right mt-1'>
             {(formData.productDetails.additionalInfo || '').length}/1024
           </p>
+          {fieldErrors.additionalInfo && (
+            <p
+              id='additional-info-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
+              {fieldErrors.additionalInfo}
+            </p>
+          )}
         </FormField>
 
         {/* Buttons at the bottom of the form */}
@@ -908,7 +986,9 @@ export function PlaceOrderModal({
               className='h-11 pl-10'
               value={formData.deliveryDetails.buyingFrom || ''}
               onChange={e => handleInputChange('buyingFrom', e.target.value)}
-              onBlur={() => handleBlur('buyingFrom')}
+              onBlur={() =>
+                handleBlur('buyingFrom', formData.deliveryDetails.buyingFrom)
+              }
               disabled={isSubmitting}
               aria-describedby={
                 fieldErrors.buyingFrom ? 'buying-from-error' : undefined
@@ -937,7 +1017,12 @@ export function PlaceOrderModal({
               className='h-11 pl-10'
               value={formData.deliveryDetails.deliveringTo}
               onChange={e => handleInputChange('deliveringTo', e.target.value)}
-              onBlur={() => handleBlur('deliveringTo')}
+              onBlur={() =>
+                handleBlur(
+                  'deliveringTo',
+                  formData.deliveryDetails.deliveringTo
+                )
+              }
               disabled={isSubmitting}
               aria-describedby={
                 fieldErrors.deliveringTo ? 'delivering-to-error' : undefined
@@ -1014,9 +1099,24 @@ export function PlaceOrderModal({
               placeholder='910 000 0000'
               className='h-11'
               value={formData.deliveryDetails.phone || ''}
-              onChange={e => updateDeliveryDetails({ phone: e.target.value })}
+              onChange={e => {
+                updateDeliveryDetails({ phone: e.target.value });
+                // Clear error on change
+                setFieldErrors(prev => ({ ...prev, phone: '' }));
+              }}
+              onBlur={() => handleBlur('phone', formData.deliveryDetails.phone)}
+              aria-describedby={fieldErrors.phone ? 'phone-error' : undefined}
             />
           </div>
+          {fieldErrors.phone && (
+            <p
+              id='phone-error'
+              className='text-red-500 text-sm mt-1'
+              role='alert'
+            >
+              {fieldErrors.phone}
+            </p>
+          )}
         </FormField>
 
         {/* How carried */}
@@ -1090,9 +1190,9 @@ export function PlaceOrderModal({
               variant='outline'
               className='w-full sm:flex-1 border-purple-900 text-purple-900 hover:bg-purple-50'
               onClick={handleGetProposals}
-              disabled={isSubmitting}
+              disabled={isCreatingMarketplace}
             >
-              {isSubmitting ? (
+              {isCreatingMarketplace ? (
                 <>
                   <Loader2 className='h-4 w-4 mr-2 animate-spin' />
                   Creating Marketplace Order...
@@ -1209,7 +1309,7 @@ export function PlaceOrderModal({
 
   // Handle getting proposals from travelers (marketplace)
   const handleGetProposals = async () => {
-    if (isSubmitting) return;
+    if (isCreatingMarketplace) return;
 
     setBookingError(null);
 
@@ -1221,6 +1321,7 @@ export function PlaceOrderModal({
     }
 
     try {
+      setIsCreatingMarketplace(true);
       const token = await getToken();
       if (!token) {
         setBookingError('Authentication required. Please log in again.');
@@ -1325,6 +1426,8 @@ export function PlaceOrderModal({
           'Network error occurred. Please check your connection and try again.'
         );
       }
+    } finally {
+      setIsCreatingMarketplace(false);
     }
   };
 
