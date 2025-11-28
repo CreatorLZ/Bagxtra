@@ -13,11 +13,15 @@ import { formatTimeAgo } from '../utils/dateUtils';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import { format, isValid } from 'date-fns';
+import {
+  SHOPPER_BUYING_COUNTRIES,
+  DELIVERY_COUNTRIES,
+} from '../config/supportedCountries';
 
 const createRequestSchema = z
   .object({
-    fromCountry: z.string().min(1).max(100),
-    destinationCountry: z.string().min(1).max(100), // Changed to match client payload
+    fromCountry: z.enum(SHOPPER_BUYING_COUNTRIES),
+    destinationCountry: z.enum(DELIVERY_COUNTRIES), // Changed to match client payload
     deliveryStartDate: z.string().optional(),
     deliveryEndDate: z.string().optional(),
     pickup: z.boolean().optional(),
@@ -80,27 +84,6 @@ const shopperRequestService = new ShopperRequestService(
   userRepo,
   bagService
 );
-
-// Helper functions for country extraction
-function extractFromCountry(fromCountry: string): string {
-  if (!fromCountry) return 'US'; // Default fallback
-
-  // Try to extract country from location string
-  // Format: "City, Country" or just "Country"
-  const parts = fromCountry.split(',').map(part => part.trim());
-  if (parts.length > 1) {
-    const lastPart = parts[parts.length - 1];
-    if (lastPart && lastPart.length > 0) {
-      return lastPart; // Last part is usually the country
-    }
-  }
-
-  return fromCountry.trim();
-}
-
-function extractToCountry(toCountry: string): string {
-  return extractFromCountry(toCountry); // Same logic
-}
 
 /**
  * Create a new shopper request
@@ -373,8 +356,8 @@ export const publishShopperRequest = async (req: Request, res: Response) => {
         );
         if (bagItems && bagItems.length > 0) {
           const matches = await matchingService.findMatches(bagItems, {
-            fromCountry: extractFromCountry(updatedRequest.fromCountry),
-            toCountry: extractToCountry(updatedRequest.toCountry),
+            fromCountry: updatedRequest.fromCountry,
+            toCountry: updatedRequest.toCountry,
             deliveryStartDate: updatedRequest.deliveryStartDate
               ? new Date(updatedRequest.deliveryStartDate)
               : undefined,
@@ -531,8 +514,8 @@ export const findPotentialMatches = async (req: Request, res: Response) => {
   try {
     const requestData = z
       .object({
-        fromCountry: z.string().min(1).max(100),
-        toCountry: z.string().min(1).max(100),
+        fromCountry: z.enum(SHOPPER_BUYING_COUNTRIES),
+        toCountry: z.enum(DELIVERY_COUNTRIES),
         deliveryStartDate: z.string().optional(),
         deliveryEndDate: z.string().optional(),
         bagItems: z
@@ -722,8 +705,8 @@ export const getShopperRequestMatches = async (req: Request, res: Response) => {
 
     // Find matches using MatchingService
     const matches = await matchingService.findMatches(bagItems, {
-      fromCountry: extractFromCountry(request.fromCountry),
-      toCountry: extractToCountry(request.toCountry),
+      fromCountry: request.fromCountry,
+      toCountry: request.toCountry,
       deliveryStartDate: request.deliveryStartDate
         ? new Date(request.deliveryStartDate)
         : undefined,

@@ -47,6 +47,11 @@ import {
 } from 'lucide-react';
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { DatePicker } from '@/components/DatePicker';
+import { CountrySelect } from '@/components/ui/CountrySelect';
+import {
+  SHOPPER_BUYING_COUNTRIES,
+  DELIVERY_COUNTRIES,
+} from '@/lib/constants/countries';
 import NextImage from 'next/image';
 import { format, parse } from 'date-fns';
 import { parseDateTimeToUTC } from '@/lib/utils/dateUtils';
@@ -95,12 +100,16 @@ const categories = [
   },
 ];
 const stores = [
-  { name: 'Amazon', logo: '/amazon.png', url: 'https://www.amazon.com' },
-  { name: 'Walmart', logo: '/walmart.png', url: 'https://www.walmart.com' },
-  { name: 'Adidas', logo: '/adidas.png', url: 'https://www.adidas.com' },
-  { name: 'Apple', logo: '/Apples.png', url: 'https://www.apple.com' },
-  { name: 'IKEA', logo: '/Ikea.png', url: 'https://www.ikea.com' },
-  { name: 'Gucci', logo: '/gucci.png', url: 'https://www.gucci.com' },
+  {
+    name: 'Amazon',
+    logo: '/amazon.png',
+    url: 'https://www.amazon.com/?currency=USD&language=en_US',
+  },
+  { name: 'Walmart', logo: '/walmart.png', url: 'https://www.walmart.com/' },
+  { name: 'Adidas', logo: '/adidas.png', url: 'https://www.adidas.com/us/' },
+  { name: 'Apple', logo: '/Apples.png', url: 'https://www.apple.com/us/' },
+  { name: 'IKEA', logo: '/Ikea.png', url: 'https://www.ikea.com/us/en/' },
+  { name: 'Gucci', logo: '/gucci.png', url: 'https://www.gucci.com/us/en/' },
 ];
 
 // --- Helper Components ---
@@ -978,25 +987,18 @@ export function PlaceOrderModal({
         </div>
 
         {/* Buying From */}
-        <FormField id='buying-from' label='Buying From'>
-          <div className='relative'>
-            <Input
-              id='buying-from'
-              placeholder='New York, USA'
-              className='h-11 pl-10'
-              value={formData.deliveryDetails.buyingFrom || ''}
-              onChange={e => handleInputChange('buyingFrom', e.target.value)}
-              onBlur={() =>
-                handleBlur('buyingFrom', formData.deliveryDetails.buyingFrom)
-              }
-              disabled={isSubmitting}
-              aria-describedby={
-                fieldErrors.buyingFrom ? 'buying-from-error' : undefined
-              }
-              aria-required='true'
-            />
-            <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
-          </div>
+        <FormField id='buying-from' label='Select Country to Buy From'>
+          <CountrySelect
+            countries={SHOPPER_BUYING_COUNTRIES}
+            value={formData.deliveryDetails.buyingFrom || ''}
+            onValueChange={value => handleInputChange('buyingFrom', value)}
+            placeholder='Select buying country'
+            disabled={isSubmitting}
+            aria-describedby={
+              fieldErrors.buyingFrom ? 'buying-from-error' : undefined
+            }
+            aria-required
+          />
           {fieldErrors.buyingFrom && (
             <p
               id='buying-from-error'
@@ -1009,28 +1011,18 @@ export function PlaceOrderModal({
         </FormField>
 
         {/* Delivering To */}
-        <FormField id='delivering-to' label='Delivering To'>
-          <div className='relative'>
-            <Input
-              id='delivering-to'
-              placeholder='Lagos, Nigeria'
-              className='h-11 pl-10'
-              value={formData.deliveryDetails.deliveringTo}
-              onChange={e => handleInputChange('deliveringTo', e.target.value)}
-              onBlur={() =>
-                handleBlur(
-                  'deliveringTo',
-                  formData.deliveryDetails.deliveringTo
-                )
-              }
-              disabled={isSubmitting}
-              aria-describedby={
-                fieldErrors.deliveringTo ? 'delivering-to-error' : undefined
-              }
-              aria-required='true'
-            />
-            <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
-          </div>
+        <FormField id='delivering-to' label='Select Delivery Country'>
+          <CountrySelect
+            countries={DELIVERY_COUNTRIES}
+            value={formData.deliveryDetails.deliveringTo}
+            onValueChange={value => handleInputChange('deliveringTo', value)}
+            placeholder='Select delivery country'
+            disabled={isSubmitting}
+            aria-describedby={
+              fieldErrors.deliveringTo ? 'delivering-to-error' : undefined
+            }
+            aria-required
+          />
           {fieldErrors.deliveringTo && (
             <p
               id='delivering-to-error'
