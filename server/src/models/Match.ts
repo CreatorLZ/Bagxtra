@@ -4,8 +4,11 @@ export enum MatchStatus {
   Pending = 'pending',
   Claimed = 'claimed',
   Approved = 'approved',
-  Rejected = 'rejected',
+  Paid = 'paid',
+  ItemPurchased = 'item_purchased',
+  Boarding = 'boarding',
   Completed = 'completed',
+  Rejected = 'rejected',
 }
 
 export interface IMatch extends Document {
@@ -16,6 +19,7 @@ export interface IMatch extends Document {
   assignedItems: mongoose.Types.ObjectId[];
   status: MatchStatus;
   purchasePhaseStarted?: boolean;
+  receiptUrl?: string;
   deliveryPin?: string;
   deliveryPinExpiresAt?: Date;
   deliveryPinGeneratedAt?: Date;
@@ -82,6 +86,9 @@ const matchSchema = new Schema<IMatch>(
       enum: Object.values(MatchStatus),
       default: MatchStatus.Pending,
       required: true,
+    },
+    receiptUrl: {
+      type: String,
     },
   },
   {

@@ -249,7 +249,7 @@ export function SmartStoreSelector({ onUrlSubmit }: SmartStoreSelectorProps) {
               <img
                 src={store.logo}
                 alt={store.name}
-                className='h-10 object-contain'
+                className='h-5 object-contain'
               />
               <span className='text-sm font-medium'>{store.name}</span>
               {selectedStore?.id === store.id && (

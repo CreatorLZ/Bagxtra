@@ -146,16 +146,24 @@ async function getShopperOrders(shopperId: string): Promise<OrdersResponse> {
 
     // Categorize by match status
     switch (match.status) {
-      case MatchStatus.Approved:
+      case 'approved':
         orders.accepted.push(orderData);
         break;
-      case MatchStatus.Pending:
+      case 'paid':
+      case 'item_purchased':
+      case 'boarding':
+        orders.incoming.push(orderData);
+        break;
+      case 'pending':
+      case 'claimed':
         orders.pending.push(orderData);
         break;
-      case MatchStatus.Completed:
+      case 'completed':
         orders.completed.push(orderData);
         break;
-      // Add other status mappings as needed
+      case 'rejected':
+        // Rejected orders don't appear in active lists
+        break;
     }
   }
 
@@ -257,16 +265,24 @@ async function getTravelerOrders(travelerId: string): Promise<OrdersResponse> {
 
     // Categorize by match status
     switch (match.status) {
-      case MatchStatus.Approved:
+      case 'approved':
         orders.accepted.push(orderData);
         break;
-      case MatchStatus.Pending:
+      case 'paid':
+      case 'item_purchased':
+      case 'boarding':
+        orders.outgoing.push(orderData);
+        break;
+      case 'pending':
+      case 'claimed':
         orders.pending.push(orderData);
         break;
-      case MatchStatus.Completed:
+      case 'completed':
         orders.completed.push(orderData);
         break;
-      // Add other status mappings as needed
+      case 'rejected':
+        // Rejected orders don't appear in active lists
+        break;
     }
   }
 

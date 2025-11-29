@@ -289,6 +289,115 @@ export class BookingService {
   }
 
   /**
+   * Shopper marks match as paid
+   */
+  async payMatch(
+    shopperId: mongoose.Types.ObjectId,
+    matchId: string
+  ): Promise<IMatch | null> {
+    const match = await this.matchRepo.findById(
+      new mongoose.Types.ObjectId(matchId)
+    );
+    if (!match) {
+      throw new Error('Match not found');
+    }
+
+    // Verify shopper owns the request
+    const request = await this.shopperRequestRepo.findById(match.requestId);
+    if (!request || !request.shopperId.equals(shopperId)) {
+      throw new Error('Unauthorized to pay for this match');
+    }
+
+    if (match.status !== MatchStatus.Approved) {
+      throw new Error('Match must be approved to pay');
+    }
+
+    // Update match status to paid
+    const updatePayload: Partial<IMatch> = {
+      status: MatchStatus.Paid,
+    };
+
+    return await this.matchRepo.update(
+      new mongoose.Types.ObjectId(matchId),
+      updatePayload
+    );
+  }
+
+  /**
+   * Traveler marks item as purchased with receipt
+   */
+  async purchaseMatch(
+    travelerId: mongoose.Types.ObjectId,
+    purchaseData: { matchId: string; receiptUrl: string }
+  ): Promise<IMatch | null> {
+    const match = await this.matchRepo.findById(
+      new mongoose.Types.ObjectId(purchaseData.matchId)
+    );
+    if (!match) {
+      throw new Error('Match not found');
+    }
+
+    // Verify traveler owns the trip
+    const trip = await this.tripRepo.findById(match.tripId);
+    if (!trip || !trip.travelerId.equals(travelerId)) {
+      throw new Error('Unauthorized to purchase for this match');
+    }
+
+    if (match.status !== MatchStatus.Paid) {
+      throw new Error('Match must be paid to purchase item');
+    }
+
+    // Update match status and receipt
+    const updatePayload: Partial<IMatch> = {
+      status: MatchStatus.ItemPurchased,
+      receiptUrl: purchaseData.receiptUrl,
+    };
+
+    return await this.matchRepo.update(
+      new mongoose.Types.ObjectId(purchaseData.matchId),
+      updatePayload
+    );
+  }
+
+  /**
+   * Traveler marks as about to board
+   */
+  async boardMatch(
+    travelerId: mongoose.Types.ObjectId,
+    matchId: string
+  ): Promise<IMatch | null> {
+    const match = await this.matchRepo.findById(
+      new mongoose.Types.ObjectId(matchId)
+    );
+    if (!match) {
+      throw new Error('Match not found');
+    }
+
+    // Verify traveler owns the trip
+    const trip = await this.tripRepo.findById(match.tripId);
+    if (!trip || !trip.travelerId.equals(travelerId)) {
+      throw new Error('Unauthorized to board this match');
+    }
+
+    if (
+      match.status !== MatchStatus.ItemPurchased &&
+      match.status !== MatchStatus.Boarding
+    ) {
+      throw new Error('Match must be purchased to board');
+    }
+
+    // Update match status to boarding
+    const updatePayload: Partial<IMatch> = {
+      status: MatchStatus.Boarding,
+    };
+
+    return await this.matchRepo.update(
+      new mongoose.Types.ObjectId(matchId),
+      updatePayload
+    );
+  }
+
+  /**
    * Cancel a match during cooldown period
    */
   async cancelMatchDuringCooldown(

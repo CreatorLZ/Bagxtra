@@ -2,7 +2,6 @@
 
 import { useTravelerDashboardData } from '@/hooks/dashboard/useTravelerDashboardData';
 import { useOrders, useMarketplaceOrders } from '@/hooks/dashboard/useOrders';
-import { useRejectMatch } from '@/hooks/useMatchActions';
 import DashboardLayout from '@/app/dashboard/DashboardLayout';
 import { ChevronRight, MapPin, Bell, Calendar, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { OrderSummaryModal } from '@/components/OrderSummaryModal';
+import { DeclineModal } from '@/components/DeclineModal';
 import { useAuth } from '@clerk/nextjs';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatName } from '@/lib/utils';
@@ -25,12 +25,15 @@ export default function TravelerDashboardPage() {
   const { getToken } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const rejectMatch = useRejectMatch();
   const [selectedOrderId, setSelectedOrderId] = useState<string | undefined>(
     undefined
   );
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isMarketplaceOrder, setIsMarketplaceOrder] = useState(false);
+  const [declineModalOpen, setDeclineModalOpen] = useState(false);
+  const [selectedOrderIdForDecline, setSelectedOrderIdForDecline] = useState<
+    string | undefined
+  >(undefined);
 
   if (isLoading) {
     return (
@@ -233,21 +236,18 @@ export default function TravelerDashboardPage() {
 
                 <div className='flex space-x-3'>
                   <motion.button
-                    className='flex-1 py-3 bg-red-50 text-red-600 rounded-md text-sm cursor-pointer font-semibold font-space-grotesk hover:bg-red-100 transition-colors disabled:opacity-50'
+                    className='flex-1 py-3 bg-red-50 text-red-500 border-red-100 border-2 rounded-md text-sm cursor-pointer font-semibold font-space-grotesk hover:bg-red-100 transition-colors'
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    disabled={rejectMatch.isPending}
                     onClick={() => {
-                      rejectMatch.mutate({
-                        matchId: order.id,
-                        reason: 'Declined by traveler',
-                      });
+                      setSelectedOrderIdForDecline(order.id);
+                      setDeclineModalOpen(true);
                     }}
                   >
-                    {rejectMatch.isPending ? 'Declining...' : 'Decline'}
+                    Decline
                   </motion.button>
                   <motion.button
-                    className='flex-1 py-3 bg-purple-50 text-purple-900 rounded-md cursor-pointer text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors'
+                    className='flex-1 py-3 bg-purple-50 border-2 border-purple-100 text-purple-900  rounded-md cursor-pointer text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors'
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
@@ -490,6 +490,17 @@ export default function TravelerDashboardPage() {
         isOpen={isSummaryOpen}
         onOpenChange={setIsSummaryOpen}
         orderId={selectedOrderId}
+      />
+
+      <DeclineModal
+        isOpen={declineModalOpen}
+        onOpenChange={setDeclineModalOpen}
+        orderId={selectedOrderIdForDecline!}
+        onDeclineSuccess={() => {
+          // Refresh the data after successful decline
+          queryClient.invalidateQueries({ queryKey: ['orders'] });
+          queryClient.invalidateQueries({ queryKey: ['traveler-dashboard'] });
+        }}
       />
     </DashboardLayout>
   );

@@ -19,6 +19,9 @@ import { useState, useEffect } from 'react';
 import { useOrderDetails } from '@/hooks/dashboard/useOrderDetails';
 import { useRole } from '@/hooks/useRole';
 import { useAcceptMatch, useRejectMatch } from '@/hooks/useMatchActions';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@clerk/nextjs';
+import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -29,6 +32,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import NextImage from 'next/image';
 import { formatName } from '@/lib/utils';
+import { DeclineModal } from './DeclineModal';
+import { ReceiptUploadModal } from './ReceiptUploadModal';
+import { WaitingForPaymentButton } from '@/components/ui/WaitingForPaymentButton';
+import { MakePaymentButton } from '@/components/ui/MakePaymentButton';
+import { PendingPurchaseButton } from '@/components/ui/PendingPurchaseButton';
+import { ItemPurchasedButton } from '@/components/ui/ItemPurchasedButton';
+import { AboutToBoardButton } from '@/components/ui/AboutToBoardButton';
 // --- Helper: Flight Path Visualization ---
 
 // --- Props Interface ---
@@ -46,10 +56,91 @@ export function OrderSummaryModal({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const { role } = useRole();
+  const [declineModalOpen, setDeclineModalOpen] = useState(false);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
 
   // Match action hooks
   const acceptMatch = useAcceptMatch();
   const rejectMatch = useRejectMatch();
+
+  // Payment mutation
+  const payMatch = useMutation({
+    mutationFn: async (matchId: string) => {
+      const token = await getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${matchId}/pay`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) throw new Error('Payment failed');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order-details'] });
+      toast.success('Payment confirmed successfully!');
+    },
+  });
+
+  // Purchase mutation
+  const purchaseMatch = useMutation({
+    mutationFn: async ({
+      matchId,
+      receiptUrl,
+    }: {
+      matchId: string;
+      receiptUrl: string;
+    }) => {
+      const token = await getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${matchId}/purchase`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ receiptUrl }),
+        }
+      );
+      if (!response.ok) throw new Error('Purchase failed');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order-details'] });
+      toast.success(
+        'Thank you, receipt has been sent to the shopper. We at BagXtra wish you a safe journey!'
+      );
+      setReceiptModalOpen(false);
+    },
+  });
+
+  // Board mutation
+  const boardMatch = useMutation({
+    mutationFn: async (matchId: string) => {
+      const token = await getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/matches/${matchId}/board`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) throw new Error('Boarding failed');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order-details'] });
+      toast.success('Boarding confirmed!');
+    },
+  });
 
   // Fetch order details
   const {
@@ -418,77 +509,132 @@ export function OrderSummaryModal({
 
         {/* --- Bottom Action Buttons --- */}
         <div className='flex-shrink-0 p-6 bg-white border-t border-gray-100'>
-          {role === 'traveler' ? (
-            isMarketplace ? (
-              // Single button for marketplace orders
-              <Button
-                onClick={() => {
-                  // TODO: Implement proposal creation for marketplace orders
-                  console.log(
-                    'Creating proposal for marketplace order:',
-                    orderId
-                  );
-                  onOpenChange(false);
-                }}
-                className='w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]'
-              >
-                I will like to deliver this item
-              </Button>
-            ) : (
-              // Two buttons for pending matches
-              <div className='flex space-x-3'>
-                <motion.button
-                  onClick={() => {
-                    rejectMatch.mutate(
-                      { matchId: orderId!, reason: 'Declined by traveler' },
-                      {
-                        onSuccess: () => {
-                          onOpenChange(false);
-                        },
-                      }
-                    );
-                  }}
-                  disabled={rejectMatch.isPending}
-                  className='flex-1 py-3 bg-red-200 text-red-600 rounded-md text-sm font-semibold font-space-grotesk hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50'
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {rejectMatch.isPending ? 'Declining...' : 'Decline'}
-                </motion.button>
-                <motion.button
-                  onClick={() => {
-                    acceptMatch.mutate(orderId!, {
-                      onSuccess: () => {
-                        onOpenChange(false);
-                      },
-                    });
-                  }}
-                  disabled={acceptMatch.isPending}
-                  className='flex-1 py-3 bg-purple-200 text-purple-900 rounded-md text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors cursor-pointer disabled:opacity-50'
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {acceptMatch.isPending ? 'Accepting...' : 'Accept'}
-                </motion.button>
-              </div>
-            )
-          ) : isMarketplace ? (
-            <Button className='w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]'>
-              View Proposals
-            </Button>
-          ) : (
-            <Button className='w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]'>
-              Make Payment ($
-              {orderDetails.products
-                .reduce(
-                  (total, product) => total + product.price * product.quantity,
-                  0
-                )
-                .toFixed(2)}
+          {(() => {
+            const orderStatus = orderDetails.order.status;
+            const totalAmount = orderDetails.products
+              .reduce(
+                (total, product) => total + product.price * product.quantity,
+                0
               )
-            </Button>
-          )}
+              .toFixed(2);
+
+            // Traveler buttons
+            if (role === 'traveler') {
+              if (isMarketplace) {
+                return (
+                  <Button className='w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]'>
+                    I will like to deliver this item
+                  </Button>
+                );
+              }
+
+              // Matched orders for travelers
+              switch (orderStatus) {
+                case 'pending':
+                  return (
+                    <div className='flex space-x-3'>
+                      <motion.button
+                        onClick={() => setDeclineModalOpen(true)}
+                        className='flex-1 py-3 bg-red-50 text-red-500 border-red-100 border-2 rounded-md text-sm font-semibold font-space-grotesk hover:bg-red-100 transition-colors cursor-pointer'
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Decline
+                      </motion.button>
+                      <motion.button
+                        onClick={() => {
+                          acceptMatch.mutate(orderId!, {
+                            onSuccess: () => {
+                              onOpenChange(false);
+                            },
+                          });
+                        }}
+                        disabled={acceptMatch.isPending}
+                        className='flex-1 py-3 bg-purple-50 border-2 border-purple-100 text-purple-900 rounded-md text-sm font-semibold font-space-grotesk hover:bg-purple-100 transition-colors cursor-pointer disabled:opacity-50'
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {acceptMatch.isPending ? 'Accepting...' : 'Accept'}
+                      </motion.button>
+                    </div>
+                  );
+
+                case 'approved':
+                  return <WaitingForPaymentButton />;
+
+                case 'paid':
+                case 'item_purchased':
+                  return (
+                    <ItemPurchasedButton
+                      onClick={() => setReceiptModalOpen(true)}
+                      isLoading={purchaseMatch.isPending}
+                    />
+                  );
+
+                case 'boarding':
+                  return (
+                    <AboutToBoardButton
+                      onClick={() => boardMatch.mutate(orderId!)}
+                      isLoading={boardMatch.isPending}
+                    />
+                  );
+
+                default:
+                  return null;
+              }
+            }
+
+            // Shopper buttons
+            if (role === 'shopper') {
+              if (isMarketplace) {
+                return (
+                  <Button className='w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 cursor-pointer text-white rounded-md shadow-xl shadow-purple-900/10 transition-all active:scale-[0.98]'>
+                    View Proposals
+                  </Button>
+                );
+              }
+
+              // Matched orders for shoppers
+              switch (orderStatus) {
+                case 'approved':
+                  return (
+                    <MakePaymentButton
+                      amount={`$${totalAmount}`}
+                      onPaymentSuccess={() => payMatch.mutate(orderId!)}
+                    />
+                  );
+
+                case 'paid':
+                  return <PendingPurchaseButton />;
+
+                case 'item_purchased':
+                case 'boarding':
+                  // No button for shoppers in these states
+                  return null;
+
+                default:
+                  return null;
+              }
+            }
+
+            return null;
+          })()}
         </div>
+
+        <DeclineModal
+          isOpen={declineModalOpen}
+          onOpenChange={setDeclineModalOpen}
+          orderId={orderId!}
+          onDeclineSuccess={() => onOpenChange(false)}
+        />
+
+        <ReceiptUploadModal
+          isOpen={receiptModalOpen}
+          onOpenChange={setReceiptModalOpen}
+          onUploadSuccess={receiptUrl => {
+            purchaseMatch.mutate({ matchId: orderId!, receiptUrl });
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
