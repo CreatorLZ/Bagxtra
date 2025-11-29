@@ -118,6 +118,7 @@ export function OrderSummaryModal({
         'Thank you, receipt has been sent to the shopper. We at BagXtra wish you a safe journey!'
       );
       setReceiptModalOpen(false);
+      onOpenChange(false); // Auto-close OrderSummaryModal for cleaner UX
     },
   });
 
@@ -147,6 +148,7 @@ export function OrderSummaryModal({
     data: orderDetails,
     isLoading,
     error,
+    refetch,
   } = useOrderDetails(orderId || '');
 
   // Reset image errors when order changes
@@ -155,11 +157,18 @@ export function OrderSummaryModal({
     setSelectedImageIndex(0);
   }, [orderId]);
 
+  // Refetch order details when modal opens
+  useEffect(() => {
+    if (isOpen && orderId) {
+      refetch();
+    }
+  }, [isOpen, orderId, refetch]);
+
   // Show loading state
   if (isLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className='sm:max-w-md p-0 gap-0 bg-[#F8F9FA] h-[90vh] max-h-[800px] flex flex-col overflow-hidden rounded-3xl font-space-grotesk border-0 focus:outline-none'>
+        <DialogContent className='sm:max-w-md p-0 gap-0 bg-[#F8F9FA] h-[90vh] max-h-[800px] flex flex-col overflow-hidden rounded-none! font-space-grotesk border-0 focus:outline-none'>
           {/* FIX: Added DialogTitle for accessibility */}
           <DialogHeader className='sr-only'>
             <DialogTitle>Loading Order Details</DialogTitle>
@@ -178,7 +187,7 @@ export function OrderSummaryModal({
   if (error) {
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className='sm:max-w-md p-0 gap-0 bg-[#F8F9FA] h-[90vh] max-h-[800px] flex flex-col overflow-hidden rounded-3xl font-space-grotesk border-0 focus:outline-none'>
+        <DialogContent className='sm:max-w-md p-0 gap-0 bg-[#F8F9FA] h-[90vh] max-h-[800px] flex flex-col overflow-hidden rounded-none font-space-grotesk border-0 focus:outline-none'>
           {/* FIX: Added DialogTitle for accessibility */}
           <DialogHeader className='sr-only'>
             <DialogTitle>Error Loading Order</DialogTitle>
@@ -225,7 +234,7 @@ export function OrderSummaryModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-md p-0 gap-0 bg-[#F8F9FA] max-h-[95vh] flex flex-col overflow-hidden rounded-3xl font-space-grotesk border-0 focus:outline-none'>
+      <DialogContent className='sm:max-w-md p-0 gap-0 bg-[#F8F9FA] max-h-[95vh] flex flex-col overflow-hidden rounded-none font-space-grotesk border-0 focus:outline-none'>
         <DialogHeader className='sr-only'>
           <DialogTitle>Order Summary</DialogTitle>
         </DialogHeader>
@@ -235,7 +244,7 @@ export function OrderSummaryModal({
           <div className='flex items-center gap-3'>
             <button
               onClick={() => onOpenChange(false)}
-              className='p-2 bg-white rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors'
+              className='p-2 bg-white rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer'
             >
               <ChevronLeft className='h-5 w-5 text-gray-700' />
             </button>
@@ -246,7 +255,7 @@ export function OrderSummaryModal({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className='p-2 hover:bg-gray-200 rounded-full transition-colors focus:outline-none'>
+              <button className='p-2 hover:bg-gray-200 rounded-full transition-colors focus:outline-none cursor-pointer'>
                 <MoreVertical className='h-5 w-5 text-gray-600' />
               </button>
             </DropdownMenuTrigger>
@@ -545,6 +554,10 @@ export function OrderSummaryModal({
                         onClick={() => {
                           acceptMatch.mutate(orderId!, {
                             onSuccess: () => {
+                              // Invalidate order details to ensure fresh data on reopen
+                              queryClient.invalidateQueries({
+                                queryKey: ['order-details'],
+                              });
                               onOpenChange(false);
                             },
                           });
@@ -563,11 +576,18 @@ export function OrderSummaryModal({
                   return <WaitingForPaymentButton />;
 
                 case 'paid':
-                case 'item_purchased':
                   return (
                     <ItemPurchasedButton
                       onClick={() => setReceiptModalOpen(true)}
                       isLoading={purchaseMatch.isPending}
+                    />
+                  );
+
+                case 'item_purchased':
+                  return (
+                    <AboutToBoardButton
+                      onClick={() => boardMatch.mutate(orderId!)}
+                      isLoading={boardMatch.isPending}
                     />
                   );
 

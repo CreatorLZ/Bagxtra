@@ -294,11 +294,15 @@ async function getTravelerOrders(travelerId: string): Promise<OrdersResponse> {
  */
 function getShopperOrderDetails(match: any): string {
   switch (match.status) {
-    case MatchStatus.Approved:
+    case 'approved':
       return 'Waiting for payment confirmation';
-    case MatchStatus.Pending:
+    case 'paid':
+      return 'Payment confirmed - traveler purchasing items';
+    case 'item_purchased':
+      return 'Item purchased - awaiting delivery';
+    case 'pending':
       return 'Waiting for traveler approval';
-    case MatchStatus.Completed:
+    case 'completed':
       return `Delivered ${new Date(match.updatedAt).toLocaleDateString()}`;
     default:
       return 'Processing';
@@ -310,11 +314,17 @@ function getShopperOrderDetails(match: any): string {
  */
 function getTravelerOrderDetails(match: any): string {
   switch (match.status) {
-    case MatchStatus.Approved:
+    case 'approved':
       return 'Waiting for shopper payment';
-    case MatchStatus.Pending:
+    case 'paid':
+      return 'Payment received - purchase items';
+    case 'item_purchased':
+      return 'Awaiting delivery';
+    case 'boarding':
+      return 'Boarding flight';
+    case 'pending':
       return 'New delivery request';
-    case MatchStatus.Completed:
+    case 'completed':
       return `Completed ${new Date(match.updatedAt).toLocaleDateString()}`;
     default:
       return 'Processing';
@@ -488,6 +498,7 @@ export const getOrderDetails = async (req: Request, res: Response) => {
         matchScore: isMarketplaceOrder ? 0 : match.matchScore,
         createdAt: isMarketplaceOrder ? request.createdAt : match.createdAt,
         priceSummary: request.priceSummary,
+        receiptUrl: isMarketplaceOrder ? null : match.receiptUrl,
       },
       shopper: {
         id: shopper._id,

@@ -237,7 +237,7 @@ export function SmartStoreSelector({ onUrlSubmit }: SmartStoreSelectorProps) {
               key={store.id}
               onClick={() => handleStoreClick(store)}
               className={`
-                relative flex flex-col items-center gap-3 p-4 border-2 rounded-xl hover:cursor-pointer
+                relative flex flex-col items-center gap-3 p-4 border-2 rounded-none hover:cursor-pointer
                 transition-all hover:shadow-md hover:scale-105
                 ${
                   selectedStore?.id === store.id
@@ -262,7 +262,7 @@ export function SmartStoreSelector({ onUrlSubmit }: SmartStoreSelectorProps) {
 
       {/* Step 2: Instructions (appears after store selection) */}
       {showInstructions && selectedStore && (
-        <div className='bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-800 rounded-xl p-5 animate-in slide-in-from-top duration-300'>
+        <div className='bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-800 rounded-none p-5 animate-in slide-in-from-top duration-300'>
           <div className='flex items-start gap-3'>
             <div className='flex-shrink-0'>
               <div className='flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-900 text-sm font-bold'>
@@ -286,7 +286,7 @@ export function SmartStoreSelector({ onUrlSubmit }: SmartStoreSelectorProps) {
                   </li>
                 ))}
               </ul>
-
+              {/* hidden input to be considered ask the team for suggestions */}
               <div className=' items-center gap-2 p-3 bg-white/60 rounded-lg border border-purple-200 hidden'>
                 <code className='text-xs text-purple-900 flex-1 truncate'>
                   {selectedStore.usUrl}

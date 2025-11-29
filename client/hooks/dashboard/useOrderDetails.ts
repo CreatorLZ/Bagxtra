@@ -88,7 +88,8 @@ export function useOrderDetails(orderId: string) {
       return result.data;
     },
     enabled: !!orderId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: true, // Always refetch when modal opens to ensure fresh data
+    staleTime: 5 * 60 * 1000, // 5 minutes - still cache for background updates
     gcTime: 10 * 60 * 1000, // 10 minutes
     retry: (failureCount, error) => {
       if (error.message.includes('authentication')) return false;

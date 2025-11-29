@@ -64,18 +64,10 @@ function OrdersPageContent() {
       //   serverOrders: ordersData.pending
       // });
 
-      // If we have optimistic orders and server now has data, clear optimistic
-      // We check if count increased OR if we simply have optimistic orders and server data exists
+      // Clear optimistic orders when server data arrives with pending orders
+      // This prevents duplicate "shadow" orders with invalid temporary IDs
       if (optimisticOrders.length > 0 && currentPendingCount > 0) {
-        // Check if any optimistic order matches a server order (by item name)
-        const hasMatchingServerOrder = optimisticOrders.some(opt =>
-          ordersData.pending.some(server => server.item === opt.item)
-        );
-
-        if (hasMatchingServerOrder) {
-          // console.log('Found matching server order, clearing optimistic updates');
-          // setOptimisticOrders([]);
-        }
+        setOptimisticOrders([]);
       }
 
       setLastPendingCount(currentPendingCount);

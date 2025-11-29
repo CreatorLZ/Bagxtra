@@ -1,19 +1,15 @@
 'use client';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogHeader,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useState, useRef } from 'react';
-import { Upload, X } from 'lucide-react';
+import { ChevronLeft, FileText, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PhotoUpload } from './PhotoUpload';
 
 interface ReceiptUploadModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onUploadSuccess: (receiptUrl: string) => void;
+  onUploadSuccess?: (receiptUrl: string) => void;
 }
 
 export function ReceiptUploadModal({
@@ -21,168 +17,110 @@ export function ReceiptUploadModal({
   onOpenChange,
   onUploadSuccess,
 }: ReceiptUploadModalProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
-      const allowedTypes = [
-        'image/jpeg',
-        'image/jpg',
-        'image/png',
-        'image/gif',
-        'image/webp',
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        alert('Please select a valid image file (JPEG, PNG, GIF, WebP)');
-        return;
-      }
+  const handleUploadComplete = (url: string) => {
+    setUploadedUrl(url);
+  };
 
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
-        return;
-      }
-
-      setSelectedFile(file);
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = e => {
-        setPreviewUrl(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+  const handleSubmit = () => {
+    if (uploadedUrl && onUploadSuccess) {
+      onUploadSuccess(uploadedUrl);
+      setShowSuccess(true);
     }
   };
 
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-
-    setIsUploading(true);
-    try {
-      // TODO: Upload to your file storage service (UploadThing, Cloudinary, etc.)
-      // For now, simulate upload and return a mock URL
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Mock successful upload URL
-      const mockReceiptUrl = `https://example.com/receipts/${Date.now()}-${
-        selectedFile.name
-      }`;
-
-      onUploadSuccess(mockReceiptUrl);
-
-      // Reset modal
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Upload failed. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
+  const handleCloseSuccess = () => {
+    setShowSuccess(false);
+    setUploadedUrl(null);
+    onOpenChange(false);
   };
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  // Auto-close success view after 3 seconds
+  useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => {
+        handleCloseSuccess();
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [showSuccess]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-md p-0 gap-0 bg-[#F8F9FA] rounded-3xl font-space-grotesk border-0 focus:outline-none'>
-        <DialogHeader className='sr-only'>
-          <DialogTitle>Upload Receipt</DialogTitle>
-        </DialogHeader>
-
-        <div className='p-6 space-y-6'>
-          {/* Header */}
-          <div className='text-center'>
-            <h2 className='text-xl font-semibold text-gray-900 mb-2'>
-              Upload Receipt
-            </h2>
-            <p className='text-gray-600 text-sm'>
-              Please upload a photo of your purchase receipt
+      <DialogContent className='sm:max-w-md p-0 gap-0 bg-[#F8F9FA] h-[95vh] flex flex-col overflow-auto rounded-3xl font-space-grotesk border-0 focus:outline-none'>
+        {showSuccess ? (
+          // Success View
+          <div className='flex flex-col items-center justify-center p-8 text-center h-full bg-white'>
+            <CheckCircle className='h-16 w-16 text-purple-900 mb-4' />
+            <DialogTitle className='text-xl font-bold text-gray-900 mb-2'>
+              Receipt Submitted
+            </DialogTitle>
+            <p className='text-sm text-gray-600 mb-6'>
+              Thank you, receipt has been sent to the shopper. We at BagXtra
+              wish you a safe journey!
             </p>
-          </div>
 
-          {/* Upload Area */}
-          <div className='space-y-4'>
-            {!selectedFile ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className='border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 transition-colors'
+            {/* Action Buttons */}
+            <div className='space-y-3 w-full max-w-xs'>
+              <Button
+                className='w-full bg-purple-900 hover:bg-purple-800 h-11'
+                onClick={handleCloseSuccess}
               >
-                <Upload className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-                <p className='text-gray-600 mb-2'>Click to upload receipt</p>
-                <p className='text-sm text-gray-500'>
-                  Supports: JPEG, PNG, GIF, WebP (max 5MB)
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* --- Header --- */}
+            <div className='flex items-center gap-4 p-6 pb-2'>
+              <button
+                onClick={() => onOpenChange(false)}
+                className='p-2 bg-white rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors'
+              >
+                <ChevronLeft className='h-6 w-6 text-gray-700' />
+              </button>
+              <DialogTitle className='text-xl font-semibold text-gray-700'>
+                Product Receipt
+              </DialogTitle>
+            </div>
+
+            {/* --- Scrollable Body --- */}
+            <div className='flex-1 overflow-y-auto px-0 py-4 flex flex-col items-center'>
+              {/* Icon & Description */}
+              <div className='flex flex-col items-center text-center mb-8 mt-4'>
+                <img src='/invoice.png' alt='invoice img' />
+                <p className='text-sm text-gray-600 leading-relaxed max-w-xs'>
+                  To help with trust on both ends, we encourage our travelers to
+                  take photos of the receipt and upload here
                 </p>
               </div>
-            ) : (
-              <div className='relative'>
-                <div className='border border-gray-200 rounded-xl p-4 bg-white'>
-                  {previewUrl && (
-                    <img
-                      src={previewUrl}
-                      alt='Receipt preview'
-                      className='w-full h-48 object-contain rounded-lg mb-4'
-                    />
-                  )}
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <p className='font-medium text-gray-900'>
-                        {selectedFile.name}
-                      </p>
-                      <p className='text-sm text-gray-500'>
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleRemoveFile}
-                      className='p-2 text-gray-400 hover:text-red-500 transition-colors'
-                    >
-                      <X className='h-5 w-5' />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
-            <input
-              ref={fileInputRef}
-              type='file'
-              accept='image/*'
-              onChange={handleFileSelect}
-              className='hidden'
-            />
-          </div>
+              {/* Upload Area */}
+              <PhotoUpload
+                endpoint='documentUploader'
+                currentPhoto={uploadedUrl || ''}
+                onPhotoUpdate={url => setUploadedUrl(url || null)}
+                onUploadComplete={handleUploadComplete}
+                placeholder='Upload receipt photo'
+                className='md:h-[300px] md:w-[90%] h-[250px] w-[90%]'
+              />
+            </div>
 
-          {/* Buttons */}
-          <div className='flex space-x-3 pt-4'>
-            <Button
-              onClick={() => onOpenChange(false)}
-              variant='outline'
-              className='flex-1 h-12 rounded-lg border-gray-200'
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpload}
-              disabled={!selectedFile || isUploading}
-              className='flex-1 h-12 bg-purple-900 hover:bg-purple-800 text-white rounded-lg disabled:opacity-50'
-            >
-              {isUploading ? 'Uploading...' : 'Upload Receipt'}
-            </Button>
-          </div>
-        </div>
+            {/* --- Footer Action --- */}
+            <div className='p-6 bg-[#F8F9FA]'>
+              <Button
+                onClick={handleSubmit}
+                disabled={!uploadedUrl}
+                className='w-full h-14 text-base font-medium bg-[#5B2C6F] hover:bg-[#4a235a] text-white rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50'
+              >
+                Submit Receipt
+              </Button>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

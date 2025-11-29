@@ -455,7 +455,7 @@ export function CreateTripModal({
 
   const renderFormView = () => (
     <>
-      <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
+      <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-none'>
         <div className='flex items-center gap-2'>
           <button
             type='button'
@@ -474,7 +474,7 @@ export function CreateTripModal({
         </p>
       </DialogHeader>
 
-      <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl'>
+      <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-none'>
         {/* Departure Country */}
         <FormField id='departure-country' label='Select Departure Country'>
           <CountrySelect
@@ -811,7 +811,7 @@ export function CreateTripModal({
       <DialogContent
         className={`sm:max-w-md lg:max-w-lg p-0 gap-0 flex ${
           view === 'form' ? 'flex-col max-h-[90vh] h-full' : 'max-h-[50vh]'
-        } font-space-grotesk rounded-xl`}
+        } font-space-grotesk rounded-none`}
       >
         {view === 'form' && renderFormView()}
         {view === 'success' && renderSuccessView()}

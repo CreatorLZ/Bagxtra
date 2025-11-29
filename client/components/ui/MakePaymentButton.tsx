@@ -34,7 +34,7 @@ export function MakePaymentButton({
     <Button
       onClick={handlePayment}
       disabled={isProcessing}
-      className={`w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 text-white ${className}`}
+      className={`w-full h-14 text-base font-medium bg-purple-900 hover:bg-purple-800 text-white cursor-pointer ${className}`}
     >
       {isProcessing ? 'Processing...' : `Make Payment ${amount}`}
     </Button>

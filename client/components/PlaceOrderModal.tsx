@@ -571,7 +571,7 @@ export function PlaceOrderModal({
       </DialogHeader>
 
       {/* Scrollable Form Content */}
-      <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl'>
+      <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-none'>
         {/* Product Category Select */}
         <FormField id='category' label='Enter Product Category'>
           <Select
@@ -889,7 +889,7 @@ export function PlaceOrderModal({
   // New "Delivery Details" view (Step 2)
   const renderDeliveryView = () => (
     <>
-      <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
+      <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-none'>
         <div className='flex justify-between items-center'>
           <div className='flex items-center gap-2'>
             <button
@@ -908,7 +908,7 @@ export function PlaceOrderModal({
       </DialogHeader>
 
       {/* Scrollable Form Content */}
-      <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl'>
+      <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-none'>
         <p className='text-sm text-gray-500 text-center border-b border-b-gray-200 pb-2.5 mb-8'>
           Travelers have up to 24 hours after arrival to drop off items at our
           approved stores for you to pick up.
@@ -1534,7 +1534,7 @@ export function PlaceOrderModal({
 
     return (
       <>
-        <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
+        <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-none'>
           <div className='flex justify-between items-center'>
             <div className='flex items-center gap-2'>
               <button
@@ -1552,7 +1552,7 @@ export function PlaceOrderModal({
           </div>
         </DialogHeader>
 
-        <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-b-xl bg-gray-50'>
+        <div className='flex-1 overflow-y-auto p-6 space-y-5 rounded-none bg-gray-50'>
           <p className='text-sm text-gray-500 border-b border-b-gray-200 pb-2.5 mb-8 text-center'>
             Travelers have up to 24 hours after arrival to drop off items at our
             approved stores for you to pick up.
@@ -1686,7 +1686,7 @@ export function PlaceOrderModal({
         <DialogContent
           className={`sm:max-w-md lg:max-w-lg p-0 gap-0 flex ${
             view === 'success' ? 'max-h-[50vh]' : 'flex-col max-h-[90vh] h-full'
-          } font-space-grotesk rounded-xl`}
+          } font-space-grotesk rounded-none`}
         >
           {/* Updated rendering logic */}
           {view === 'details' && renderDetailsView()}
@@ -1701,7 +1701,7 @@ export function PlaceOrderModal({
         open={showSmartStoreSelector}
         onOpenChange={setShowSmartStoreSelector}
       >
-        <DialogContent className='sm:max-w-2xl max-h-[90vh] p-0 gap-0 flex flex-col font-space-grotesk rounded-xl'>
+        <DialogContent className='sm:max-w-2xl max-h-[90vh] p-0 gap-0 flex flex-col font-space-grotesk rounded-none'>
           <DialogHeader className='sticky top-0 bg-white z-10 p-6 pb-4 border-b rounded-t-xl'>
             <div className='flex items-center gap-2'>
               <button
